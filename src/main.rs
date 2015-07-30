@@ -37,10 +37,10 @@ impl Node {
 
         let next_char = &s.chars().nth(0).unwrap();
         if self.children.contains_key(next_char) {
-            return self.children[next_char].search(&s[1..])
+            self.children[next_char].search(&s[1..])
+        } else {
+            None
         }
-
-        None
     }
 }
 

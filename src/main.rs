@@ -32,7 +32,6 @@ impl Node {
 
     fn search(&self, s: &str) -> Option<Vec<u64>> {
         if s.len() == 0 {
-            println!("{:?}", self.children);
             return Some(self.indexes.clone())
         }
 
@@ -55,7 +54,6 @@ impl SuffixTrie {
         let mut trie = SuffixTrie {root: Node::new()};
         for i in 0..text.chars().count() {
             trie.root.insert_suffix(&text[i..], i as u64);
-            println!("{} {}", i, &text[i..]);
         }
         trie
     }
@@ -66,7 +64,7 @@ impl SuffixTrie {
             None => {println!("Pattern not found")}
             Some(r) => {
                 for i in r {
-                    println!("{} found at {}", s, i)
+                    println!("{} found at {}", s, i-s.len() as u64)
                 }
             }
         }

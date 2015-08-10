@@ -1,84 +1,19 @@
-use std::collections::HashMap;
+#![feature(collections)]
+extern crate bio;
 
-#[derive(Debug)]
-struct Node {
-    children: HashMap<char, Box<Node>>,
-    indexes: Vec<u64>
-}
+// Import some modules
+use bio::alphabets;
+use bio::data_structures::suffix_array::suffix_array;
+use bio::data_structures::bwt::bwt;
+use bio::data_structures::fmindex::FMIndex;
+use bio::io::fasta;
 
-
-impl Node {
-    fn new() -> Node {
-        Node {
-            children: HashMap::new(),
-            indexes: Vec::new()
-        }
-    }
-
-
-    fn insert_suffix(&mut self, s: &str, index: u64) {
-        self.indexes.push(index);
-        if s.len() > 0 {
-            let c_index = s.chars().nth(0).unwrap();
-
-            if !self.children.contains_key(&c_index) {
-                self.children.insert(c_index, Box::new(Node::new()));
-            }
-
-            self.children.get_mut(&c_index).unwrap().insert_suffix(&s[1..], index+1);
-        }
-    }
-
-
-    fn search(&self, s: &str) -> Option<Vec<u64>> {
-        if s.len() == 0 {
-            return Some(self.indexes.clone())
-        }
-
-        let next_char = &s.chars().nth(0).unwrap();
-        if self.children.contains_key(next_char) {
-            self.children[next_char].search(&s[1..])
-        } else {
-            None
-        }
+fn main ()
+{
+    let reader = fasta::Reader::from_file("/Users/franklin/test.fasta");
+    for record in reader.unwrap().records() {
+        let seq = record.unwrap();
+        println!("{:?}", suffix_array(seq.seq()).len());
     }
 }
 
-struct SuffixTrie {
-    root: Node
-}
-
-
-impl SuffixTrie {
-    pub fn new(text: &str) -> SuffixTrie {
-        let mut trie = SuffixTrie {root: Node::new()};
-        for i in 0..text.chars().count() {
-            trie.root.insert_suffix(&text[i..], i as u64);
-        }
-        trie
-    }
-
-    pub fn search(&self, s: &str) {
-        let mut result = self.root.search(s);
-        match result {
-            None => {println!("Pattern not found")}
-            Some(r) => {
-                for i in r {
-                    println!("{} found at {}", s, i-s.len() as u64)
-                }
-            }
-        }
-    }
-}
-
-
-
-fn main() {
-    let test = "geeksforgeeks.org";
-    let tree = SuffixTrie::new(test);
-
-    for i in vec!["ee", "geek", "quiz", "forgeeks"] {
-        println!("Looking for {}", i);
-        tree.search(i);
-    }
-}

@@ -2,3 +2,6 @@
 name = "palindroms"
 version = "0.1.0"
 authors = ["Franklin Delehelle <franklin@odena.eu>"]
+
+[dependencies]
+bio = "*"

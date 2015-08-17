@@ -1,5 +1,5 @@
 [package]
-name = "palindroms"
+name = "palindromes"
 version = "0.1.0"
 authors = ["Franklin Delehelle <franklin@odena.eu>"]
 

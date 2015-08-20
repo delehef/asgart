@@ -23,6 +23,11 @@ struct Palindrome {
     rate: f32,
 }
 
+struct AlignmentResult {
+    errors: u32,
+    ins_la: u32,
+    ins_ra: u32,
+}
 
 fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> i32 {
     const DELETE_SCORE: i64 = -5;
@@ -32,7 +37,7 @@ fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> i32 {
     assert!(q1.len() == q2.len());
     let size: usize = q1.len();
 
-    let mut F = vec![0 as i64; size * size]; // TODO: no need for *1.5
+    let mut F = vec![0 as i64; size * size];
 
     for i in 0..size {
         F[i] = DELETE_SCORE*i as i64;
@@ -59,6 +64,7 @@ fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> i32 {
     let mut alignment_f = String::with_capacity(q2.len());
     let mut error = 0;
 
+    let mut result = AlignmentResult {errors: 0, ins_la: 0, ins_ra: 0};
     while i>1 && j>1 {
         if i>0 && j>0
             && (F[i+j*size] == F[(i-1)+(j-1)*size] + if q1[i] == q2[j] {MATCH_SCORE} else {MISMATCH_SCORE})
@@ -66,7 +72,7 @@ fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> i32 {
             // alignment_a.push(q1[i] as char);
             // alignment_b.push(q2[j] as char);
             if q1[i] != q2[j] {
-                error += 1;
+                result.errors += 1;
                 // alignment_f.push('#');
             } else {
                 // alignment_f.push(' ');
@@ -77,15 +83,17 @@ fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> i32 {
             // alignment_a.push(q1[i] as char);
             // alignment_b.push('-');
             // alignment_f.push('-');
+            result.ins_la += 1;
             i -= 1;
         } else if j>0 && F[i+j*size] == F[i+(j-1)*size] + DELETE_SCORE {
             // alignment_a.push('-');
             // alignment_b.push(q2[j] as char);
             // alignment_f.push('-');
+            result.ins_ra += 1;
             j -= 1;
         }
     }
-    error
+    result
 }
 
 fn strcmp(s1: &[u8], s2: &[u8]) -> i32 {
@@ -111,13 +119,14 @@ fn translate_nucleotide(n: u8) -> u8 {
 fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_start: usize) -> Palindrome {
     const precision: f32 = 0.9;
     const expansion_step: usize = 1000;
+    const window_size: usize = 3000;
 
     let mut expansion:usize = 0;
     let mut rate = 1.0;
 
     while rate >= precision {
         expansion += expansion_step;
-        let errors = needleman_wunsch(
+        let result = needleman_wunsch(
             &dna[straight_start..straight_start+expansion],
             &reverse_dna[reverse_start..reverse_start+expansion]);
         rate = 1.0 - (errors as f32)/(expansion as f32);
@@ -277,18 +286,5 @@ fn main ()
             }
             i += 1;
         }
-
-//       println!("DNA @{}", 11945097);
-//       println!("{}", window(dna, 11945097, 40));
-//       println!("{}\n\n", window(&reverse_translate_dna, reverse_translate_dna.len()-12211263, 40));
-//       let p6_la = "CATTGTAGTTAATGCCCTGA".as_bytes();
-//
-//       let potential_p6s = search(&reverse_translate_dna, &sa, &p6_la);
-//       println!("{:?}\n", potential_p6s);
-//       for p6 in potential_p6s {
-//           println!("Found @{} <=> {}", p6, reverse_translate_dna.len()-p6-1);
-//           let palindrome = expand_palindrome(dna, &reverse_translate_dna, 11945096, p6);
-//           println!("{}", palindrome.size);
-//        }
     }
 }

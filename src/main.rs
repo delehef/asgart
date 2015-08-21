@@ -1,4 +1,6 @@
 extern crate bio;
+extern crate num_cpus;
+
 use std::io::prelude::*;
 use std::fs::File;
 use std::thread;
@@ -317,12 +319,12 @@ fn main ()
         let shared_reverse_translate_dna = Arc::new(reverse_translate_dna);
 
 
-        const NTHREADS: usize = 3;
+        let threads_count: usize = num_cpus::get() - 1;
         {
-            let num_tasks_per_thread = (shared_dna.len()-CANDIDATE_SIZE) / NTHREADS;
-            let num_tougher_threads = (shared_dna.len()-CANDIDATE_SIZE) % NTHREADS;
+            let num_tasks_per_thread = (shared_dna.len()-CANDIDATE_SIZE) / threads_count;
+            let num_tougher_threads = (shared_dna.len()-CANDIDATE_SIZE) % threads_count;
             let mut start = 0;
-            for id in 0..NTHREADS {
+            for id in 0..threads_count {
                 let local_sa = shared_sa.clone();
                 let local_dna = shared_dna.clone();
                 let local_reverse_translate_dna = shared_reverse_translate_dna.clone();

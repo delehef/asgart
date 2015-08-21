@@ -5,3 +5,4 @@ authors = ["Franklin Delehelle <franklin@odena.eu>"]
 
 [dependencies]
 bio = "*"
+num_cpus = "*"

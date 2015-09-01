@@ -1,3 +1,4 @@
+extern crate uuid;
 extern crate bio;
 extern crate num_cpus;
 
@@ -15,8 +16,12 @@ use bio::io::fasta;
 use bio::data_structures::suffix_array::SuffixArray;
 use bio::data_structures::suffix_array::suffix_array;
 
+use uuid::Uuid;
+
 
 const CANDIDATE_SIZE: usize = 20;
+const PALINDROME_THRESHOLD_SIZE: usize = 1000;
+const PRIMER_SHIFT: usize = 1;
 
 #[derive(Debug)]
 struct Palindrome {
@@ -131,10 +136,13 @@ fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_star
     let mut correction_la = 0;
     let mut correction_ra = 0;
 
+	let mut la_start = 0;
+	let mut ra_start = 0;
     while rate >= PRECISION {
         offset += EXPANSION_STEP;
-        let la_start = straight_start + offset + correction_la;
-        let ra_start = reverse_start + offset + correction_ra;
+        la_start = straight_start + offset + correction_la;
+        ra_start = reverse_start + offset + correction_ra;
+		if (la_start+EXPANSION_STEP >= dna.len()) || (ra_start+EXPANSION_STEP >= reverse_dna.len()) { break; }
         let result = needleman_wunsch(
             &dna[la_start..la_start + EXPANSION_STEP],
             &reverse_dna[ra_start..ra_start + EXPANSION_STEP]);
@@ -149,16 +157,21 @@ fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_star
             correction_la += (result.ins_ra - result.ins_la) as usize;
         }
 
-        rate = 1.0 - (errors as f32)/(offset as f32 + EXPANSION_STEP as f32);
-        println!("Aligning LA from {}", straight_start+offset+correction_la);
-        println!("Aligning RA from {}", reverse_start+offset+correction_ra);
+       rate = 1.0 - (errors as f32)/(offset as f32 + EXPANSION_STEP as f32);
     }
 
-    println!("\nFinally:");
-    println!("Rate:          {}", rate);
-    println!("Insertions LA: {}", insertions_la);
-    println!("Insertions RA: {}\n\n", insertions_ra);
+//    println!("\nFinally:");
+//    println!("Size:          {}", offset+EXPANSION_STEP);
+//    println!("Rate:          {}", rate);
+//    println!("Insertions LA: {}", insertions_la);
+//    println!("Insertions RA: {}\n\n", insertions_ra);
 
+	println!("{};{};{};{}",
+			straight_start,
+			reverse_start,
+			offset+EXPANSION_STEP,
+			rate
+			);
     Palindrome {
         left: straight_start,
         right: reverse_start,
@@ -276,26 +289,21 @@ fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArr
         let bottom = i;
         let top = bottom + CANDIDATE_SIZE;
         let candidate = &dna[bottom..top];
-        if candidate == "CATTGTAGTTAATGCCCTGA".as_bytes() { println!("Looking for P6"); }
         let results = search(&reverse_translate_dna, &sa, candidate);
         if results.len() > 0 {
-            // println!("{} -> {}", bottom, top);
-            // println!("{:?}", results);
-            // let mut min_size = 0;
+            //let mut min_size = dna.len();
             for result in results {
                 let mut palindrome = expand_palindrome(&dna, &reverse_translate_dna, bottom, result);
-                if palindrome.size > 1000 {
+                if palindrome.size >= PALINDROME_THRESHOLD_SIZE {
                     palindrome = expand_nw(&dna, &reverse_translate_dna, bottom, result);
-
-                    // if min_size == 0 { min_size = palindrome.size }
-                    // else if palindrome.size < min_size { min_size = palindrome.size; }
-
+					//if palindrome.size < min_size { min_size = palindrome.size; }
                     palindromes.push(palindrome);
                 }
             }
-            // i += min_size;
+			//if min_size == dna.len() { min_size = 0 };
+            //i += min_size;
         }
-        i += 1;
+        i += PRIMER_SHIFT;
     }
 
     palindromes
@@ -303,9 +311,16 @@ fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArr
 
 fn main ()
 {
-    let reader = fasta::Reader::from_file("../../Y.fasta");
+    let reader = fasta::Reader::from_file("Y.fasta");
+	let filename = format!("pals-{}.csv", Uuid::new_v4().to_string());
+	let threads_count: usize = num_cpus::get();
+	println!("Threads count            {}", threads_count);
+	println!("Primer size              {}", CANDIDATE_SIZE);
+	println!("NW extensions threshold  {}", PALINDROME_THRESHOLD_SIZE);
+	println!("Primer window base shift {}", PRIMER_SHIFT);
+	println!("Filename                 {}\n", filename);
 
-    let mut out = File::create("pals.csv").unwrap();
+    let mut out = File::create(filename).unwrap();
     let (tx, rx) = mpsc::channel();
     for record in reader.unwrap().records() {
         let seqs = record.unwrap();
@@ -319,7 +334,6 @@ fn main ()
         let shared_reverse_translate_dna = Arc::new(reverse_translate_dna);
 
 
-        let threads_count: usize = num_cpus::get() - 1;
         {
             let num_tasks_per_thread = (shared_dna.len()-CANDIDATE_SIZE) / threads_count;
             let num_tougher_threads = (shared_dna.len()-CANDIDATE_SIZE) % threads_count;

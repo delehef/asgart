@@ -67,35 +67,20 @@ fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> AlignmentResult {
     let mut i = size-1 as usize;
     let mut j = size-1 as usize;
 
-    // let mut alignment_a = String::with_capacity(q1.len());
-    // let mut alignment_b = String::with_capacity(q2.len());
-    // let mut alignment_f = String::with_capacity(q2.len());
-
     let mut result = AlignmentResult {errors: 0, ins_la: 0, ins_ra: 0};
     while i>1 && j>1 {
         if i>0 && j>0
             && (F[i+j*size] == F[(i-1)+(j-1)*size] + if q1[i] == q2[j] {MATCH_SCORE} else {MISMATCH_SCORE})
         {
-            // alignment_a.push(q1[i] as char);
-            // alignment_b.push(q2[j] as char);
             if q1[i] != q2[j] {
                 result.errors += 1;
-                // alignment_f.push('#');
-            } else {
-                // alignment_f.push(' ');
             }
             i -= 1;
             j -= 1;
         } else if i>0 && F[i+j*size] == F[(i-1)+j*size] + DELETE_SCORE {
-            // alignment_a.push(q1[i] as char);
-            // alignment_b.push('-');
-            // alignment_f.push('-');
             result.ins_la += 1;
             i -= 1;
         } else if j>0 && F[i+j*size] == F[i+(j-1)*size] + DELETE_SCORE {
-            // alignment_a.push('-');
-            // alignment_b.push(q2[j] as char);
-            // alignment_f.push('-');
             result.ins_ra += 1;
             j -= 1;
         }

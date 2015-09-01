@@ -71,19 +71,19 @@ fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> AlignmentResult {
     while i>1 && j>1 {
         if i>0 && j>0
             && (F[i+j*size] == F[(i-1)+(j-1)*size] + if q1[i] == q2[j] {MATCH_SCORE} else {MISMATCH_SCORE})
-        {
-            if q1[i] != q2[j] {
-                result.errors += 1;
+            {
+                if q1[i] != q2[j] {
+                    result.errors += 1;
+                }
+                i -= 1;
+                j -= 1;
+            } else if i>0 && F[i+j*size] == F[(i-1)+j*size] + DELETE_SCORE {
+                result.ins_la += 1;
+                i -= 1;
+            } else if j>0 && F[i+j*size] == F[i+(j-1)*size] + DELETE_SCORE {
+                result.ins_ra += 1;
+                j -= 1;
             }
-            i -= 1;
-            j -= 1;
-        } else if i>0 && F[i+j*size] == F[(i-1)+j*size] + DELETE_SCORE {
-            result.ins_la += 1;
-            i -= 1;
-        } else if j>0 && F[i+j*size] == F[i+(j-1)*size] + DELETE_SCORE {
-            result.ins_ra += 1;
-            j -= 1;
-        }
     }
     result
 }
@@ -116,24 +116,22 @@ fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_star
     let mut rate = 1.0;
 
     let mut errors = 0;
-    let mut insertions_la = 0;
-    let mut insertions_ra = 0;
     let mut correction_la = 0;
     let mut correction_ra = 0;
 
-	let mut la_start = 0;
-	let mut ra_start = 0;
+    let mut la_start;
+    let mut ra_start;
     while rate >= PRECISION {
         offset += EXPANSION_STEP;
         la_start = straight_start + offset + correction_la;
         ra_start = reverse_start + offset + correction_ra;
-		if (la_start+EXPANSION_STEP >= dna.len()) || (ra_start+EXPANSION_STEP >= reverse_dna.len()) { break; }
+
+        if (la_start+EXPANSION_STEP >= dna.len()) || (ra_start+EXPANSION_STEP >= reverse_dna.len()) { break; }
+
         let result = needleman_wunsch(
             &dna[la_start..la_start + EXPANSION_STEP],
             &reverse_dna[ra_start..ra_start + EXPANSION_STEP]);
 
-        insertions_la += result.ins_la;
-        insertions_ra += result.ins_ra;
         errors += result.errors;
 
         if result.ins_la > result.ins_ra {
@@ -142,21 +140,16 @@ fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_star
             correction_la += (result.ins_ra - result.ins_la) as usize;
         }
 
-       rate = 1.0 - (errors as f32)/(offset as f32 + EXPANSION_STEP as f32);
+        rate = 1.0 - (errors as f32)/(offset as f32 + EXPANSION_STEP as f32);
     }
 
-//    println!("\nFinally:");
-//    println!("Size:          {}", offset+EXPANSION_STEP);
-//    println!("Rate:          {}", rate);
-//    println!("Insertions LA: {}", insertions_la);
-//    println!("Insertions RA: {}\n\n", insertions_ra);
+    println!("{};{};{};{}",
+             straight_start,
+             reverse_start,
+             offset+EXPANSION_STEP,
+             rate
+            );
 
-	println!("{};{};{};{}",
-			straight_start,
-			reverse_start,
-			offset+EXPANSION_STEP,
-			rate
-			);
     Palindrome {
         left: straight_start,
         right: reverse_start,
@@ -174,15 +167,10 @@ fn expand_palindrome(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reve
 
     while current_rate > PRECISION && straight_start+expansion < dna.len() - EXPANSION_STEP {
         expansion += EXPANSION_STEP;
-        let mut sa = Vec::new();
-        let mut sb = Vec::new();
-
         let mut mutations = 0;
         for i in 0..expansion {
             let na = dna[straight_start + i];
             let nb = reverse_dna[reverse_start + i];
-            sa.push(na);
-            sb.push(nb);
 
             if na != nb { mutations += 1; }
         }
@@ -214,11 +202,9 @@ fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> HashSet<usize> {
 
     while lo <= hi {
         let mid = (lo+hi)/2;
-        //println!("\n\n{} {} {}", lo, mid, hi);
         if array[mid]+pattern.len() > dna.len() {break;}
         let substring = &dna[array[mid]..array[mid]+pattern.len()];
         let res = strcmp(&pattern, substring);
-        //println!("res = {}", res);
 
         if res > 0 {
             lo = mid + 1;
@@ -256,7 +242,6 @@ fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> HashSet<usize> {
     result
 }
 
-
 fn window(text: &[u8], begin: usize, extension: usize) -> &str {
     if begin+extension <= text.len() {
         from_utf8(&text[begin..begin+extension]).unwrap()
@@ -264,7 +249,6 @@ fn window(text: &[u8], begin: usize, extension: usize) -> &str {
         "N/A"
     }
 }
-
 
 fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<Palindrome> {
     let mut palindromes = Vec::new();
@@ -281,11 +265,11 @@ fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArr
                 let mut palindrome = expand_palindrome(&dna, &reverse_translate_dna, bottom, result);
                 if palindrome.size >= PALINDROME_THRESHOLD_SIZE {
                     palindrome = expand_nw(&dna, &reverse_translate_dna, bottom, result);
-					//if palindrome.size < min_size { min_size = palindrome.size; }
+                    //if palindrome.size < min_size { min_size = palindrome.size; }
                     palindromes.push(palindrome);
                 }
             }
-			//if min_size == dna.len() { min_size = 0 };
+            //if min_size == dna.len() { min_size = 0 };
             //i += min_size;
         }
         i += PRIMER_SHIFT;
@@ -297,13 +281,13 @@ fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArr
 fn main ()
 {
     let reader = fasta::Reader::from_file("Y.fasta");
-	let filename = format!("pals-{}.csv", Uuid::new_v4().to_string());
-	let threads_count: usize = num_cpus::get();
-	println!("Threads count            {}", threads_count);
-	println!("Primer size              {}", CANDIDATE_SIZE);
-	println!("NW extensions threshold  {}", PALINDROME_THRESHOLD_SIZE);
-	println!("Primer window base shift {}", PRIMER_SHIFT);
-	println!("Filename                 {}\n", filename);
+    let filename = format!("pals-{}.csv", Uuid::new_v4().to_string());
+    let threads_count: usize = num_cpus::get();
+    println!("Threads count            {}", threads_count);
+    println!("Primer size              {}", CANDIDATE_SIZE);
+    println!("NW extensions threshold  {}", PALINDROME_THRESHOLD_SIZE);
+    println!("Primer window base shift {}", PRIMER_SHIFT);
+    println!("Filename                 {}\n", filename);
 
     let mut out = File::create(filename).unwrap();
     let (tx, rx) = mpsc::channel();
@@ -339,15 +323,14 @@ fn main ()
                     let end = start+chunksize;
                     println!("Going from {} to {}", start, end);
                     my_tx.send(look_for_palindromes(
-                        &local_dna, &local_reverse_translate_dna, &local_sa,
-                        start, end)).unwrap();
+                            &local_dna, &local_reverse_translate_dna, &local_sa,
+                            start, end)).unwrap();
                 });
                 start += chunksize;
             }
         }
-
-
     }
+
     drop(tx);
     for palindromes_list in rx.iter() {
         for palindrome in palindromes_list {
@@ -357,7 +340,7 @@ fn main ()
                      palindrome.right,
                      palindrome.size,
                      palindrome.rate
-                     ).unwrap();
+                    ).unwrap();
         }
     }
 }

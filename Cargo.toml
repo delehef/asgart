@@ -7,3 +7,4 @@ authors = ["Franklin Delehelle <franklin@odena.eu>"]
 bio = "*"
 num_cpus = "*"
 uuid = "*"
+threadpool = "0.1"

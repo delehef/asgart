@@ -1,10 +1,10 @@
 extern crate uuid;
 extern crate bio;
 extern crate num_cpus;
+extern crate threadpool;
 
 use std::io::prelude::*;
 use std::fs::File;
-use std::thread;
 use std::sync::mpsc;
 use std::sync::Arc;
 
@@ -17,6 +17,8 @@ use bio::data_structures::suffix_array::SuffixArray;
 use bio::data_structures::suffix_array::suffix_array;
 
 use uuid::Uuid;
+
+use threadpool::ThreadPool;
 
 
 const CANDIDATE_SIZE: usize = 20;
@@ -283,11 +285,13 @@ fn main ()
     let reader = fasta::Reader::from_file("Y.fasta");
     let filename = format!("pals-{}.csv", Uuid::new_v4().to_string());
     let threads_count: usize = num_cpus::get();
+    let threads_pool = ThreadPool::new(threads_count);
     println!("Threads count            {}", threads_count);
     println!("Primer size              {}", CANDIDATE_SIZE);
     println!("NW extensions threshold  {}", PALINDROME_THRESHOLD_SIZE);
     println!("Primer window base shift {}", PRIMER_SHIFT);
-    println!("Filename                 {}\n", filename);
+    println!("Filename                 {}", filename);
+    println!("");
 
     let mut out = File::create(filename).unwrap();
     let (tx, rx) = mpsc::channel();
@@ -304,29 +308,28 @@ fn main ()
 
 
         {
-            let num_tasks_per_thread = (shared_dna.len()-CANDIDATE_SIZE) / threads_count;
-            let num_tougher_threads = (shared_dna.len()-CANDIDATE_SIZE) % threads_count;
+            const CHUNK_SIZE: usize = 10000;
+            let num_tasks = (shared_dna.len()-CANDIDATE_SIZE)/CHUNK_SIZE;
+            let chunk_overflow = (shared_dna.len()-CANDIDATE_SIZE)%CHUNK_SIZE;
+
             let mut start = 0;
-            for id in 0..threads_count {
+            for id in 0..num_tasks+1
+            {
                 let local_sa = shared_sa.clone();
                 let local_dna = shared_dna.clone();
                 let local_reverse_translate_dna = shared_reverse_translate_dna.clone();
 
-                let chunksize =
-                    if id < num_tougher_threads {
-                        num_tasks_per_thread + 1
-                    } else {
-                        num_tasks_per_thread
-                    };
                 let my_tx = tx.clone();
-                thread::spawn(move || {
-                    let end = start+chunksize;
+
+                threads_pool.execute(move || {
+                    let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
                     println!("Going from {} to {}", start, end);
                     my_tx.send(look_for_palindromes(
                             &local_dna, &local_reverse_translate_dna, &local_sa,
                             start, end)).unwrap();
                 });
-                start += chunksize;
+
+                start += CHUNK_SIZE;
             }
         }
     }

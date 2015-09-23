@@ -323,7 +323,7 @@ fn main () {
 
                 threads_pool.execute(move || {
                     let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
-                    println!("Going from {} to {}", start, end);
+                    // println!("Going from {} to {}", start, end);
                     // my_tx.send(look_for_palindromes(
                     //         &local_dna, &local_reverse_translate_dna, &local_sa,
                     //         start, end)).unwrap();
@@ -400,7 +400,7 @@ fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, e
 
     // let mut proto_palindromes = Vec::new();
 
-    const M: u32 = 100;
+    const M: u32 = 3*CANDIDATE_SIZE as u32;
     const MAX_HOLE_SIZE: u32 = 1000;
 
     let mut i = start;
@@ -432,7 +432,7 @@ fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, e
             },
             SearchState::GROW => {
                 // println!("Growing @{}", i);
-                i += 1;
+                i += CANDIDATE_SIZE;
                 let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
 
                 if i >= dna.len() - CANDIDATE_SIZE {
@@ -463,12 +463,19 @@ fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, e
             },
             SearchState::PROTO => {
                 if i - current_start > 10000 {
-                    println!("Protopalindrome found between {} and {}", current_start, i);
+                    // println!("Protopalindrome found between {} and {}", current_start, i);
+                    print!("{};{};", current_start, i-current_start, );
+                    for set in current_sets.iter() {
+                        for k in set.iter() {
+                            print!("{};", k)
+                        }
+                    }
+                    println!("");
                 }
                 state = SearchState::START;
             },
             SearchState::END => {
-                println!("Done");
+                // println!("Done");
                 break;
             }
         }

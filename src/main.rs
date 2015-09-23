@@ -24,7 +24,7 @@ use threadpool::ThreadPool;
 
 const CANDIDATE_SIZE: usize = 20;
 const PALINDROME_THRESHOLD_SIZE: usize = 1000;
-const PRIMER_SHIFT: usize = 1;
+const PRIMER_SHIFT: usize = 10;
 
 #[derive(Debug)]
 struct Palindrome {
@@ -108,6 +108,7 @@ fn translate_nucleotide(n: u8) -> u8 {
     else if n == 'T' as u8 { 'A' as u8 }
     else if n == 'G' as u8 { 'C' as u8 }
     else if n == 'C' as u8 { 'G' as u8 }
+    else if n == 'N' as u8 { 'N' as u8 }
     else { panic!("Not DNA: {}", n as u8); }
 }
 
@@ -261,6 +262,7 @@ fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArr
         let bottom = i;
         let top = bottom + CANDIDATE_SIZE;
         let candidate = &dna[bottom..top];
+        if candidate[0] == 'N' as u8 { continue;  }
         let results = search(&reverse_translate_dna, &sa, candidate);
         if results.len() > 0 {
             //let mut min_size = dna.len();
@@ -293,7 +295,7 @@ fn main () {
     println!("Filename                 {}", filename);
     println!("");
 
-    let mut out = File::create(filename).unwrap();
+    // let mut out = File::create(filename).unwrap();
     let (tx, rx) = mpsc::channel();
     for record in reader.unwrap().records() {
         let seqs = record.unwrap();

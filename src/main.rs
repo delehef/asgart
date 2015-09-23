@@ -1,3 +1,4 @@
+#![feature(append)]
 extern crate uuid;
 extern crate bio;
 extern crate num_cpus;
@@ -280,11 +281,10 @@ fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArr
     palindromes
 }
 
-fn main ()
-{
+fn main () {
     let reader = fasta::Reader::from_file("Y.fasta");
     let filename = format!("pals-{}.csv", Uuid::new_v4().to_string());
-    let threads_count: usize = num_cpus::get();
+    let threads_count: usize = 3; //num_cpus::get();
     let threads_pool = ThreadPool::new(threads_count);
     println!("Threads count            {}", threads_count);
     println!("Primer size              {}", CANDIDATE_SIZE);
@@ -308,7 +308,7 @@ fn main ()
 
 
         {
-            const CHUNK_SIZE: usize = 10000;
+            const CHUNK_SIZE: usize = 200000;
             let num_tasks = (shared_dna.len()-CANDIDATE_SIZE)/CHUNK_SIZE;
             let chunk_overflow = (shared_dna.len()-CANDIDATE_SIZE)%CHUNK_SIZE;
 
@@ -324,7 +324,10 @@ fn main ()
                 threads_pool.execute(move || {
                     let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
                     println!("Going from {} to {}", start, end);
-                    my_tx.send(look_for_palindromes(
+                    // my_tx.send(look_for_palindromes(
+                    //         &local_dna, &local_reverse_translate_dna, &local_sa,
+                    //         start, end)).unwrap();
+                    my_tx.send(make_palindromes(
                             &local_dna, &local_reverse_translate_dna, &local_sa,
                             start, end)).unwrap();
                 });
@@ -347,3 +350,135 @@ fn main ()
         }
     }
 }
+
+fn sets_distance(s: &HashSet<usize>, t: &HashSet<usize>) -> i32 {
+    let mut min = 10000000000;
+    for i in s {
+        for j in t {
+            let diff = (*j as i32 - *i as i32).abs();
+            if diff < min { min = diff }
+        }
+    }
+    min
+}
+
+fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
+    let mut min = 100000000000;
+    for i in s {
+        for ss in t {
+            for j in ss {
+                let diff = (*j as i32 - *i as i32).abs() as u32;
+                if diff < min { min = diff }
+            }
+        }
+    }
+    min
+}
+
+struct ProtoPalindrome {
+    bottom: usize,
+    top: usize,
+    matches: Vec<HashSet<usize>>,
+}
+
+fn make_palindrome(pp: &ProtoPalindrome) -> Vec<Palindrome> {
+    let r = Vec::new();
+
+    r
+}
+
+enum SearchState {
+    START,
+    GROW,
+    SPARSE_GROW,
+    PROTO,
+    END,
+}
+
+fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<Palindrome> {
+    let mut r = Vec::new();
+
+    // let mut proto_palindromes = Vec::new();
+
+    const M: u32 = 100;
+    const MAX_HOLE_SIZE: u32 = 1000;
+
+    let mut i = start;
+    let mut hole = 0;
+    let mut current_start = 0;
+    let mut current_sets = Vec::new();
+    let mut state = SearchState::START;
+
+    loop {
+        match state {
+            SearchState::START => {
+                if i+1 >= end {
+                    break;
+                }
+                hole = 0;
+                current_start = i;
+                current_sets = Vec::new();
+                let new_set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+                if new_set.len() > 0 {
+                    // println!("Starting @{}", i);
+                    current_sets.push(new_set);
+                    state = SearchState::GROW;
+                } else {
+                    // println!("Nothing @{}", i);
+                    i += 1;
+                    state = SearchState::START;
+                }
+
+            },
+            SearchState::GROW => {
+                // println!("Growing @{}", i);
+                i += 1;
+                let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+
+                if i >= dna.len() - CANDIDATE_SIZE {
+                    state = SearchState::PROTO;
+                } else if set_to_sets_distance(&set, &current_sets) <= M*hole {
+                    current_sets.push(set);
+                    state = SearchState::GROW;
+                } else {
+                    state = SearchState::SPARSE_GROW;
+                }
+            },
+            SearchState::SPARSE_GROW => {
+                // println!("Sparse @{}", i);
+                i += 1;
+                hole += 1;
+                let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+
+                if hole > MAX_HOLE_SIZE {
+                    state = SearchState::PROTO;
+                } else if i >= dna.len() - CANDIDATE_SIZE {
+                    state = SearchState::PROTO;
+                } else if set_to_sets_distance(&set, &current_sets) <= M*hole {
+                    current_sets.push(set);
+                    state = SearchState::GROW;
+                } else {
+                    state = SearchState::SPARSE_GROW;
+                }
+            },
+            SearchState::PROTO => {
+                if i - current_start > 10000 {
+                    println!("Protopalindrome found between {} and {}", current_start, i);
+                }
+                state = SearchState::START;
+            },
+            SearchState::END => {
+                println!("Done");
+                break;
+            }
+        }
+    }
+
+
+
+    // for pp in proto_palindromes {
+    //     r.append(&mut make_palindrome(&pp));
+    // }
+    r
+}
+

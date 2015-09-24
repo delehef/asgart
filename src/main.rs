@@ -1,4 +1,4 @@
-#![feature(append)]
+#![feature(iter_cmp)]
 extern crate uuid;
 extern crate bio;
 extern crate num_cpus;
@@ -295,7 +295,7 @@ fn main () {
     println!("Filename                 {}", filename);
     println!("");
 
-    // let mut out = File::create(filename).unwrap();
+    let mut out = File::create(filename).unwrap();
     let (tx, rx) = mpsc::channel();
     for record in reader.unwrap().records() {
         let seqs = record.unwrap();
@@ -353,19 +353,8 @@ fn main () {
     }
 }
 
-fn sets_distance(s: &HashSet<usize>, t: &HashSet<usize>) -> i32 {
-    let mut min = 10000000000;
-    for i in s {
-        for j in t {
-            let diff = (*j as i32 - *i as i32).abs();
-            if diff < min { min = diff }
-        }
-    }
-    min
-}
-
 fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
-    let mut min = 100000000000;
+    let mut min = 100000000;
     for i in s {
         for ss in t {
             for j in ss {
@@ -377,33 +366,57 @@ fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
     min
 }
 
+const M: u32 = 3*CANDIDATE_SIZE as u32;
+const MAX_HOLE_SIZE: u32 = 1000;
 struct ProtoPalindrome {
     bottom: usize,
     top: usize,
     matches: Vec<HashSet<usize>>,
 }
 
-fn make_palindrome(pp: &ProtoPalindrome) -> Vec<Palindrome> {
-    let r = Vec::new();
 
-    r
+fn make_palindrome(pp: &ProtoPalindrome) -> Palindrome {
+    let mut matches = Vec::new();
+    for set in pp.matches.iter() {
+        for k in set {
+            matches.push(k);
+        }
+    }
+    matches.sort();
+    matches.dedup();
+
+    let mut right_arms = Vec::new();
+    let mut current_start = matches[0];
+    for i in 1..matches.len() {
+        // println!("{}", matches[i]);
+        if matches[i] - matches[i-1] > 20000 as usize {
+            right_arms.push((current_start, matches[i-1]+CANDIDATE_SIZE));
+
+            current_start = matches[i];
+        }
+    }
+    // print!("Possibilities: {:?}", right_arms);
+
+
+    let (right_begin, _) = *right_arms.iter().max_by(|&&(x, y)| y-x).unwrap();
+
+    Palindrome {
+        left: pp.bottom,
+        right: *right_begin,
+        size: pp.top - pp.bottom,
+        rate: 0.0
+    }
 }
 
 enum SearchState {
     START,
-    GROW,
-    SPARSE_GROW,
+    Grow,
+    SparseGrow,
     PROTO,
-    END,
 }
 
 fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<Palindrome> {
     let mut r = Vec::new();
-
-    // let mut proto_palindromes = Vec::new();
-
-    const M: u32 = 3*CANDIDATE_SIZE as u32;
-    const MAX_HOLE_SIZE: u32 = 1000;
 
     let mut i = start;
     let mut hole = 0;
@@ -424,7 +437,7 @@ fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, e
                 if new_set.len() > 0 {
                     // println!("Starting @{}", i);
                     current_sets.push(new_set);
-                    state = SearchState::GROW;
+                    state = SearchState::Grow;
                 } else {
                     // println!("Nothing @{}", i);
                     i += 1;
@@ -432,21 +445,21 @@ fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, e
                 }
 
             },
-            SearchState::GROW => {
+            SearchState::Grow => {
                 // println!("Growing @{}", i);
-                i += CANDIDATE_SIZE;
+                i += CANDIDATE_SIZE/5;
                 let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
 
                 if i >= dna.len() - CANDIDATE_SIZE {
                     state = SearchState::PROTO;
-                } else if set_to_sets_distance(&set, &current_sets) <= M*hole {
+                } else if set_to_sets_distance(&set, &current_sets) <= 20000/*M*hole*/ {
                     current_sets.push(set);
-                    state = SearchState::GROW;
+                    state = SearchState::Grow;
                 } else {
-                    state = SearchState::SPARSE_GROW;
+                    state = SearchState::SparseGrow;
                 }
             },
-            SearchState::SPARSE_GROW => {
+            SearchState::SparseGrow => {
                 // println!("Sparse @{}", i);
                 i += 1;
                 hole += 1;
@@ -456,38 +469,37 @@ fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, e
                     state = SearchState::PROTO;
                 } else if i >= dna.len() - CANDIDATE_SIZE {
                     state = SearchState::PROTO;
-                } else if set_to_sets_distance(&set, &current_sets) <= M*hole {
+                } else if set_to_sets_distance(&set, &current_sets) <= 20000/*M*hole*/ {
                     current_sets.push(set);
-                    state = SearchState::GROW;
+                    state = SearchState::Grow;
                 } else {
-                    state = SearchState::SPARSE_GROW;
+                    state = SearchState::SparseGrow;
                 }
             },
             SearchState::PROTO => {
                 if i - current_start > 10000 {
                     // println!("Protopalindrome found between {} and {}", current_start, i);
-                    print!("{};{};", current_start, i-current_start, );
-                    for set in current_sets.iter() {
-                        for k in set.iter() {
-                            print!("{};", k)
-                        }
-                    }
-                    println!("");
+                    // print!("{};{};", current_start, i-current_start, );
+                    // for set in current_sets.iter() {
+                    //     for k in set.iter() {
+                    //         print!("{};", k)
+                    //     }
+                    // }
+                    // println!("");
+                    let pp = ProtoPalindrome {
+                        bottom: current_start,
+                        top: i,
+                        matches: current_sets.clone()
+                    };
+                    let p = make_palindrome(&pp);
+                    println!("{};{};{}", p.left, p.right, p.size);
+                    r.push(p);
                 }
                 state = SearchState::START;
             },
-            SearchState::END => {
-                // println!("Done");
-                break;
-            }
         }
     }
 
-
-
-    // for pp in proto_palindromes {
-    //     r.append(&mut make_palindrome(&pp));
-    // }
     r
 }
 

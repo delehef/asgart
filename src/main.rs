@@ -293,6 +293,7 @@ fn main () {
     println!("NW extensions threshold  {}", PALINDROME_THRESHOLD_SIZE);
     println!("Primer window base shift {}", PRIMER_SHIFT);
     println!("Filename                 {}", filename);
+    println!("swap_dna                 {}", cfg!(feature="swap_dna"));
     println!("");
 
     let mut out = File::create(filename).unwrap();
@@ -329,9 +330,15 @@ fn main () {
                     // my_tx.send(look_for_palindromes(
                     //         &local_dna, &local_reverse_translate_dna, &local_sa,
                     //         start, end)).unwrap();
-                    my_tx.send(make_palindromes(
-                            &local_dna, &local_reverse_translate_dna, &local_sa,
-                            start, end)).unwrap();
+                    if !cfg!(feature="swap_dna") {
+                        my_tx.send(make_palindromes(
+                                &local_dna, &local_reverse_translate_dna, &local_sa,
+                                start, end)).unwrap();
+                    } else {
+                        my_tx.send(make_palindromes(
+                                &local_reverse_translate_dna, &local_dna, &local_sa,
+                                start, end)).unwrap();
+                    }
                 });
 
                 start += CHUNK_SIZE;
@@ -478,14 +485,6 @@ fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, e
             },
             SearchState::PROTO => {
                 if i - current_start > 10000 {
-                    // println!("Protopalindrome found between {} and {}", current_start, i);
-                    // print!("{};{};", current_start, i-current_start, );
-                    // for set in current_sets.iter() {
-                    //     for k in set.iter() {
-                    //         print!("{};", k)
-                    //     }
-                    // }
-                    // println!("");
                     let pp = ProtoPalindrome {
                         bottom: current_start,
                         top: i,

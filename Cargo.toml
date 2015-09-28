@@ -8,3 +8,6 @@ bio = "*"
 num_cpus = "*"
 uuid = "*"
 threadpool = "0.1"
+
+[features]
+swap_dna = []

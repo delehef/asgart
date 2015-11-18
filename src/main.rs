@@ -21,6 +21,8 @@ use uuid::Uuid;
 
 use threadpool::ThreadPool;
 
+mod utils;
+
 
 const CANDIDATE_SIZE: usize = 20;
 const PALINDROME_THRESHOLD_SIZE: usize = 1000;
@@ -34,83 +36,7 @@ struct Palindrome {
     rate: f32,
 }
 
-struct AlignmentResult {
-    errors: u32,
-    ins_la: u32,
-    ins_ra: u32,
-}
 
-fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> AlignmentResult {
-    const DELETE_SCORE: i64 = -5;
-    const MISMATCH_SCORE: i64 = -3;
-    const MATCH_SCORE: i64 = 1;
-
-    assert!(q1.len() == q2.len());
-    let size: usize = q1.len();
-
-    let mut F = vec![0 as i64; size * size];
-
-    for i in 0..size {
-        F[i] = DELETE_SCORE*i as i64;
-    }
-
-    for j in 0..size {
-        F[j*size as usize] = DELETE_SCORE*j as i64;
-    }
-
-    for i in 1..size {
-        for j in 1..size {
-            let _match = F[(i-1)+(j-1)*size] + if q1[i] == q2[j] {MATCH_SCORE} else {MISMATCH_SCORE};
-            let del = F[(i-1)+(j)*size] + DELETE_SCORE;
-            let ins = F[i+(j-1)*size] + DELETE_SCORE;
-            F[i+j*size] = cmp::max(_match, cmp::max(del, ins));
-        }
-    }
-
-    let mut i = size-1 as usize;
-    let mut j = size-1 as usize;
-
-    let mut result = AlignmentResult {errors: 0, ins_la: 0, ins_ra: 0};
-    while i>1 && j>1 {
-        if i>0 && j>0
-            && (F[i+j*size] == F[(i-1)+(j-1)*size] + if q1[i] == q2[j] {MATCH_SCORE} else {MISMATCH_SCORE})
-            {
-                if q1[i] != q2[j] {
-                    result.errors += 1;
-                }
-                i -= 1;
-                j -= 1;
-            } else if i>0 && F[i+j*size] == F[(i-1)+j*size] + DELETE_SCORE {
-                result.ins_la += 1;
-                i -= 1;
-            } else if j>0 && F[i+j*size] == F[i+(j-1)*size] + DELETE_SCORE {
-                result.ins_ra += 1;
-                j -= 1;
-            }
-    }
-    result
-}
-
-fn strcmp(s1: &[u8], s2: &[u8]) -> i32 {
-    assert!(s1.len() == s2.len());
-    let n = s2.len();
-
-    for i in 0..n {
-        if s1[i] != s2[i] {
-            return s1[i] as i32 - s2[i] as i32;
-        }
-    }
-    0
-}
-
-fn translate_nucleotide(n: u8) -> u8 {
-    if n == 'A' as u8 { 'T' as u8}
-    else if n == 'T' as u8 { 'A' as u8 }
-    else if n == 'G' as u8 { 'C' as u8 }
-    else if n == 'C' as u8 { 'G' as u8 }
-    else if n == 'N' as u8 { 'N' as u8 }
-    else { panic!("Not DNA: {}", n as u8); }
-}
 
 fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_start: usize) -> Palindrome {
     const PRECISION: f32 = 0.9;
@@ -132,7 +58,7 @@ fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_star
 
         if (la_start+EXPANSION_STEP >= dna.len()) || (ra_start+EXPANSION_STEP >= reverse_dna.len()) { break; }
 
-        let result = needleman_wunsch(
+        let result = utils::needleman_wunsch(
             &dna[la_start..la_start + EXPANSION_STEP],
             &reverse_dna[ra_start..ra_start + EXPANSION_STEP]);
 
@@ -191,14 +117,6 @@ fn expand_palindrome(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reve
     }
 }
 
-fn translate(text: &[u8]) -> Vec<u8> {
-    let mut r = Vec::with_capacity(text.len());
-    for i in 0..text.len() {
-        r.push(translate_nucleotide(text[i]));
-    }
-    r
-}
-
 fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> HashSet<usize> {
     let mut lo = 0;
     let mut hi = dna.len()-1;
@@ -208,7 +126,7 @@ fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> HashSet<usize> {
         let mid = (lo+hi)/2;
         if array[mid]+pattern.len() > dna.len() {break;}
         let substring = &dna[array[mid]..array[mid]+pattern.len()];
-        let res = strcmp(&pattern, substring);
+        let res = utils::strcmp(&pattern, substring);
 
         if res > 0 {
             lo = mid + 1;
@@ -302,7 +220,7 @@ fn main () {
         let seqs = record.unwrap();
         let dna = seqs.seq().to_vec();
         let shared_dna = Arc::new(dna);
-        let mut reverse_translate_dna = translate(&shared_dna[0..shared_dna.len()-1].to_vec());
+        let mut reverse_translate_dna = utils::translate(&shared_dna[0..shared_dna.len()-1].to_vec());
         reverse_translate_dna.reverse();
         reverse_translate_dna.push('$' as u8);
 
@@ -315,7 +233,7 @@ fn main () {
             let num_tasks = (shared_dna.len()-CANDIDATE_SIZE)/CHUNK_SIZE;
             let chunk_overflow = (shared_dna.len()-CANDIDATE_SIZE)%CHUNK_SIZE;
 
-            let mut start = 0;
+            let mut start = 19000000;
             for id in 0..num_tasks+1
             {
                 let local_sa = shared_sa.clone();

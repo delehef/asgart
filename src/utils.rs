@@ -1,10 +1,22 @@
 use std::collections::HashSet;
 use std::cmp;
 use bio::data_structures::suffix_array::SuffixArray;
+use std::io::Write;
 
 pub const M: u32 = 3*CANDIDATE_SIZE as u32;
 pub const MAX_HOLE_SIZE: u32 = 1000;
 pub const CANDIDATE_SIZE: usize = 20;
+
+
+macro_rules! log(
+    ($($arg:tt)*) => (
+        match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
+            Ok(_) => {},
+            Err(x) => panic!("Unable to write to stderr: {}", x),
+        }
+    )
+);
+
 
 #[derive(Debug)]
 pub struct Palindrome {
@@ -94,18 +106,18 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                 current_sets = Vec::new();
                 let new_set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
                 if new_set.len() > 0 {
-                    // println!("Starting @{}", i);
+                    log!("Starting @{}", i);
                     current_sets.push(new_set);
                     state = SearchState::Grow;
                 } else {
-                    // println!("Nothing @{}", i);
+                    log!("Nothing @{}", i);
                     i += 1;
                     state = SearchState::START;
                 }
 
             },
             SearchState::Grow => {
-                // println!("Growing @{}", i);
+                log!("Growing @{}", i);
                 i += CANDIDATE_SIZE/4;
                 let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
 
@@ -119,7 +131,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                 }
             },
             SearchState::SparseGrow => {
-                // println!("Sparse @{}", i);
+                log!("Sparse @{}", i);
                 i += 1;
                 hole += 1;
                 let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);

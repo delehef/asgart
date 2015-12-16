@@ -150,7 +150,7 @@ fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArr
 fn main () {
     let reader = fasta::Reader::from_file("Y.fasta");
     let filename = format!("pals-{}.csv", Uuid::new_v4().to_string());
-    let threads_count: usize = 3; //num_cpus::get();
+    let threads_count: usize = num_cpus::get()/2;
     let threads_pool = ThreadPool::new(threads_count);
 
     println!("Threads count            {}", threads_count);

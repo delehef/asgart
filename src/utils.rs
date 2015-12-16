@@ -1,10 +1,166 @@
+use std::collections::HashSet;
 use std::cmp;
+use bio::data_structures::suffix_array::SuffixArray;
+
+pub const M: u32 = 3*CANDIDATE_SIZE as u32;
+pub const MAX_HOLE_SIZE: u32 = 1000;
+pub const CANDIDATE_SIZE: usize = 20;
+
+#[derive(Debug)]
+pub struct Palindrome {
+    pub left: usize,
+    pub right: usize,
+    pub size: usize,
+    pub rate: f32,
+}
+
+enum SearchState {
+    START,
+    Grow,
+    SparseGrow,
+    PROTO,
+}
+
+struct ProtoPalindrome {
+    bottom: usize,
+    top: usize,
+    matches: Vec<HashSet<usize>>,
+}
+
+
+fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
+    let mut min = 100000000;
+    for i in s {
+        for ss in t {
+            for j in ss {
+                let diff = (*j as i32 - *i as i32).abs() as u32;
+                if diff < min { min = diff }
+            }
+        }
+    }
+    min
+}
+
+fn make_palindrome(pp: &ProtoPalindrome) -> Palindrome {
+    let mut matches = Vec::new();
+    for set in pp.matches.iter() {
+        for k in set {
+            matches.push(k);
+        }
+    }
+    matches.sort();
+    matches.dedup();
+
+    let mut right_arms = Vec::new();
+    let mut current_start = matches[0];
+    for i in 1..matches.len() {
+        // println!("{}", matches[i]);
+        if matches[i] - matches[i-1] > 20000 as usize {
+            right_arms.push((current_start, matches[i-1]+CANDIDATE_SIZE));
+
+            current_start = matches[i];
+        }
+    }
+    // print!("Possibilities: {:?}", right_arms);
+
+
+    let (right_begin, _) = *right_arms.iter().max_by_key(|&&(x, y)| y-x).unwrap();
+
+    Palindrome {
+        left: pp.bottom,
+        right: *right_begin,
+        size: pp.top - pp.bottom,
+        rate: 0.0
+    }
+}
+
+pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<Palindrome> {
+    let mut r = Vec::new();
+
+    let mut i = start;
+    let mut hole = 0;
+    let mut current_start = 0;
+    let mut current_sets = Vec::new();
+    let mut state = SearchState::START;
+
+    loop {
+        match state {
+            SearchState::START => {
+                if i+1 >= end {
+                    break;
+                }
+                hole = 0;
+                current_start = i;
+                current_sets = Vec::new();
+                let new_set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+                if new_set.len() > 0 {
+                    // println!("Starting @{}", i);
+                    current_sets.push(new_set);
+                    state = SearchState::Grow;
+                } else {
+                    // println!("Nothing @{}", i);
+                    i += 1;
+                    state = SearchState::START;
+                }
+
+            },
+            SearchState::Grow => {
+                // println!("Growing @{}", i);
+                i += CANDIDATE_SIZE/5;
+                let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+
+                if i >= dna.len() - CANDIDATE_SIZE {
+                    state = SearchState::PROTO;
+                } else if set_to_sets_distance(&set, &current_sets) <= 20000/*M*hole*/ {
+                    current_sets.push(set);
+                    state = SearchState::Grow;
+                } else {
+                    state = SearchState::SparseGrow;
+                }
+            },
+            SearchState::SparseGrow => {
+                // println!("Sparse @{}", i);
+                i += 1;
+                hole += 1;
+                let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+
+                if hole > MAX_HOLE_SIZE {
+                    state = SearchState::PROTO;
+                } else if i >= dna.len() - CANDIDATE_SIZE {
+                    state = SearchState::PROTO;
+                } else if set_to_sets_distance(&set, &current_sets) <= 20000/*M*hole*/ {
+                    current_sets.push(set);
+                    state = SearchState::Grow;
+                } else {
+                    state = SearchState::SparseGrow;
+                }
+            },
+            SearchState::PROTO => {
+                if i - current_start > 10000 {
+                    let pp = ProtoPalindrome {
+                        bottom: current_start,
+                        top: i,
+                        matches: current_sets.clone()
+                    };
+                    let p = make_palindrome(&pp);
+                    println!("{};{};{}", p.left, p.right, p.size);
+                    r.push(p);
+                }
+                state = SearchState::START;
+            },
+        }
+    }
+
+    r
+}
+
 
 pub struct AlignmentResult {
     pub errors: u32,
     pub ins_la: u32,
     pub ins_ra: u32,
 }
+
 
 pub fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> AlignmentResult {
     const DELETE_SCORE: i64 = -5;
@@ -57,6 +213,7 @@ pub fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> AlignmentResult {
     result
 }
 
+
 pub fn strcmp(s1: &[u8], s2: &[u8]) -> i32 {
     assert!(s1.len() == s2.len());
     let n = s2.len();
@@ -69,6 +226,7 @@ pub fn strcmp(s1: &[u8], s2: &[u8]) -> i32 {
     0
 }
 
+
 pub fn translate_nucleotide(n: u8) -> u8 {
     if n == 'A' as u8 { 'T' as u8}
     else if n == 'T' as u8 { 'A' as u8 }
@@ -79,10 +237,58 @@ pub fn translate_nucleotide(n: u8) -> u8 {
 }
 
 
-pub fn translate(text: &[u8]) -> Vec<u8> {
+pub fn translated(text: &[u8]) -> Vec<u8> {
     let mut r = Vec::with_capacity(text.len());
     for i in 0..text.len() {
         r.push(translate_nucleotide(text[i]));
     }
     r
+}
+
+
+pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> HashSet<usize> {
+    let mut lo = 0;
+    let mut hi = dna.len()-1;
+    let mut result = HashSet::new();
+
+    while lo <= hi {
+        let mid = (lo+hi)/2;
+        if array[mid]+pattern.len() > dna.len() {break;}
+        let substring = &dna[array[mid]..array[mid]+pattern.len()];
+        let res = strcmp(&pattern, substring);
+
+        if res > 0 {
+            lo = mid + 1;
+        } else if res < 0 {
+            hi = mid - 1;
+        } else { // TIME TO BLOB!
+            let mut l = mid;
+            let mut r = mid;
+            let mut expand_left = true;
+            let mut expand_right = true;
+
+            while expand_left || expand_right && array[r]+pattern.len() < dna.len() {
+                if expand_left {
+                    if *pattern == dna[array[l]..array[l]+pattern.len()-1] {
+                        result.insert(array[l]);
+                        l -= 1;
+                        if l == 0 { expand_left = false; }
+                    } else {
+                        expand_left = false;
+                    }
+                }
+                if expand_right {
+                    if *pattern == dna[array[r]..array[r]+pattern.len()] {
+                        result.insert(array[r]);
+                        r += 1;
+                        if r == array.len() - 1 { expand_right = false; }
+                    } else {
+                        expand_right = false;
+                    }
+                }
+            }
+            return result;
+        }
+    }
+    result
 }

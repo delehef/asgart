@@ -4,8 +4,9 @@ use bio::data_structures::suffix_array::SuffixArray;
 use std::io::Write;
 
 pub const M: u32 = 3*CANDIDATE_SIZE as u32;
-pub const MAX_HOLE_SIZE: u32 = 1000;
+pub const MAX_HOLE_SIZE: u32 = 5000;
 pub const CANDIDATE_SIZE: usize = 20;
+const MIN_PALINDROME_SIZE: usize = 10000;
 
 
 macro_rules! log(
@@ -27,10 +28,10 @@ pub struct Palindrome {
 }
 
 enum SearchState {
-    START,
+    Start,
     Grow,
     SparseGrow,
-    PROTO,
+    Proto,
 }
 
 struct ProtoPalindrome {
@@ -66,14 +67,11 @@ fn make_palindrome(pp: &ProtoPalindrome) -> Palindrome {
     let mut right_arms = Vec::new();
     let mut current_start = matches[0];
     for i in 1..matches.len() {
-        // println!("{}", matches[i]);
         if matches[i] - matches[i-1] > 20000 as usize {
             right_arms.push((current_start, matches[i-1]+CANDIDATE_SIZE));
-
             current_start = matches[i];
         }
     }
-    // print!("Possibilities: {:?}", right_arms);
 
 
     let (right_begin, _) = *right_arms.iter().max_by_key(|&&(x, y)| y-x).unwrap();
@@ -93,11 +91,11 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
     let mut hole = 0;
     let mut current_start = 0;
     let mut current_sets = Vec::new();
-    let mut state = SearchState::START;
+    let mut state = SearchState::Start;
 
     loop {
         match state {
-            SearchState::START => {
+            SearchState::Start => {
                 if i+1 >= end {
                     break;
                 }
@@ -110,19 +108,19 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                     current_sets.push(new_set);
                     state = SearchState::Grow;
                 } else {
-                    log!("Nothing @{}", i);
+                    // log!("Nothing @{}", i);
                     i += 1;
-                    state = SearchState::START;
+                    state = SearchState::Start;
                 }
 
             },
             SearchState::Grow => {
                 log!("Growing @{}", i);
-                i += CANDIDATE_SIZE/4;
+                i += CANDIDATE_SIZE/2;
                 let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
 
                 if i >= dna.len() - CANDIDATE_SIZE {
-                    state = SearchState::PROTO;
+                    state = SearchState::Proto;
                 } else if set_to_sets_distance(&set, &current_sets) <= 20000/*M*hole*/ {
                     current_sets.push(set);
                     state = SearchState::Grow;
@@ -137,18 +135,19 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                 let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
 
                 if hole > MAX_HOLE_SIZE {
-                    state = SearchState::PROTO;
+                    state = SearchState::Proto;
                 } else if i >= dna.len() - CANDIDATE_SIZE {
-                    state = SearchState::PROTO;
+                    state = SearchState::Proto;
                 } else if set_to_sets_distance(&set, &current_sets) <= 20000/*M*hole*/ {
                     current_sets.push(set);
+                    hole = 0;
                     state = SearchState::Grow;
                 } else {
                     state = SearchState::SparseGrow;
                 }
             },
-            SearchState::PROTO => {
-                if i - current_start > 10000 {
+            SearchState::Proto => {
+                if i - current_start >= MIN_PALINDROME_SIZE {
                     let pp = ProtoPalindrome {
                         bottom: current_start,
                         top: i,
@@ -158,7 +157,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                     println!("{};{};{}", p.left, p.right, p.size);
                     r.push(p);
                 }
-                state = SearchState::START;
+                state = SearchState::Start;
             },
         }
     }

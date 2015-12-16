@@ -1,3 +1,4 @@
+#![feature(iter_cmp)]
 #![allow(dead_code)]
 extern crate uuid;
 extern crate bio;
@@ -21,7 +22,6 @@ use uuid::Uuid;
 use threadpool::ThreadPool;
 
 mod utils;
-mod palindromes;
 
 
 const PALINDROME_THRESHOLD_SIZE: usize = 1000;
@@ -145,10 +145,6 @@ fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArr
 
     palindromes
 }
-
-
-
-
 
 
 fn main () {

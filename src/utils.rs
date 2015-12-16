@@ -106,7 +106,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
             },
             SearchState::Grow => {
                 // println!("Growing @{}", i);
-                i += CANDIDATE_SIZE/5;
+                i += CANDIDATE_SIZE/4;
                 let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
 
                 if i >= dna.len() - CANDIDATE_SIZE {

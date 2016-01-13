@@ -14,7 +14,6 @@ use std::str::from_utf8;
 use std::cmp;
 
 use bio::io::fasta;
-use bio::data_structures::suffix_array::SuffixArray;
 use bio::data_structures::suffix_array::suffix_array;
 
 use uuid::Uuid;
@@ -117,38 +116,38 @@ fn window(text: &[u8], begin: usize, extension: usize) -> &str {
     }
 }
 
-fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<utils::Palindrome> {
-    let mut palindromes = Vec::new();
+//fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<utils::Palindrome> {
+//    let mut palindromes = Vec::new();
 
-    let mut i = start;
-    while i < end {
-        let bottom = i;
-        let top = bottom + utils::CANDIDATE_SIZE;
-        let candidate = &dna[bottom..top];
-        if candidate[0] == 'N' as u8 { continue;  }
-        let results = utils::search(&reverse_translate_dna, &sa, candidate);
-        if results.len() > 0 {
-            //let mut min_size = dna.len();
-            for result in results {
-                let mut palindrome = expand_palindrome(&dna, &reverse_translate_dna, bottom, result);
-                if palindrome.size >= PALINDROME_THRESHOLD_SIZE {
-                    palindrome = expand_nw(&dna, &reverse_translate_dna, bottom, result);
-                    //if palindrome.size < min_size { min_size = palindrome.size; }
-                    palindromes.push(palindrome);
-                }
-            }
-            //if min_size == dna.len() { min_size = 0 };
-            //i += min_size;
-        }
-        i += PRIMER_SHIFT;
-    }
+//    let mut i = start;
+//    while i < end {
+//        let bottom = i;
+//        let top = bottom + utils::CANDIDATE_SIZE;
+//        let candidate = &dna[bottom..top];
+//        if candidate[0] == 'N' as u8 { continue;  }
+//        let results = utils::search(&reverse_translate_dna, &sa, candidate);
+//        if results.len() > 0 {
+//            //let mut min_size = dna.len();
+//            for result in results {
+//                let mut palindrome = expand_palindrome(&dna, &reverse_translate_dna, bottom, result);
+//                if palindrome.size >= PALINDROME_THRESHOLD_SIZE {
+//                    palindrome = expand_nw(&dna, &reverse_translate_dna, bottom, result);
+//                    //if palindrome.size < min_size { min_size = palindrome.size; }
+//                    palindromes.push(palindrome);
+//                }
+//            }
+//            //if min_size == dna.len() { min_size = 0 };
+//            //i += min_size;
+//        }
+//        i += PRIMER_SHIFT;
+//    }
 
-    palindromes
-}
+//    palindromes
+//}
 
 
 fn main () {
-    let reader = fasta::Reader::from_file("Y.fasta");
+    let reader = fasta::Reader::from_file("Y_soft.fasta");
     let filename = format!("pals-{}.csv", Uuid::new_v4().to_string());
     let threads_count: usize = num_cpus::get()/2;
     let threads_pool = ThreadPool::new(threads_count);

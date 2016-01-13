@@ -2,19 +2,21 @@ use std::collections::HashSet;
 use std::cmp;
 use bio::data_structures::suffix_array::SuffixArray;
 use std::io::Write;
+use std::fmt;
+use bio::alignment::pairwise::*;
 
 pub const M: u32 = 3*CANDIDATE_SIZE as u32;
-pub const MAX_HOLE_SIZE: u32 = 5000;
+pub const MAX_HOLE_SIZE: u32 = 2000;
 pub const CANDIDATE_SIZE: usize = 20;
-const MIN_PALINDROME_SIZE: usize = 10000;
+const MIN_PALINDROME_SIZE: usize = 1000;
 
 
 macro_rules! log(
     ($($arg:tt)*) => (
-        match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
-            Ok(_) => {},
-            Err(x) => panic!("Unable to write to stderr: {}", x),
-        }
+        // match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
+        //     Ok(_) => {},
+        //     Err(x) => {} //panic!("Unable to write to stderr: {}", x),
+        // }
     )
 );
 
@@ -37,7 +39,7 @@ enum SearchState {
 struct ProtoPalindrome {
     bottom: usize,
     top: usize,
-    matches: Vec<HashSet<usize>>,
+    matches: Vec<Segment>,
 }
 
 
@@ -54,34 +56,31 @@ fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
     min
 }
 
-fn make_palindrome(pp: &ProtoPalindrome) -> Palindrome {
-    let mut matches = Vec::new();
-    for set in pp.matches.iter() {
-        for k in set {
-            matches.push(k);
-        }
-    }
-    matches.sort();
-    matches.dedup();
+fn make_palindrome(pp: &ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> Option<Palindrome> {
+    let mut matches = pp.matches.clone();
+    matches = merge_segments_with_delta(&matches, MAX_HOLE_SIZE as u64);
+    matches.sort_by(|a, b| (b.end - b.start).cmp(&(a.end - a.start))); // Sort by size, descending
+    if matches[0].end - matches[0].start < MIN_PALINDROME_SIZE { return None; }
 
-    let mut right_arms = Vec::new();
-    let mut current_start = matches[0];
-    for i in 1..matches.len() {
-        if matches[i] - matches[i-1] > 20000 as usize {
-            right_arms.push((current_start, matches[i-1]+CANDIDATE_SIZE));
-            current_start = matches[i];
-        }
-    }
+    let left_match = &dna[pp.bottom..pp.top];
+    let right_match = &rt_dna[matches[0].start..matches[0].end];
+    let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+    let mut aligner = Aligner::with_capacity(left_match.len(), right_match.len(), -5, -1, &score);
+    let alignment = aligner.local(&left_match, &right_match);
+    if alignment.operations.len() < MIN_PALINDROME_SIZE {return None;};
 
-
-    let (right_begin, _) = *right_arms.iter().max_by_key(|&&(x, y)| y-x).unwrap();
-
-    Palindrome {
-        left: pp.bottom,
-        right: *right_begin,
-        size: pp.top - pp.bottom,
+    let result = Palindrome {
+        left: pp.bottom + alignment.xstart,
+        right: matches[0].start + alignment.ystart,
+        size: alignment.operations.len(),
         rate: 0.0
-    }
+    };
+    println!("Left position:  {}", result.left);
+    println!("Right position: {}", result.right);
+    println!("Size:           {}", result.size);
+    println!("Alignment: \n{}\n", alignment.pretty(left_match, right_match));
+
+    Some(result)
 }
 
 pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<Palindrome> {
@@ -90,7 +89,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
     let mut i = start;
     let mut hole = 0;
     let mut current_start = 0;
-    let mut current_sets = Vec::new();
+    let mut current_segments = Vec::new();
     let mut state = SearchState::Start;
 
     loop {
@@ -101,14 +100,13 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                 }
                 hole = 0;
                 current_start = i;
-                current_sets = Vec::new();
-                let new_set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
-                if new_set.len() > 0 {
+                current_segments = Vec::new();
+                let mut new_segments = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+                if new_segments.len() > 0 {
                     log!("Starting @{}", i);
-                    current_sets.push(new_set);
+                    current_segments = merge_segments(&mut new_segments);
                     state = SearchState::Grow;
                 } else {
-                    // log!("Nothing @{}", i);
                     i += 1;
                     state = SearchState::Start;
                 }
@@ -117,12 +115,13 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
             SearchState::Grow => {
                 log!("Growing @{}", i);
                 i += CANDIDATE_SIZE/2;
-                let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+                let mut new_matches = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
 
                 if i >= dna.len() - CANDIDATE_SIZE {
                     state = SearchState::Proto;
-                } else if set_to_sets_distance(&set, &current_sets) <= 20000/*M*hole*/ {
-                    current_sets.push(set);
+                } else if segments_to_segments_distance(&new_matches, &current_segments) <= MAX_HOLE_SIZE {
+                    current_segments.append(&mut new_matches);
+                    current_segments = merge_segments(&mut current_segments);
                     state = SearchState::Grow;
                 } else {
                     state = SearchState::SparseGrow;
@@ -132,14 +131,15 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                 log!("Sparse @{}", i);
                 i += 1;
                 hole += 1;
-                let set = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+                let mut new_matches = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
 
                 if hole > MAX_HOLE_SIZE {
                     state = SearchState::Proto;
                 } else if i >= dna.len() - CANDIDATE_SIZE {
                     state = SearchState::Proto;
-                } else if set_to_sets_distance(&set, &current_sets) <= 20000/*M*hole*/ {
-                    current_sets.push(set);
+                } else if segments_to_segments_distance(&new_matches, &current_segments) <= MAX_HOLE_SIZE {
+                    current_segments.append(&mut new_matches);
+                    current_segments = merge_segments(&mut current_segments);
                     hole = 0;
                     state = SearchState::Grow;
                 } else {
@@ -151,11 +151,12 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                     let pp = ProtoPalindrome {
                         bottom: current_start,
                         top: i,
-                        matches: current_sets.clone()
+                        matches: current_segments.clone()
                     };
-                    let p = make_palindrome(&pp);
-                    println!("{};{};{}", p.left, p.right, p.size);
-                    r.push(p);
+                    if let Some(p) = make_palindrome(&pp, dna, rt_dna) {
+                        println!("{};{};{}", p.left, p.right, p.size);
+                        r.push(p);
+                    }
                 }
                 state = SearchState::Start;
             },
@@ -256,8 +257,66 @@ pub fn translated(text: &[u8]) -> Vec<u8> {
     r
 }
 
+#[derive(Clone)]
+pub struct Segment {
+    start: usize,
+    end: usize,
+}
+impl fmt::Debug for Segment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "S{{{}, {}}} ({})", self.start, self.end, self.end - self.start)
+    }
+}
 
-pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> HashSet<usize> {
+fn merge_segments_with_delta(_segments: &Vec<Segment>, delta: u64) -> Vec<Segment> {
+    let mut segments = _segments.clone();
+    let mut r = Vec::new();
+    segments.sort_by(|x, y| x.start.cmp(&y.start));
+
+    r.push(segments[0].clone());
+    for i in 1..segments.len() {
+        if segments[i].start - r.last().unwrap().end <= delta as usize{
+            r.last_mut().unwrap().end = segments[i].end;
+        } else {
+            r.push(segments[i].clone());
+        }
+    }
+    r
+}
+
+fn merge_segments(_segments: &Vec<Segment>) -> Vec<Segment> {
+    let mut segments = _segments.clone();
+    let mut r = Vec::new();
+    segments.sort_by(|x, y| x.start.cmp(&y.start));
+
+    r.push(segments[0].clone());
+    for i in 1..segments.len() {
+        if r.last().unwrap().end < segments[i].start {
+            r.push(segments[i].clone());
+        } else if r.last().unwrap().end  < segments[i].end {
+            r.last_mut().unwrap().end = segments[i].end;
+        }
+    }
+    r
+}
+
+fn segments_to_segments_distance(segments: &Vec<Segment>, others: &Vec<Segment>) -> u32 {
+    let mut distance = 250000000;
+    for other in others {
+        for segment in segments {
+            if other.start >= segment.start && other.start <= segment.end {
+                return 0
+            } else {
+                let local_distance = cmp::min((segment.start as i64 - other.end as i64).abs(), (segment.end as i64 - other.start as i64).abs());
+                if local_distance < distance { distance = local_distance }
+            }
+        }
+    }
+
+    distance as u32
+}
+
+pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> Vec<Segment> {
     let mut lo = 0;
     let mut hi = dna.len()-1;
     let mut result = HashSet::new();
@@ -298,8 +357,16 @@ pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> HashSet<usize>
                     }
                 }
             }
-            return result;
+            let mut rr = Vec::new();
+            for i in result {
+                rr.push(Segment{start: i, end: i+CANDIDATE_SIZE});
+            }
+            return rr;
         }
     }
-    result
+    let mut rr = Vec::new();
+    for i in result {
+        rr.push(Segment{start: i, end: i+CANDIDATE_SIZE});
+    }
+    return rr;
 }

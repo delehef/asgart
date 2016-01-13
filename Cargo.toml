@@ -11,3 +11,11 @@ threadpool = "0.1"
 
 [features]
 swap_dna = []
+
+[profile.release]
+opt-level = 3
+debug = true
+rpath = false
+lto = false
+debug-assertions = false
+codegen-units = 1

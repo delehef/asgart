@@ -42,6 +42,12 @@ struct ProtoPalindrome {
     matches: Vec<Segment>,
 }
 
+enum ProcessingPalindrome {
+    Done(Palindrome),
+    TooLong{left: usize, right: usize, size: usize},
+    TooSmall,
+    Empty,
+}
 
 fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
     let mut min = 100000000;
@@ -56,18 +62,31 @@ fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
     min
 }
 
-fn make_palindrome(pp: &ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> Option<Palindrome> {
+fn make_palindrome(pp: &ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> ProcessingPalindrome {
     let mut matches = pp.matches.clone();
     matches = merge_segments_with_delta(&matches, MAX_HOLE_SIZE as u64);
-    matches.sort_by(|a, b| (b.end - b.start).cmp(&(a.end - a.start))); // Sort by size, descending
-    if matches[0].end - matches[0].start < MIN_PALINDROME_SIZE { return None; }
 
+    // Sort by size, descending
+    matches.sort_by(|a, b| (b.end - b.start).cmp(&(a.end - a.start)));
+    if matches[0].end - matches[0].start < MIN_PALINDROME_SIZE { return ProcessingPalindrome::TooSmall; }
+
+    // Fetch left and right candidate areas
     let left_match = &dna[pp.bottom..pp.top];
     let right_match = &rt_dna[matches[0].start..matches[0].end];
+
+    if right_match.len() > 75000 || left_match.len() > 75000 {
+        return ProcessingPalindrome::TooLong {
+            left: pp.bottom,
+            right: matches[0].start,
+            size: cmp::max(right_match.len(), left_match.len())
+        };
+    }
+
+    // Align them if not too big
     let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
     let mut aligner = Aligner::with_capacity(left_match.len(), right_match.len(), -5, -1, &score);
     let alignment = aligner.local(&left_match, &right_match);
-    if alignment.operations.len() < MIN_PALINDROME_SIZE {return None;};
+    if alignment.operations.len() < MIN_PALINDROME_SIZE {return ProcessingPalindrome::Empty;};
 
     let result = Palindrome {
         left: pp.bottom + alignment.xstart,
@@ -80,7 +99,7 @@ fn make_palindrome(pp: &ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> Option<Pa
     println!("Size:           {}", result.size);
     println!("Alignment: \n{}\n", alignment.pretty(left_match, right_match));
 
-    Some(result)
+    return ProcessingPalindrome::Done(result);
 }
 
 pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<Palindrome> {
@@ -153,9 +172,15 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                         top: i,
                         matches: current_segments.clone()
                     };
-                    if let Some(p) = make_palindrome(&pp, dna, rt_dna) {
-                        println!("{};{};{}", p.left, p.right, p.size);
-                        r.push(p);
+                    match make_palindrome(&pp, dna, rt_dna) {
+                        ProcessingPalindrome::Done(p) => {
+                            println!("{};{};{}", p.left, p.right, p.size);
+                            r.push(p);
+                        },
+                        ProcessingPalindrome::TooLong{left, right, size} => {
+                            println!("Too long @{}-{}/{}", left, right, size);
+                        }
+                        _ => {},
                     }
                 }
                 state = SearchState::Start;

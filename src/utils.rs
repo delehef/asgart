@@ -10,6 +10,7 @@ pub const MAX_HOLE_SIZE: u32 = 2000;
 pub const CANDIDATE_SIZE: usize = 20;
 const MIN_PALINDROME_SIZE: usize = 1000;
 const PRIMER_SHIFT: usize = 10;
+const MAX_ALIGNMENT_SIZE: usize = 300000;
 
 
 macro_rules! log(
@@ -63,22 +64,28 @@ fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
     min
 }
 
-fn make_palindrome(pp: &ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> ProcessingPalindrome {
-    let mut matches = pp.matches.clone();
+fn make_right_arm(p: &ProtoPalindrome) -> Segment {
+    let mut matches = p.matches.clone();
     matches = merge_segments_with_delta(&matches, MAX_HOLE_SIZE as u64);
 
     // Sort by size, descending
     matches.sort_by(|a, b| (b.end - b.start).cmp(&(a.end - a.start)));
-    if matches[0].end - matches[0].start < MIN_PALINDROME_SIZE { return ProcessingPalindrome::TooSmall; }
+
+    return matches.remove(0);
+}
+
+fn make_palindrome(pp: &ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> ProcessingPalindrome {
+    let right_segment = make_right_arm(&pp);
+    if right_segment.end - right_segment.start < MIN_PALINDROME_SIZE { return ProcessingPalindrome::TooSmall; }
 
     // Fetch left and right candidate areas
     let left_match = &dna[pp.bottom..pp.top];
-    let right_match = &rt_dna[matches[0].start..matches[0].end];
+    let right_match = &rt_dna[right_segment.start..right_segment.end];
 
-    if right_match.len() > 75000 || left_match.len() > 75000 {
+    if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
         return ProcessingPalindrome::TooLong {
             left: pp.bottom,
-            right: matches[0].start,
+            right: right_segment.start,
             size: cmp::max(right_match.len(), left_match.len())
         };
     }
@@ -91,7 +98,7 @@ fn make_palindrome(pp: &ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> Processin
 
     let result = Palindrome {
         left: pp.bottom + alignment.xstart,
-        right: matches[0].start + alignment.ystart,
+        right: right_segment.start + alignment.ystart,
         size: alignment.operations.len(),
         rate: 0.0
     };
@@ -179,9 +186,9 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                             r.push(p);
                         },
                         ProcessingPalindrome::TooLong{left, right, size} => {
-                            let mut moar = look_for_palindromes(dna, rt_dna, sa, left, left+size);
-                            println!("Too long @{}-{}/{}\nFound {} pals inside", left, right, size, moar.len());
-                            r.append(&mut moar);
+                            let mut moar = expand_palindrome(dna, rt_dna, left, make_right_arm(&pp).start);
+                            println!("Too long @{}-{}/{}\nFound {}/{} inside", left, right, size, moar.left, moar.size);
+                            r.push(moar);
                         }
                         _ => {},
                     }

@@ -9,12 +9,14 @@
 #SBATCH --mail-type=ALL
 
 BINARY=target/release/palindromes
+# Using a symbolic link to the DNA
 Y_FILE=$HOME/Y.fasta
 
-WORK_DIR=/tmpdir/franklin/
+WORK_DIR=$(mktemp -d -p /tmpdir/franklin/)
 
 cp $BINARY $WORK_DIR
 cp $Y_FILE $WORK_DIR
 
+echo "Working in $WORK_DIR"
 cd $WORK_DIR
 ./palindromes

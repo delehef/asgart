@@ -148,7 +148,7 @@ fn window(text: &[u8], begin: usize, extension: usize) -> &str {
 
 fn main () {
     let reader = fasta::Reader::from_file("Y_soft.fasta");
-    let filename = format!("pals-{}.csv", Uuid::new_v4().to_string());
+    let filename = "pals.csv";
     let threads_count: usize = num_cpus::get()/2;
     let threads_pool = ThreadPool::new(threads_count);
 

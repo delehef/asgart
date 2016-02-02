@@ -38,7 +38,7 @@ fn window(text: &[u8], begin: usize, extension: usize) -> &str {
 fn main () {
     let reader = fasta::Reader::from_file("Y.fasta");
     let filename = "pals.csv";
-    let threads_count: usize = 3;
+    let threads_count: usize = 1;
     let threads_pool = ThreadPool::new(threads_count);
 
     println!("Threads count            {}", threads_count);

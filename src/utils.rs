@@ -186,7 +186,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                             r.push(p);
                         },
                         ProcessingPalindrome::TooLong{left, right, size} => {
-                            let mut moar = expand_nw(dna, rt_dna, left, make_right_arm(&pp).start);
+                            let moar = expand_nw(dna, rt_dna, left, make_right_arm(&pp).start);
                             println!("Too long @{}-{}/{}\nFound {}/{} inside", left, right, size, moar.left, moar.size);
                             r.push(moar);
                         }

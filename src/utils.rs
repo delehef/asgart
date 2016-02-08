@@ -450,7 +450,6 @@ fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_star
     let mut la_start;
     let mut ra_start;
     while rate >= PRECISION {
-        offset += EXPANSION_STEP;
         la_start = straight_start + offset + correction_la;
         ra_start = reverse_start + offset + correction_ra;
 
@@ -469,6 +468,7 @@ fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_star
         }
 
         rate = 1.0 - (errors as f32)/(offset as f32 + EXPANSION_STEP as f32);
+        offset += EXPANSION_STEP;
     }
 
     println!("{};{};{};{}",

@@ -43,7 +43,7 @@ fn main () {
     println!("");
 
     for record in reader.unwrap().records() {
-        let threads_pool = ThreadPool::new(threads_count);
+        let thread_pool = ThreadPool::new(threads_count);
         let (tx, rx) = mpsc::channel();
         let dna = record.unwrap().seq().to_vec();
         // Build the RT DNA sequence
@@ -74,7 +74,7 @@ fn main () {
 
                 let my_tx = tx.clone();
 
-                threads_pool.execute(move || {
+                thread_pool.execute(move || {
                     println!("Starting #{}", id);
                     let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
                     if !cfg!(feature="swap_dna") {
@@ -123,7 +123,7 @@ fn main () {
 
         let mut out = File::create(filename).unwrap();
         for palindrome in final_pass {
-            let to_write = palindrome.map_or((), |p| { writeln!(&mut out, "{}", format!("{};{};{};{}", p.left, p.right, p.size, p.rate)).ok().unwrap()});
+            palindrome.map_or((), |p| { writeln!(&mut out, "{}", format!("{};{};{};{}", p.left, p.right, p.size, p.rate)).ok().unwrap()});
         }
     }
 }

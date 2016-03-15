@@ -67,6 +67,11 @@ fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
     min
 }
 
+fn make_right_arms(p: &ProtoPalindrome) -> Vec<Segment> {
+    let mut matches = p.matches.clone();
+    merge_segments_with_delta(&matches, MAX_HOLE_SIZE as u64)
+}
+
 fn make_right_arm(p: &ProtoPalindrome) -> Segment {
     let mut matches = p.matches.clone();
     matches = merge_segments_with_delta(&matches, MAX_HOLE_SIZE as u64);
@@ -77,27 +82,33 @@ fn make_right_arm(p: &ProtoPalindrome) -> Segment {
     return matches.remove(0);
 }
 
-fn make_palindrome<'a>(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> ProcessingPalindrome {
-    let right_segment = make_right_arm(&pp);
-    if right_segment.end - right_segment.start < MIN_PALINDROME_SIZE { return ProcessingPalindrome::TooSmall; }
+fn make_palindrome<'a>(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> Vec<ProcessingPalindrome> {
+    let right_segments = make_right_arms(&pp);
+    let mut r = Vec::new();
 
-    // Fetch left and right candidate areas
-    let left_match = &dna[pp.bottom..pp.top];
-    let right_match = &rt_dna[right_segment.start..right_segment.end];
+    for right_segment in right_segments.iter() {
+        if right_segment.end - right_segment.start < MIN_PALINDROME_SIZE {continue;}
 
-    if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
-        ProcessingPalindrome::ForFuzzy {
-            pp: pp,
-            right: right_segment.start,
+        // Fetch left and right candidate areas
+        let left_match = &dna[pp.bottom..pp.top];
+        let right_match = &rt_dna[right_segment.start..right_segment.end];
+
+        if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
+            r.push(ProcessingPalindrome::ForFuzzy {
+                pp: pp.clone(),
+                right: right_segment.start,
+            });
+        } else {
+            r.push(ProcessingPalindrome::ForSW {
+                pp: pp.clone(),
+                left_match: Vec::from(left_match),
+                right_match: Vec::from(right_match),
+                right_segment: right_segment.clone(),
+            })
         }
-    } else {
-       ProcessingPalindrome::ForSW {
-           pp: pp,
-           left_match: Vec::from(left_match),
-           right_match: Vec::from(right_match),
-           right_segment: right_segment,
-       }
     }
+
+    r
 }
 
 pub fn sw_align(p: ProcessingPalindrome) -> ProcessingPalindrome {
@@ -207,9 +218,9 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                         top: i,
                         matches: current_segments.clone()
                     };
-                    let result = make_palindrome(pp, dna, rt_dna);
+                    let mut result = make_palindrome(pp, dna, rt_dna);
                     // println!("{:?}", result);
-                    r.push(result);
+                    r.append(&mut result);
                     println!("Result pushed");
                 }
                 state = SearchState::Start;

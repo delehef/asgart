@@ -32,9 +32,9 @@ fn window(text: &[u8], begin: usize, extension: usize) -> &str {
 
 
 fn main () {
-    let reader = fasta::Reader::from_file("Y_soft.fasta");
+    let reader = fasta::Reader::from_file("Y.fasta");
     let filename = "pals.csv";
-    let threads_count: usize = 3;
+    let threads_count: usize = 20;
 
     println!("Threads count            {}", threads_count);
     println!("Primer size              {}", utils::CANDIDATE_SIZE);

@@ -34,7 +34,7 @@ fn window(text: &[u8], begin: usize, extension: usize) -> &str {
 fn main () {
     let reader = fasta::Reader::from_file("Y.fasta");
     let filename = "pals.csv";
-    let threads_count: usize = 20;
+    let threads_count: usize = 10;
 
     println!("Threads count            {}", threads_count);
     println!("Primer size              {}", utils::CANDIDATE_SIZE);
@@ -86,7 +86,6 @@ fn main () {
                                 &reverse_translate_dna, &dna, &suffix_array,
                                 start, end)).unwrap();
                     }
-                    println!("Sent for #{}", id);
                 });
 
                 start += CHUNK_SIZE;

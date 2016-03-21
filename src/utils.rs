@@ -10,7 +10,7 @@ pub const MAX_HOLE_SIZE: u32 = 2000;
 pub const CANDIDATE_SIZE: usize = 20;
 const MIN_PALINDROME_SIZE: usize = 1000;
 const PRIMER_SHIFT: usize = 10;
-const MAX_ALIGNMENT_SIZE: usize = 300000;
+const MAX_ALIGNMENT_SIZE: usize = 100000;
 
 
 macro_rules! log(
@@ -157,6 +157,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
         match state {
             SearchState::Start => {
                 log!("State = search");
+                // TODO WHY????
                 if i+1 >= end {
                     log!("Breaking");
                     break;
@@ -211,7 +212,6 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                 }
             },
             SearchState::Proto => {
-                println!("Found a proto");
                 if i - current_start >= MIN_PALINDROME_SIZE {
                     let pp = ProtoPalindrome {
                         bottom: current_start,
@@ -219,9 +219,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                         matches: current_segments.clone()
                     };
                     let mut result = make_palindrome(pp, dna, rt_dna);
-                    // println!("{:?}", result);
                     r.append(&mut result);
-                    println!("Result pushed");
                 }
                 state = SearchState::Start;
             },

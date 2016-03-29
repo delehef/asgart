@@ -1,15 +1,13 @@
-#![allow(dead_code)]
 extern crate uuid;
 extern crate bio;
 extern crate num_cpus;
 extern crate threadpool;
 
+use std::env;
 use std::io::Write;
 use std::fs::File;
 use std::sync::mpsc;
 use std::sync::Arc;
-
-use std::str::from_utf8;
 
 use bio::io::fasta;
 use bio::data_structures::suffix_array::suffix_array;
@@ -18,29 +16,23 @@ use threadpool::ThreadPool;
 
 mod utils;
 
-
-
-
-fn window(text: &[u8], begin: usize, extension: usize) -> &str {
-    if begin+extension <= text.len() {
-        from_utf8(&text[begin..begin+extension]).unwrap()
-    } else {
-        "N/A"
-    }
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    search_duplications(args[1].parse::<usize>().unwrap(), args[2].parse::<u32>().unwrap());
 }
 
-
-
-fn main () {
+fn search_duplications(candidate_size: usize, max_hole_size: u32) {
     let reader = fasta::Reader::from_file("Y.fasta");
-    let filename = "pals.csv";
-    let threads_count: usize = 10;
+    let filename = format!("sd_{}_{}.csv", candidate_size, max_hole_size);
+    let threads_count: usize = 20;
 
     println!("Threads count            {}", threads_count);
-    println!("Primer size              {}", utils::CANDIDATE_SIZE);
-    println!("Filename                 {}", filename);
+    println!("Filename                 {}", &filename);
     println!("swap_dna                 {}", cfg!(feature="swap_dna"));
+    println!("Candidate size           {}", candidate_size);
+    println!("Max hole size            {}", max_hole_size);
     println!("");
+
 
     for record in reader.unwrap().records() {
         let thread_pool = ThreadPool::new(threads_count);
@@ -61,13 +53,12 @@ fn main () {
 
         {
             const CHUNK_SIZE: usize = 200000;
-            let num_tasks = (shared_dna.len()-utils::CANDIDATE_SIZE)/CHUNK_SIZE;
-            let chunk_overflow = (shared_dna.len()-utils::CANDIDATE_SIZE)%CHUNK_SIZE;
+            let num_tasks = (shared_dna.len()-candidate_size)/CHUNK_SIZE;
+            let chunk_overflow = (shared_dna.len()-candidate_size)%CHUNK_SIZE;
 
             let mut start = 0;
             for id in 0..num_tasks+1 // TODO Do with Vec::chunks
             {
-                println!("Launching chunk #{}", id);
                 let suffix_array = shared_suffix_array.clone();
                 let dna = shared_dna.clone();
                 let reverse_translate_dna = shared_reverse_translate_dna.clone();
@@ -75,16 +66,17 @@ fn main () {
                 let my_tx = tx.clone();
 
                 thread_pool.execute(move || {
-                    println!("Starting #{}", id);
                     let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
                     if !cfg!(feature="swap_dna") {
                         my_tx.send(utils::make_palindromes(
                                 &dna, &reverse_translate_dna, &suffix_array,
-                                start, end)).unwrap();
+                                start, end,
+                                candidate_size, max_hole_size)).unwrap();
                     } else {
                         my_tx.send(utils::make_palindromes(
                                 &reverse_translate_dna, &dna, &suffix_array,
-                                start, end)).unwrap();
+                                start, end,
+                                candidate_size, max_hole_size)).unwrap();
                     }
                 });
 
@@ -104,7 +96,7 @@ fn main () {
 
         println!("Collecting third pass...");
         let third_pass: Vec<utils::ProcessingPalindrome> = second_pass.iter()
-            .map(|b| {utils::fuzzy_align(&(shared_dna.clone()), &(shared_reverse_translate_dna.clone()), b.clone())}).collect();
+            .map(|b| {utils::fuzzy_align(&(shared_dna.clone()), &(shared_reverse_translate_dna.clone()), b.clone(), max_hole_size)}).collect();
         println!("Done.");
 
         println!("Collecting final pass...");
@@ -118,9 +110,9 @@ fn main () {
                     utils::ProcessingPalindrome::Empty => {None}
                 }
             });
-        println!("Done.");
+        println!("Done for {} & {}.", candidate_size, max_hole_size);
 
-        let mut out = File::create(filename).unwrap();
+        let mut out = File::create(&filename).unwrap();
         for palindrome in final_pass {
             palindrome.map_or((), |p| { writeln!(&mut out, "{}", format!("{};{};{};{}", p.left, p.right, p.size, p.rate)).ok().unwrap()});
         }

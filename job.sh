@@ -22,4 +22,4 @@ cp $Y_FILE $WORK_DIR
 
 echo "Working in $WORK_DIR"
 cd $WORK_DIR
-./palindromes
+/usr/bin/time -v ./palindromes

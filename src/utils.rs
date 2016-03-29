@@ -5,11 +5,7 @@ use std::io::Write;
 use std::fmt;
 use bio::alignment::pairwise::*;
 
-pub const M: u32 = 3*CANDIDATE_SIZE as u32;
-pub const MAX_HOLE_SIZE: u32 = 2000;
-pub const CANDIDATE_SIZE: usize = 20;
 const MIN_PALINDROME_SIZE: usize = 1000;
-const PRIMER_SHIFT: usize = 10;
 const MAX_ALIGNMENT_SIZE: usize = 100000;
 
 
@@ -54,27 +50,14 @@ pub enum ProcessingPalindrome {
     Empty,
 }
 
-fn set_to_sets_distance(s: &HashSet<usize>, t: &Vec<HashSet<usize>>) -> u32 {
-    let mut min = 100000000;
-    for i in s {
-        for ss in t {
-            for j in ss {
-                let diff = (*j as i32 - *i as i32).abs() as u32;
-                if diff < min { min = diff }
-            }
-        }
-    }
-    min
+fn make_right_arms(p: &ProtoPalindrome, max_hole_size: u32) -> Vec<Segment> {
+    let matches = p.matches.clone();
+    merge_segments_with_delta(&matches, max_hole_size as u64)
 }
 
-fn make_right_arms(p: &ProtoPalindrome) -> Vec<Segment> {
+fn make_right_arm(p: &ProtoPalindrome, max_hole_size: u32) -> Segment {
     let mut matches = p.matches.clone();
-    merge_segments_with_delta(&matches, MAX_HOLE_SIZE as u64)
-}
-
-fn make_right_arm(p: &ProtoPalindrome) -> Segment {
-    let mut matches = p.matches.clone();
-    matches = merge_segments_with_delta(&matches, MAX_HOLE_SIZE as u64);
+    matches = merge_segments_with_delta(&matches, max_hole_size as u64);
 
     // Sort by size, descending
     matches.sort_by(|a, b| (b.end - b.start).cmp(&(a.end - a.start)));
@@ -82,8 +65,8 @@ fn make_right_arm(p: &ProtoPalindrome) -> Segment {
     return matches.remove(0);
 }
 
-fn make_palindrome<'a>(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> Vec<ProcessingPalindrome> {
-    let right_segments = make_right_arms(&pp);
+fn make_palindrome<'a>(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8], max_hole_size: u32) -> Vec<ProcessingPalindrome> {
+    let right_segments = make_right_arms(&pp, max_hole_size);
     let mut r = Vec::new();
 
     for right_segment in right_segments.iter() {
@@ -93,6 +76,7 @@ fn make_palindrome<'a>(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8]) -> Vec<Pr
         let left_match = &dna[pp.bottom..pp.top];
         let right_match = &rt_dna[right_segment.start..right_segment.end];
 
+        r.push(ProcessingPalindrome::Done(Palindrome{left: pp.bottom, right: right_segment.start, size: pp.top - pp.bottom, rate: 0.0}));
         if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
             r.push(ProcessingPalindrome::ForFuzzy {
                 pp: pp.clone(),
@@ -135,16 +119,17 @@ pub fn sw_align(p: ProcessingPalindrome) -> ProcessingPalindrome {
     }
 }
 
-pub fn fuzzy_align<'a>(dna: &[u8], rt_dna: &[u8], p: ProcessingPalindrome) -> ProcessingPalindrome {
+pub fn fuzzy_align<'a>(dna: &[u8], rt_dna: &[u8], p: ProcessingPalindrome, max_hole_size: u32) -> ProcessingPalindrome {
     if let ProcessingPalindrome::ForFuzzy{pp, right} = p {
-        let moar = expand_nw(dna, rt_dna, pp.bottom, make_right_arm(&pp).start);
+        let moar = expand_nw(dna, rt_dna, pp.bottom, make_right_arm(&pp, max_hole_size).start);
         ProcessingPalindrome::Done(moar)
     } else {
         p
     }
 }
 
-pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<ProcessingPalindrome> {
+pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usize, end: usize,
+                        candidate_size: usize, max_hole_size: u32) -> Vec<ProcessingPalindrome> {
     let mut r = Vec::new();
 
     let mut i = start;
@@ -156,35 +141,29 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
     loop {
         match state {
             SearchState::Start => {
-                log!("State = search");
-                // TODO WHY????
-                if i+1 >= end {
-                    log!("Breaking");
+                if i+candidate_size >= end-1 {
                     break;
                 }
                 hole = 0;
                 current_start = i;
                 current_segments = Vec::new();
-                let mut new_segments = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+                let mut new_segments = search(&rt_dna, &sa, &dna[i..i+candidate_size], candidate_size);
                 if new_segments.len() > 0 {
-                    log!("Starting @{}", i);
                     current_segments = merge_segments(&mut new_segments);
                     state = SearchState::Grow;
                 } else {
-                    log!("Starting elsewhere @{}", i);
                     i += 1;
                     state = SearchState::Start;
                 }
 
             },
             SearchState::Grow => {
-                log!("Growing @{}", i);
-                i += CANDIDATE_SIZE/2;
-                let mut new_matches = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+                i += candidate_size/2;
+                let mut new_matches = search(&rt_dna, &sa, &dna[i..i+candidate_size], candidate_size);
 
-                if i >= dna.len() - CANDIDATE_SIZE {
+                if i >= dna.len() - candidate_size {
                     state = SearchState::Proto;
-                } else if segments_to_segments_distance(&new_matches, &current_segments) <= MAX_HOLE_SIZE {
+                } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_hole_size {
                     current_segments.append(&mut new_matches);
                     current_segments = merge_segments(&mut current_segments);
                     state = SearchState::Grow;
@@ -193,16 +172,15 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                 }
             },
             SearchState::SparseGrow => {
-                log!("Sparse @{}", i);
                 i += 1;
                 hole += 1;
-                let mut new_matches = search(&rt_dna, &sa, &dna[i..i+CANDIDATE_SIZE]);
+                let mut new_matches = search(&rt_dna, &sa, &dna[i..i+candidate_size], candidate_size);
 
-                if hole > MAX_HOLE_SIZE {
+                if hole > max_hole_size {
                     state = SearchState::Proto;
-                } else if i >= dna.len() - CANDIDATE_SIZE {
+                } else if i >= dna.len() - candidate_size {
                     state = SearchState::Proto;
-                } else if segments_to_segments_distance(&new_matches, &current_segments) <= MAX_HOLE_SIZE {
+                } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_hole_size {
                     current_segments.append(&mut new_matches);
                     current_segments = merge_segments(&mut current_segments);
                     hole = 0;
@@ -218,14 +196,13 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                         top: i,
                         matches: current_segments.clone()
                     };
-                    let mut result = make_palindrome(pp, dna, rt_dna);
+                    let mut result = make_palindrome(pp, dna, rt_dna, max_hole_size);
                     r.append(&mut result);
                 }
                 state = SearchState::Start;
             },
         }
     }
-    log!("Finished");
 
     r
 }
@@ -380,7 +357,7 @@ fn segments_to_segments_distance(segments: &Vec<Segment>, others: &Vec<Segment>)
     distance as u32
 }
 
-pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> Vec<Segment> {
+pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8], candidate_size: usize) -> Vec<Segment> {
     let mut lo = 0;
     let mut hi = dna.len()-1;
     let mut result = HashSet::new();
@@ -423,45 +400,16 @@ pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8]) -> Vec<Segment> {
             }
             let mut rr = Vec::new();
             for i in result {
-                rr.push(Segment{start: i, end: i+CANDIDATE_SIZE});
+                rr.push(Segment{start: i, end: i+candidate_size});
             }
             return rr;
         }
     }
     let mut rr = Vec::new();
     for i in result {
-        rr.push(Segment{start: i, end: i+CANDIDATE_SIZE});
+        rr.push(Segment{start: i, end: i+candidate_size});
     }
     return rr;
-}
-
-fn look_for_palindromes(dna: &[u8], reverse_translate_dna: &[u8], sa: &SuffixArray, start: usize, end: usize) -> Vec<Palindrome> {
-    let mut palindromes = Vec::new();
-
-    let mut i = start;
-    while i < end {
-        let bottom = i;
-        let top = bottom + CANDIDATE_SIZE;
-        let candidate = &dna[bottom..top];
-        if candidate[0] == 'N' as u8 { continue; }
-        let results = search(&reverse_translate_dna, &sa, candidate);
-        if results.len() > 0 {
-            //let mut min_size = dna.len();
-            for result in results {
-                let mut palindrome = expand_palindrome(&dna, &reverse_translate_dna, bottom, result.start);
-                if palindrome.size >= MIN_PALINDROME_SIZE {
-                    palindrome = expand_nw(&dna, &reverse_translate_dna, bottom, result.start);
-                    //if palindrome.size < min_size { min_size = palindrome.size; }
-                    palindromes.push(palindrome);
-                }
-            }
-            //if min_size == dna.len() { min_size = 0 };
-            //i += min_size;
-        }
-        i += PRIMER_SHIFT;
-    }
-
-    palindromes
 }
 
 
@@ -505,34 +453,5 @@ fn expand_nw(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_star
         right: reverse_start,
         size: offset+EXPANSION_STEP,
         rate: rate,
-    }
-}
-
-fn expand_palindrome(dna: &[u8], reverse_dna: &[u8], straight_start: usize, reverse_start: usize) -> Palindrome {
-    const PRECISION: f32 = 0.9;
-    const EXPANSION_STEP: usize = 100;
-
-    let mut expansion = 1;
-    let mut current_rate = 1.0;
-
-    while current_rate > PRECISION && straight_start+expansion < dna.len() - EXPANSION_STEP {
-        expansion += EXPANSION_STEP;
-        let mut mutations = 0;
-        for i in 0..expansion {
-            let na = dna[straight_start + i];
-            let nb = reverse_dna[reverse_start + i];
-
-            if na != nb { mutations += 1; }
-        }
-        current_rate = 1.0 - (mutations as f32/expansion as f32);
-    }
-
-    let straight_candidate: usize = dna.len() - (reverse_start-CANDIDATE_SIZE);
-
-    Palindrome {
-        left: cmp::min(straight_start, straight_candidate),
-        right: cmp::max(straight_start, straight_candidate),
-        size: expansion,
-        rate: current_rate,
     }
 }

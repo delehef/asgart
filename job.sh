@@ -5,18 +5,21 @@
 #SBATCH --threads-per-core 1
 #SBATCH --cpus-per-task=20
 #SBATCH --cpu_bind=none
+#--time=1000:00:00
 #SBATCH --mail-user=franklin.delehelle@irit.fr
 #SBATCH --mail-type=ALL
 
 BINARY=target/release/palindromes
-# Using a symbolic link to the DNA
+# Using symlink to DNA
 Y_FILE=$HOME/Y.fasta
 
-WORK_DIR=$(mktemp -d -p /tmpdir/franklin/)
+DATE=$(date +"%d_%m_%Y-%H_%M")
+WORK_DIR="/tmpdir/franklin/$DATE"
+mkdir $WORK_DIR
 
 cp $BINARY $WORK_DIR
 cp $Y_FILE $WORK_DIR
 
 echo "Working in $WORK_DIR"
 cd $WORK_DIR
-./palindromes
+/usr/bin/time -v ./palindromes

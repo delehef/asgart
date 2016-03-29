@@ -1,7 +1,7 @@
 # Asgart
 
-Asgart (A Segment duplications Gathering and Refinment Tool) is a tool designed to
-computationally search for segmental duplications in a DNA string.
+Asgart (A Segmental duplications Gathering and Refinement Tool) is a tool
+designed to computationally search for segmental duplications in a DNA string.
 
 Its key feature is its adaptability to the available computing power by its ability
 to comprommise between the quality and precision of the results and the compute time

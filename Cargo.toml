@@ -1,13 +1,15 @@
 [package]
-name = "palindromes"
+name = "asgart"
 version = "0.1.0"
 authors = ["Franklin Delehelle <franklin@odena.eu>"]
 
 [dependencies]
-bio = "*"
-num_cpus = "*"
-uuid = "*"
-threadpool = "0.1"
+bio             = "*"
+num_cpus        = "*"
+uuid            = "*"
+threadpool      = "0.1"
+docopt          = "0.6"
+rustc-serialize = "0.3"
 
 [features]
 swap_dna = []

@@ -35,7 +35,7 @@ enum SearchState {
 }
 
 #[derive(Debug,Clone)]
-struct ProtoPalindrome {
+pub struct ProtoPalindrome {
     bottom: usize,
     top: usize,
     matches: Vec<Segment>,
@@ -46,7 +46,6 @@ pub enum ProcessingPalindrome {
     Done(Palindrome),
     ForFuzzy{pp: ProtoPalindrome, right: usize},
     ForSW{pp: ProtoPalindrome, left_match: Vec<u8>, right_match: Vec<u8>, right_segment: Segment},
-    TooSmall,
     Empty,
 }
 
@@ -76,7 +75,7 @@ fn make_palindrome<'a>(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8], max_hole_
         let left_match = &dna[pp.bottom..pp.top];
         let right_match = &rt_dna[right_segment.start..right_segment.end];
 
-        r.push(ProcessingPalindrome::Done(Palindrome{left: pp.bottom, right: right_segment.start, size: pp.top - pp.bottom, rate: 0.0}));
+        // r.push(ProcessingPalindrome::Done(Palindrome{left: pp.bottom, right: right_segment.start, size: pp.top - pp.bottom, rate: 0.0}));
         if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
             r.push(ProcessingPalindrome::ForFuzzy {
                 pp: pp.clone(),
@@ -120,7 +119,7 @@ pub fn sw_align(p: ProcessingPalindrome) -> ProcessingPalindrome {
 }
 
 pub fn fuzzy_align<'a>(dna: &[u8], rt_dna: &[u8], p: ProcessingPalindrome, max_hole_size: u32) -> ProcessingPalindrome {
-    if let ProcessingPalindrome::ForFuzzy{pp, right} = p {
+    if let ProcessingPalindrome::ForFuzzy{pp, ..} = p {
         let moar = expand_nw(dna, rt_dna, pp.bottom, make_right_arm(&pp, max_hole_size).start);
         ProcessingPalindrome::Done(moar)
     } else {

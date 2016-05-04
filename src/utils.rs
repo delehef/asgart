@@ -64,7 +64,7 @@ fn make_right_arm(p: &ProtoPalindrome, max_hole_size: u32) -> Segment {
     return matches.remove(0);
 }
 
-fn make_palindrome<'a>(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8], max_hole_size: u32) -> Vec<ProcessingPalindrome> {
+fn make_palindrome(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8], max_hole_size: u32) -> Vec<ProcessingPalindrome> {
     let right_segments = make_right_arms(&pp, max_hole_size);
     let mut r = Vec::new();
 
@@ -75,20 +75,20 @@ fn make_palindrome<'a>(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8], max_hole_
         let left_match = &dna[pp.bottom..pp.top];
         let right_match = &rt_dna[right_segment.start..right_segment.end];
 
-        // r.push(ProcessingPalindrome::Done(Palindrome{left: pp.bottom, right: right_segment.start, size: pp.top - pp.bottom, rate: 0.0}));
-        if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
-            r.push(ProcessingPalindrome::ForFuzzy {
-                pp: pp.clone(),
-                right: right_segment.start,
-            });
-        } else {
-            r.push(ProcessingPalindrome::ForSW {
-                pp: pp.clone(),
-                left_match: Vec::from(left_match),
-                right_match: Vec::from(right_match),
-                right_segment: right_segment.clone(),
-            })
-        }
+        r.push(ProcessingPalindrome::Done(Palindrome{left: pp.bottom, right: right_segment.start, size: pp.top - pp.bottom, rate: 0.0}));
+        // if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
+        //     r.push(ProcessingPalindrome::ForFuzzy {
+        //         pp: pp.clone(),
+        //         right: right_segment.start,
+        //     });
+        // } else {
+        //     r.push(ProcessingPalindrome::ForSW {
+        //         pp: pp.clone(),
+        //         left_match: Vec::from(left_match),
+        //         right_match: Vec::from(right_match),
+        //         right_segment: right_segment.clone(),
+        //     })
+        // }
     }
 
     r
@@ -118,7 +118,7 @@ pub fn sw_align(p: ProcessingPalindrome) -> ProcessingPalindrome {
     }
 }
 
-pub fn fuzzy_align<'a>(dna: &[u8], rt_dna: &[u8], p: ProcessingPalindrome, max_hole_size: u32) -> ProcessingPalindrome {
+pub fn fuzzy_align(dna: &[u8], rt_dna: &[u8], p: ProcessingPalindrome, max_hole_size: u32) -> ProcessingPalindrome {
     if let ProcessingPalindrome::ForFuzzy{pp, ..} = p {
         let moar = expand_nw(dna, rt_dna, pp.bottom, make_right_arm(&pp, max_hole_size).start);
         ProcessingPalindrome::Done(moar)

@@ -178,7 +178,16 @@ fn search_duplications(
             let final_pass = third_pass.iter()
                 .filter_map(|b| {
                     match *b {
-                        utils::ProcessingPalindrome::Done(ref p) => Some(p.clone()),
+                        utils::ProcessingPalindrome::Done(ref _p) => {
+                            let mut p = _p.clone();
+                            if reverse {
+                                p.right = (*shared_strand2.clone()).len() - p.right - p.size;
+                                if p.right < p.left {
+                                    std::mem::swap(&mut p.left, &mut p.right);
+                                }
+                            }
+                            Some(p)
+                        }
                         utils::ProcessingPalindrome::ForFuzzy{pp:_, right:_} => {println!("FOUND A FORFUZZY"); None}
                         utils::ProcessingPalindrome::ForSW{pp: _, left_match: _, right_match: _, right_segment: _} => {println!("FOUND A FORSW"); None},
                         utils::ProcessingPalindrome::Empty => {None}

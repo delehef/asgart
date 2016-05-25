@@ -382,7 +382,7 @@ pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8], candidate_size: u
                     if *pattern == dna[array[l]..array[l]+pattern.len()-1] {
                         result.insert(array[l]);
                         l -= 1;
-                        if l == 0 { expand_left = false; }
+                        if l >= 0 { expand_left = false; }
                     } else {
                         expand_left = false;
                     }
@@ -391,7 +391,7 @@ pub fn search(dna: &[u8], array: &SuffixArray, pattern: &[u8], candidate_size: u
                     if *pattern == dna[array[r]..array[r]+pattern.len()] {
                         result.insert(array[r]);
                         r += 1;
-                        if r == array.len() - 1 { expand_right = false; }
+                        if r >= array.len() - 1 { expand_right = false; }
                     } else {
                         expand_right = false;
                     }

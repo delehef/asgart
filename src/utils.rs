@@ -145,14 +145,19 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                 }
                 hole = 0;
                 current_start = i;
-                current_segments = Vec::new();
-                let mut new_segments = search(&rt_dna, &sa, &dna[i..i+candidate_size], candidate_size);
-                if new_segments.len() > 0 {
-                    current_segments = merge_segments(&mut new_segments);
-                    state = SearchState::Grow;
-                } else {
+                if dna[i] == 'N' as u8 || dna[i] == 'n' as u8 {
                     i += 1;
                     state = SearchState::Start;
+                } else {
+                    current_segments = Vec::new();
+                    let mut new_segments = search(&rt_dna, &sa, &dna[i..i+candidate_size], candidate_size);
+                    if new_segments.len() > 0 {
+                        current_segments = merge_segments(&mut new_segments);
+                        state = SearchState::Grow;
+                    } else {
+                        i += 1;
+                        state = SearchState::Start;
+                    }
                 }
 
             },

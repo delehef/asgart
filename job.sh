@@ -9,17 +9,30 @@
 #SBATCH --mail-user=franklin.delehelle@irit.fr
 #SBATCH --mail-type=ALL
 
-BINARY=target/release/palindromes
-# Using symlink to DNA
-Y_FILE=$HOME/Y.fasta
+###################
+# Global settings #
+###################
+NAME="Yhuman_Ychimp"
+FASTA_FILE=$HOME/chimp.fasta
 
+
+BINARY=target/release/asgart
 DATE=$(date +"%d_%m_%Y-%H_%M")
-WORK_DIR="/tmpdir/franklin/$DATE"
+WORK_DIR="/tmpdir/franklin/${DATE}_${NAME}"
 mkdir $WORK_DIR
 
 cp $BINARY $WORK_DIR
-cp $Y_FILE $WORK_DIR
 
 echo "Working in $WORK_DIR"
 cd $WORK_DIR
-/usr/bin/time -v ./palindromes
+
+for kmer_size in 500 1500
+do
+	for max_gap_size in 1000 1500 2000
+	do
+		export RUST_BACKTRACE=1
+		./asgart ~/human.fasta ~/chimp.fasta $kmer_size $max_gap_size
+	done
+done
+
+#cargo run --release -- ~/chimp.fasta ~/chimp.fasta 500 1500 --reverse --translate

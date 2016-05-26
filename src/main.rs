@@ -27,7 +27,7 @@ Copyright © 2016 IRIT
 
 const USAGE: &'static str = "
 Usage:
-    asgart [-v] <strand1-file> <strand2-file> <kmer-size> <gap-size> [--reverse] [--translate] [--threads=<tc>]
+    asgart [-v] <strand1-file> <strand2-file> <kmer-size> <gap-size> [--reverse] [--translate] [--threads=<tc>] [--prefix=<prefix>]
     asgart --version
     asgart --help
 
@@ -36,6 +36,7 @@ Options:
     --version               Show the version of Asgart.
 
     --threads=<tc>          Number of threads used, number of cores if 0 [default: 0].
+    --prefix=<prefix>       Prefix for the result file [default: ]
     -R, --reverse           Reverse the second DNA strand.
     -T, --translate         Translate the second DNA strand.
     -v, --verbose           Print additional informations to STDOUT.
@@ -47,6 +48,7 @@ struct Args {
     arg_strand2_file: String,
     arg_kmer_size: usize,
     arg_gap_size: u32,
+    flag_prefix: String,
     flag_threads: usize,
 
     flag_reverse: bool,
@@ -64,11 +66,12 @@ fn main() {
         .unwrap_or_else(|e| e.exit() )
         ;
 
-    let out_file = format!("sd_{}_{}{}{}.csv",
+    let out_file = format!("{}sd_{}_{}{}{}.csv",
+                           args.flag_prefix,
                            args.arg_kmer_size,
                            args.arg_gap_size,
                            if args.flag_reverse {"r"} else {""},
-                           if args.flag_translate {"t"} else {""}
+                           if args.flag_translate {"t"} else {""},
                           );
     let threads_count: usize = if args.flag_threads > 0 { args.flag_threads } else { num_cpus::get() };
 

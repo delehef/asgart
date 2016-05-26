@@ -163,7 +163,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
             },
             SearchState::Grow => {
                 i += candidate_size/2;
-                let mut new_matches = search(&rt_dna, &sa, &dna[i..i+candidate_size], candidate_size);
+                let mut new_matches = search(&rt_dna, &sa, &dna[i..cmp::min(i+candidate_size, dna.len()-1)], candidate_size);
 
                 if i >= dna.len() - candidate_size {
                     state = SearchState::Proto;

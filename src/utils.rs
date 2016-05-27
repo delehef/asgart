@@ -64,31 +64,35 @@ fn make_right_arm(p: &ProtoPalindrome, max_hole_size: u32) -> Segment {
     return matches.remove(0);
 }
 
-fn make_palindrome(pp: ProtoPalindrome, dna: &[u8], rt_dna: &[u8], max_hole_size: u32) -> Vec<ProcessingPalindrome> {
+fn make_duplication(pp: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size: u32, align: bool) -> Vec<ProcessingSD> {
     let right_segments = make_right_arms(&pp, max_hole_size);
     let mut r = Vec::new();
 
     for right_segment in right_segments.iter() {
         if right_segment.end - right_segment.start < MIN_PALINDROME_SIZE {continue;}
 
-        // Fetch left and right candidate areas
-        let left_match = &dna[pp.bottom..pp.top];
-        let right_match = &rt_dna[right_segment.start..right_segment.end];
 
-        r.push(ProcessingPalindrome::Done(Palindrome{left: pp.bottom, right: right_segment.start, size: pp.top - pp.bottom, rate: 0.0}));
-        // if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
-        //     r.push(ProcessingPalindrome::ForFuzzy {
-        //         pp: pp.clone(),
-        //         right: right_segment.start,
-        //     });
-        // } else {
-        //     r.push(ProcessingPalindrome::ForSW {
-        //         pp: pp.clone(),
-        //         left_match: Vec::from(left_match),
-        //         right_match: Vec::from(right_match),
-        //         right_segment: right_segment.clone(),
-        //     })
-        // }
+        if align {
+            // Fetch left and right candidate areas
+            let left_match = &strand1[pp.bottom..pp.top];
+            let right_match = &strand2[right_segment.start..right_segment.end];
+
+            if right_match.len() > MAX_ALIGNMENT_SIZE || left_match.len() > MAX_ALIGNMENT_SIZE {
+                r.push(ProcessingSD::ForFuzzy {
+                    pp: pp.clone(),
+                    right: right_segment.start,
+                });
+            } else {
+                r.push(ProcessingSD::ForSW {
+                    pp: pp.clone(),
+                    left_match: Vec::from(left_match),
+                    right_match: Vec::from(right_match),
+                    right_segment: right_segment.clone(),
+                })
+            }
+        } else {
+            r.push(ProcessingSD::Done(SD{left: pp.bottom, right: right_segment.start, size: pp.top - pp.bottom, rate: 0.0}));
+        }
     }
 
     r
@@ -200,7 +204,7 @@ pub fn make_palindromes(dna: &[u8], rt_dna: &[u8], sa: &SuffixArray, start: usiz
                         top: i,
                         matches: current_segments.clone()
                     };
-                    let mut result = make_palindrome(pp, dna, rt_dna, max_hole_size);
+                    let mut result = make_duplication(pp, strand1, strand2, max_gap_size, align);
                     r.append(&mut result);
                 }
                 state = SearchState::Start;

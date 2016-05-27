@@ -27,7 +27,7 @@ Copyright © 2016 IRIT
 
 const USAGE: &'static str = "
 Usage:
-    asgart [-v] <strand1-file> <strand2-file> <kmer-size> <gap-size> [--reverse] [--translate] [--threads=<tc>]
+    asgart <strand1-file> <strand2-file> <kmer-size> <gap-size> [-v] [-R] [-T] [-A] [--threads=<tc>]
     asgart --version
     asgart --help
 
@@ -38,6 +38,7 @@ Options:
     --threads=<tc>          Number of threads used, number of cores if 0 [default: 0].
     -R, --reverse           Reverse the second DNA strand.
     -T, --translate         Translate the second DNA strand.
+    -A, --align             Try to perform alignment.
     -v, --verbose           Print additional informations to STDOUT.
 ";
 
@@ -51,6 +52,7 @@ struct Args {
 
     flag_reverse: bool,
     flag_translate: bool,
+    flag_align: bool,
 
     flag_help: bool,
     flag_version: bool,
@@ -85,10 +87,9 @@ fn main() {
     }
 
     let result = search_duplications(
-        args.flag_verbose,
         &args.arg_strand1_file, &args.arg_strand2_file,
         args.arg_kmer_size, args.arg_gap_size,
-        args.flag_reverse, args.flag_translate,
+        args.flag_reverse, args.flag_translate, args.flag_align,
         threads_count
         );
     let mut out = File::create(&out_file).unwrap();
@@ -98,8 +99,6 @@ fn main() {
 }
 
 fn search_duplications(
-    verbose: bool,
-
     strand1_file: &str,
     strand2_file: &str,
 
@@ -108,6 +107,7 @@ fn search_duplications(
 
     reverse: bool,
     translate: bool,
+    align: bool,
 
     threads_count: usize,
     ) -> Vec<utils::Palindrome> {
@@ -152,7 +152,8 @@ fn search_duplications(
                         my_tx.send(utils::make_palindromes(
                                 &strand1, &strand2, &suffix_array,
                                 start, end,
-                                kmer_size, max_gap_size)).unwrap();
+                                kmer_size, max_gap_size,
+                                align)).unwrap();
                     });
 
                     start += CHUNK_SIZE;

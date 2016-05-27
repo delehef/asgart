@@ -155,7 +155,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
             },
             SearchState::Grow => {
                 i += candidate_size/2;
-                let mut new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
+                let mut new_matches = search(strand2, sa, &strand1[i..cmp::min(i+candidate_size, strand1.len()-1)], candidate_size);
 
                 if i >= strand1.len() - candidate_size {
                     state = SearchState::Proto;

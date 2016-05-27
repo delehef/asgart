@@ -110,9 +110,9 @@ fn search_duplications(
     align: bool,
 
     threads_count: usize,
-    ) -> Vec<utils::Palindrome> {
+    ) -> Vec<utils::SD> {
 
-    let mut result : Vec<utils::Palindrome> = Vec::new();
+    let mut result : Vec<utils::SD> = Vec::new();
 
     for record1 in fasta::Reader::from_file(strand1_file).unwrap().records() {
         let strand1 = record1.unwrap().seq().to_vec();
@@ -125,7 +125,7 @@ fn search_duplications(
                 let mut strand2 = record2.unwrap().seq().to_vec();
                 if translate { strand2 = utils::translated(&strand2[0..strand2.len()-1].to_vec()); }
                 if reverse { strand2.reverse(); }
-                strand2.push('$' as u8);
+                strand2.push(b'$');
                 strand2
             };
 
@@ -149,7 +149,7 @@ fn search_duplications(
 
                     thread_pool.execute(move || {
                         let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
-                        my_tx.send(utils::make_palindromes(
+                        my_tx.send(utils::search_duplications(
                                 &strand1, &strand2, &suffix_array,
                                 start, end,
                                 kmer_size, max_gap_size,
@@ -162,39 +162,41 @@ fn search_duplications(
 
             drop(tx);
             println!("Collecting first pass...");
-            let first_pass: Vec<utils::ProcessingPalindrome> = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
+            let mut passes: Vec<utils::ProcessingSD> = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
             println!("Done.");
 
-            println!("Collecting second pass...");
-            let second_pass: Vec<utils::ProcessingPalindrome> = first_pass.iter()
-                .map(|b| {utils::sw_align(b.clone())}).collect();
-            println!("Done.");
+            if align {
+                println!("Collecting second pass...");
+                passes = passes.iter()
+                    .map(|b| {utils::align_perfect(b.clone())}).collect();
+                println!("Done.");
 
-            println!("Collecting third pass...");
-            let third_pass: Vec<utils::ProcessingPalindrome> = second_pass.iter()
-                .map(|b| {utils::fuzzy_align(&(shared_strand1.clone()), &(shared_strand2.clone()), b.clone(), max_gap_size)}).collect();
-            println!("Done.");
+                println!("Collecting third pass...");
+                passes = passes.iter()
+                    .map(|b| {utils::align_fuzzy(&(shared_strand1.clone()), &(shared_strand2.clone()), b.clone())}).collect();
+                println!("Done.");
+            }
 
             println!("Collecting final pass...");
-            let final_pass = third_pass.iter()
-                .filter_map(|b| {
-                    match *b {
-                        utils::ProcessingPalindrome::Done(ref _p) => {
-                            let mut p = _p.clone();
-                            if reverse {
-                                p.right = (*shared_strand2.clone()).len() - p.right - p.size;
-                                if p.right < p.left {
-                                    std::mem::swap(&mut p.left, &mut p.right);
-                                }
+            result.extend(passes.iter().filter_map(|b| {
+                match *b {
+                    utils::ProcessingSD::Done(ref _p) => {
+                        let mut p = _p.clone();
+                        if reverse {
+                            p.right = (*shared_strand2.clone()).len() - p.right - p.size;
+                            if p.right < p.left {
+                                std::mem::swap(&mut p.left, &mut p.right);
                             }
-                            Some(p)
                         }
-                        utils::ProcessingPalindrome::ForFuzzy{pp:_, right:_} => {println!("FOUND A FORFUZZY"); None}
-                        utils::ProcessingPalindrome::ForSW{pp: _, left_match: _, right_match: _, right_segment: _} => {println!("FOUND A FORSW"); None},
-                        utils::ProcessingPalindrome::Empty => {None}
+                        Some(p)
                     }
-                });
-            result.append(&mut (final_pass.collect()));
+                    utils::ProcessingSD::ForFuzzy{ .. } => {println!("FOUND A FORFUZZY"); None}
+                    utils::ProcessingSD::ForSW{ .. }    => {println!("FOUND A FORSW"); None},
+                    utils::ProcessingSD::Empty          => {None}
+                }
+            }));
+
+            // result.append(&mut all_sds);
             println!("Done for {} & {}.", kmer_size, max_gap_size);
 
         }

@@ -3,6 +3,7 @@ use std::cmp;
 use bio::data_structures::suffix_array::SuffixArray;
 use std::fmt;
 use bio::alignment::pairwise::*;
+use bio::alignment::AlignmentOperation;
 
 const MIN_DUPLICATION_SIZE: usize = 1000;
 const MAX_ALIGNMENT_SIZE: usize = 100000;
@@ -430,17 +431,15 @@ fn expand_nw(strand1: &[u8], strand2: &[u8], straight_start: usize, reverse_star
 
         if (la_start+EXPANSION_STEP >= strand1.len()) || (ra_start+EXPANSION_STEP >= strand2.len()) { break; }
 
-        let result = needleman_wunsch(
-            &strand1[la_start..la_start + EXPANSION_STEP],
-            &strand2[ra_start..ra_start + EXPANSION_STEP]);
+        let score = |a: u8, b: u8| if a == b {1i32} else {-1i32};
+        let left = &strand1[la_start..la_start + EXPANSION_STEP];
+        let right = &strand2[ra_start..ra_start + EXPANSION_STEP];
+        let mut aligner = Aligner::with_capacity(left.len(), right.len(), -5, -1, &score);
+        let alignment = aligner.local(left, right);
+        errors += alignment.operations.iter().filter(|x| **x == AlignmentOperation::Subst).count();
 
-        errors += result.errors;
-
-        if result.ins_la > result.ins_ra {
-            correction_ra += (result.ins_la - result.ins_ra) as usize;
-        } else {
-            correction_la += (result.ins_ra - result.ins_la) as usize;
-        }
+        correction_la += alignment.operations.iter().filter(|x| **x == AlignmentOperation::Del).count();
+        correction_ra += alignment.operations.iter().filter(|x| **x == AlignmentOperation::Ins).count();
 
         rate = 1.0 - (errors as f32)/(offset as f32 + EXPANSION_STEP as f32);
         offset += EXPANSION_STEP;

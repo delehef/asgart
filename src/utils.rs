@@ -54,12 +54,13 @@ fn make_right_arms(p: &ProtoSD, max_hole_size: u32) -> Vec<Segment> {
     merge_segments_with_delta(&matches, max_hole_size as u64)
 }
 
-fn make_duplication(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size: u32, align: bool) -> Vec<ProcessingSD> {
+fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size: u32, align: bool) -> Vec<ProcessingSD> {
     let right_segments = make_right_arms(&psd, max_hole_size);
     let mut r = Vec::new();
 
     for right_segment in &right_segments {
         if right_segment.end - right_segment.start < MIN_DUPLICATION_SIZE {continue;}
+        if (right_segment.start as i32 - psd.bottom as i32).abs() <= (psd.top - psd.bottom) as i32 {continue;}
 
         if align {
             if psd.top - psd.bottom  > MAX_ALIGNMENT_SIZE || right_segment.end - right_segment.start > MAX_ALIGNMENT_SIZE {
@@ -156,32 +157,38 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
             },
             SearchState::Grow => {
                 i += candidate_size/2;
-                let mut new_matches = search(strand2, sa, &strand1[i..cmp::min(i+candidate_size, strand1.len()-1)], candidate_size);
-
-                if i >= strand1.len() - candidate_size {
-                    state = SearchState::Proto;
-                } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                    current_segments.append(&mut new_matches);
-                    current_segments = merge_segments(&current_segments);
-                    state = SearchState::Grow;
-                } else {
+                if strand1[i] == b'N' || strand1[i] == b'n' {
                     state = SearchState::SparseGrow;
+                } else {
+                    let mut new_matches = search(strand2, sa, &strand1[i..cmp::min(i+candidate_size, strand1.len()-1)], candidate_size);
+
+                    if i >= strand1.len() - candidate_size {
+                        state = SearchState::Proto;
+                    } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
+                        current_segments.append(&mut new_matches);
+                        current_segments = merge_segments(&current_segments);
+                        state = SearchState::Grow;
+                    } else {
+                        state = SearchState::SparseGrow;
+                    }
                 }
             },
             SearchState::SparseGrow => {
                 i += 1;
                 gap += 1;
-                let mut new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
+                if strand1[i] != b'N' && strand1[i] != b'n' {
+                    let mut new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
 
-                if (gap > max_gap_size) || (i >= strand1.len() - candidate_size) {
-                    state = SearchState::Proto;
-                } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                    current_segments.append(&mut new_matches);
-                    current_segments = merge_segments(&current_segments);
-                    gap = 0;
-                    state = SearchState::Grow;
-                } else {
-                    state = SearchState::SparseGrow;
+                    if (gap > max_gap_size) || (i >= strand1.len() - candidate_size) {
+                        state = SearchState::Proto;
+                    } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
+                        current_segments.append(&mut new_matches);
+                        current_segments = merge_segments(&current_segments);
+                        gap = 0;
+                        state = SearchState::Grow;
+                    } else {
+                        state = SearchState::SparseGrow;
+                    }
                 }
             },
             SearchState::Proto => {
@@ -191,7 +198,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
                         top: i,
                         matches: current_segments.clone()
                     };
-                    let mut result = make_duplication(psd, strand1, strand2, max_gap_size, align);
+                    let mut result = make_duplications(psd, strand1, strand2, max_gap_size, align);
                     r.append(&mut result);
                 }
                 state = SearchState::Start;

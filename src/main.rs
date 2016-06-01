@@ -137,7 +137,7 @@ fn search_duplications(
 
 
             {
-                const CHUNK_SIZE: usize = 200000;
+                const CHUNK_SIZE: usize = 1000000;
                 let num_tasks = (shared_strand1.len()-kmer_size)/CHUNK_SIZE;
                 let chunk_overflow = (shared_strand1.len()-kmer_size)%CHUNK_SIZE;
 

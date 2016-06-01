@@ -27,6 +27,18 @@ pub struct SD {
     pub rate: f32,
 }
 
+#[derive(Clone)]
+pub struct Segment {
+    start: usize,
+    end: usize,
+}
+
+impl fmt::Debug for Segment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "S{{{}, {}}} ({})", self.start, self.end, self.end - self.start)
+    }
+}
+
 enum SearchState {
     Start,
     Grow,
@@ -59,19 +71,22 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size
     let mut r = Vec::new();
 
     for right_segment in &right_segments {
-        if right_segment.end - right_segment.start < MIN_DUPLICATION_SIZE {continue;}
-        if (right_segment.start as i32 - psd.bottom as i32).abs() <= (psd.top - psd.bottom) as i32 {continue;}
+        let size = cmp::min(psd.top - psd.bottom, right_segment.end - right_segment.start);
+        if size < MIN_DUPLICATION_SIZE {continue;}
+        if ((right_segment.start as i32 - psd.bottom as i32).abs() <= (psd.top - psd.bottom) as i32)
+            || (right_segment.start == psd.bottom)
+            {continue;}
 
         if align {
-            if psd.top - psd.bottom  > MAX_ALIGNMENT_SIZE || right_segment.end - right_segment.start > MAX_ALIGNMENT_SIZE {
+            if size > MAX_ALIGNMENT_SIZE {
                 r.push(ProcessingSD::ForFuzzy {
                     psd: psd.clone(),
                     strand2_start: right_segment.start
                 });
             } else {
             // Fetch left and right candidate areas
-                let left_match = &strand1[psd.bottom..psd.top];
-                let right_match = &strand2[right_segment.start..right_segment.end];
+                let left_match = &strand1[psd.bottom..psd.bottom+size];
+                let right_match = &strand2[right_segment.start..right_segment.start+size];
 
                 r.push(ProcessingSD::ForSW {
                     psd: psd.clone(),
@@ -81,7 +96,7 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size
                 })
             }
         } else {
-            r.push(ProcessingSD::Done(SD{left: psd.bottom, right: right_segment.start, size: psd.top - psd.bottom, rate: 0.0}));
+            r.push(ProcessingSD::Done(SD{left: psd.bottom, right: right_segment.start, size: size, rate: 0.0}));
         }
     }
 
@@ -143,14 +158,13 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
                     i += 1;
                     state = SearchState::Start;
                 } else {
-                    current_segments = Vec::new();
-                    let new_segments = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
-                    if !new_segments.is_empty() {
-                        current_segments = merge_segments(&new_segments);
-                        state = SearchState::Grow;
-                    } else {
+                    current_segments = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size)
+                        .into_iter().filter(|x| x.start != i).collect();
+                    if current_segments.is_empty() {
                         i += 1;
                         state = SearchState::Start;
+                    } else {
+                        state = SearchState::Grow;
                     }
                 }
 
@@ -160,13 +174,18 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
                 if strand1[i] == b'N' || strand1[i] == b'n' {
                     state = SearchState::SparseGrow;
                 } else {
-                    let mut new_matches = search(strand2, sa, &strand1[i..cmp::min(i+candidate_size, strand1.len()-1)], candidate_size);
+                    let new_matches: Vec<Segment> = search(strand2, sa, &strand1[i..cmp::min(i+candidate_size, strand1.len()-1)], candidate_size)
+                        .into_iter().filter(|x| x.start != i).collect();
 
                     if i >= strand1.len() - candidate_size {
                         state = SearchState::Proto;
                     } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                        current_segments.append(&mut new_matches);
-                        current_segments = merge_segments(&current_segments);
+                        // current_segments.append(&mut new_matches);
+                        // current_segments = merge_segments(&current_segments);
+
+                        // XXX append_segments != merge_segments
+                        append_merge_segments(&mut current_segments, &new_matches, max_gap_size);
+
                         state = SearchState::Grow;
                     } else {
                         state = SearchState::SparseGrow;
@@ -209,67 +228,6 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
     r
 }
 
-
-pub struct AlignmentResult {
-    pub errors: u32,
-    pub ins_la: u32,
-    pub ins_ra: u32,
-}
-
-
-pub fn needleman_wunsch(q1: &[u8], q2: &[u8]) -> AlignmentResult {
-    const DELETE_SCORE: i64 = -5;
-    const MISMATCH_SCORE: i64 = -3;
-    const MATCH_SCORE: i64 = 1;
-
-    assert!(q1.len() == q2.len());
-    let size: usize = q1.len();
-
-    let mut f = vec![0 as i64; size * size];
-
-    // for i in 0..size {
-    for (i, fi) in f.iter_mut().enumerate().take(size) {
-        *fi = DELETE_SCORE*i as i64;
-    }
-
-    for j in 0..size {
-        f[j*size as usize] = DELETE_SCORE*j as i64;
-    }
-
-    for i in 1..size {
-        for j in 1..size {
-            let _match = f[(i-1)+(j-1)*size] + if q1[i] == q2[j] {MATCH_SCORE} else {MISMATCH_SCORE};
-            let del = f[(i-1)+(j)*size] + DELETE_SCORE;
-            let ins = f[i+(j-1)*size] + DELETE_SCORE;
-            f[i+j*size] = cmp::max(_match, cmp::max(del, ins));
-        }
-    }
-
-    let mut i = size-1 as usize;
-    let mut j = size-1 as usize;
-
-    let mut result = AlignmentResult {errors: 0, ins_la: 0, ins_ra: 0};
-    while i>1 && j>1 {
-        if i>0 && j>0
-            && (f[i+j*size] == f[(i-1)+(j-1)*size] + if q1[i] == q2[j] {MATCH_SCORE} else {MISMATCH_SCORE})
-            {
-                if q1[i] != q2[j] {
-                    result.errors += 1;
-                }
-                i -= 1;
-                j -= 1;
-            } else if i>0 && f[i+j*size] == f[(i-1)+j*size] + DELETE_SCORE {
-                result.ins_la += 1;
-                i -= 1;
-            } else if j>0 && f[i+j*size] == f[i+(j-1)*size] + DELETE_SCORE {
-                result.ins_ra += 1;
-                j -= 1;
-            }
-    }
-    result
-}
-
-
 pub fn strcmp(s1: &[u8], s2: &[u8]) -> i32 {
     assert!(s1.len() == s2.len());
     let n = s2.len();
@@ -282,7 +240,6 @@ pub fn strcmp(s1: &[u8], s2: &[u8]) -> i32 {
     0
 }
 
-
 pub fn translate_nucleotide(n: u8) -> u8 {
     match n {
         b'A' => b'T',
@@ -294,25 +251,8 @@ pub fn translate_nucleotide(n: u8) -> u8 {
     }
 }
 
-
 pub fn translated(text: &[u8]) -> Vec<u8> {
     text.iter().map(|x| translate_nucleotide(*x)).collect::<Vec<u8>>()
-    // let mut r = Vec::with_capacity(text.len());
-    // for i in 0..text.len() {
-    //     r.push(translate_nucleotide(text[i]));
-    // }
-    // r
-}
-
-#[derive(Clone)]
-pub struct Segment {
-    start: usize,
-    end: usize,
-}
-impl fmt::Debug for Segment {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "S{{{}, {}}} ({})", self.start, self.end, self.end - self.start)
-    }
 }
 
 fn merge_segments_with_delta(_segments: &[Segment], delta: u64) -> Vec<Segment> {
@@ -345,6 +285,21 @@ fn merge_segments(_segments: &[Segment]) -> Vec<Segment> {
         }
     }
     r
+}
+
+fn append_merge_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta: u32) {
+    // let mut originals = _originals.to_vec();
+    // let mut r = Vec::new();
+
+    for n in _news {
+        for o in _originals.iter_mut() {
+            if n.start >= o.start && n.start <= (o.end + delta as usize) &&
+                n.end > (o.end + delta as usize) {
+                o.end = n.end;
+                continue;
+            }
+        }
+    }
 }
 
 fn segments_to_segments_distance(segments: &[Segment], others: &[Segment]) -> u32 {
@@ -417,7 +372,6 @@ pub fn search(dna: &[u8], array: &[usize], pattern: &[u8], candidate_size: usize
     }
     rr
 }
-
 
 fn expand_nw(strand1: &[u8], strand2: &[u8], straight_start: usize, reverse_start: usize) -> SD {
     const PRECISION: f32 = 0.8;

@@ -72,7 +72,12 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size
 
     for right_segment in &right_segments {
         let size = cmp::min(psd.top - psd.bottom, right_segment.end - right_segment.start);
+
+        // Ignore too small SD
         if size < MIN_DUPLICATION_SIZE {continue;}
+        // Ignore N-dominant SD
+        if *(&strand1[psd.bottom..psd.top].iter().filter(|c| **c == b'n' || **c == b'N').count()) as f32> 0.1*(psd.top - psd.bottom) as f32 {continue;}
+
         if ((right_segment.start as i32 - psd.bottom as i32).abs() <= (psd.top - psd.bottom) as i32)
             || (right_segment.start == psd.bottom)
             {continue;}
@@ -84,7 +89,6 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size
                     strand2_start: right_segment.start
                 });
             } else {
-            // Fetch left and right candidate areas
                 let left_match = &strand1[psd.bottom..psd.bottom+size];
                 let right_match = &strand2[right_segment.start..right_segment.start+size];
 

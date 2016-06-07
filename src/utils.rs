@@ -199,18 +199,19 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
             SearchState::SparseGrow => {
                 i += 1;
                 gap += 1;
-                if strand1[i] != b'N' && strand1[i] != b'n' {
-                    let mut new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
-
-                    if (gap > max_gap_size) || (i >= strand1.len() - candidate_size) {
-                        state = SearchState::Proto;
-                    } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                        current_segments.append(&mut new_matches);
-                        current_segments = merge_segments(&current_segments);
-                        gap = 0;
-                        state = SearchState::Grow;
-                    } else {
-                        state = SearchState::SparseGrow;
+                if (gap > max_gap_size) || (i >= strand1.len() - candidate_size) {
+                    state = SearchState::Proto;
+                } else {
+                    if strand1[i] != b'N' && strand1[i] != b'n' {
+                        let mut new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
+                        if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
+                            current_segments.append(&mut new_matches);
+                            current_segments = merge_segments(&current_segments);
+                            gap = 0;
+                            state = SearchState::Grow;
+                        } else {
+                            state = SearchState::SparseGrow;
+                        }
                     }
                 }
             },
@@ -251,7 +252,7 @@ pub fn translate_nucleotide(n: u8) -> u8 {
         b'G' => b'C',
         b'C' => b'G',
         b'N' => b'N',
-        _    => panic!("Not a nucleotide: {}", n),
+        _    => b'N'
     }
 }
 

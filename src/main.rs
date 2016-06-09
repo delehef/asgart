@@ -6,12 +6,13 @@ extern crate docopt;
 extern crate rustc_serialize;
 
 use std::env;
+use std::io;
+use std::io::BufRead;
 use std::io::Write;
 use std::fs::File;
 use std::sync::mpsc;
 use std::sync::Arc;
 
-use bio::io::fasta;
 use bio::data_structures::suffix_array::suffix_array;
 
 use threadpool::ThreadPool;
@@ -62,6 +63,19 @@ struct Args {
 }
 
 
+fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
+    let file = try!(File::open(filename));
+    let file = io::BufReader::new(file);
+
+    Ok(file.lines()
+       .filter_map(|result| result.ok())
+       .filter(|line| !line.starts_with(">"))
+       .map(|line| line.trim().to_owned())
+       .fold(String::new(), |acc, x| acc+&x)
+       .into_bytes()
+      )
+}
+
 fn main() {
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.argv(env::args()).help(true).version(Some(VERSION.to_string())).decode())
@@ -74,7 +88,7 @@ fn main() {
                            args.arg_gap_size,
                            if args.flag_reverse {"r"} else {""},
                            if args.flag_translate {"t"} else {""},
-                          );
+                           );
     let threads_count: usize = if args.flag_threads > 0 { args.flag_threads } else { num_cpus::get() };
 
     if args.flag_verbose {
@@ -89,16 +103,17 @@ fn main() {
         println!("");
     }
 
-    let result = search_duplications(
-        &args.arg_strand1_file, &args.arg_strand2_file,
-        args.arg_kmer_size, args.arg_gap_size,
-        args.flag_reverse, args.flag_translate, args.flag_align,
-        threads_count
-        );
-    let mut out = File::create(&out_file).unwrap();
-    for p in result {
-        writeln!(&mut out, "{}", format!("{};{};{};{}", p.left, p.right, p.size, p.rate)).unwrap();
-    }
+    println!("{}", String::from_utf8(read_fasta("test.fasta").unwrap()).unwrap());
+    // let result = search_duplications(
+    //     &args.arg_strand1_file, &args.arg_strand2_file,
+    //     args.arg_kmer_size, args.arg_gap_size,
+    //     args.flag_reverse, args.flag_translate, args.flag_align,
+    //     threads_count
+    //     );
+    // let mut out = File::create(&out_file).unwrap();
+    // for p in result {
+    //     writeln!(&mut out, "{}", format!("{};{};{};{}", p.left, p.right, p.size, p.rate)).unwrap();
+    // }
 }
 
 fn search_duplications(
@@ -117,92 +132,88 @@ fn search_duplications(
 
     let mut result : Vec<utils::SD> = Vec::new();
 
-    for record1 in fasta::Reader::from_file(strand1_file).unwrap().records() {
-        let strand1 = record1.unwrap().seq().to_vec();
-        let shared_strand1 = Arc::new(strand1);
+    let strand1 = read_fasta(strand1_file).expect(&format!("Unable to read {}", strand1_file));
+    let shared_strand1 = Arc::new(strand1);
 
-        for record2 in fasta::Reader::from_file(strand2_file).unwrap().records() {
-            let thread_pool = ThreadPool::new(threads_count);
-            let (tx, rx) = mpsc::channel();
-            let strand2 = {
-                let mut strand2 = record2.unwrap().seq().to_vec();
-                if translate { strand2 = utils::translated(&strand2[0..strand2.len()-1].to_vec()); }
-                if reverse { strand2.reverse(); }
-                strand2.push(b'$');
-                strand2
-            };
-
-            let shared_suffix_array = Arc::new(suffix_array(&strand2));
-            let shared_strand2 = Arc::new(strand2);
+    let strand2 = {
+        let mut strand2 = read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file));
+        // let mut strand2 = record2.unwrap().seq().to_vec();
+        if translate { strand2 = utils::translated(&strand2[0..strand2.len()-1].to_vec()); }
+        if reverse { strand2.reverse(); }
+        strand2.push(b'$');
+        strand2
+    };
+    let shared_suffix_array = Arc::new(suffix_array(&strand2));
+    let shared_strand2 = Arc::new(strand2);
 
 
-            {
-                const CHUNK_SIZE: usize = 1000000;
-                let num_tasks = (shared_strand1.len()-kmer_size)/CHUNK_SIZE;
-                let chunk_overflow = (shared_strand1.len()-kmer_size)%CHUNK_SIZE;
+    let thread_pool = ThreadPool::new(threads_count);
+    let (tx, rx) = mpsc::channel();
+    {
+        const CHUNK_SIZE: usize = 1000000;
+        let num_tasks = (shared_strand1.len()-kmer_size)/CHUNK_SIZE;
+        let chunk_overflow = (shared_strand1.len()-kmer_size)%CHUNK_SIZE;
 
-                let mut start = 0;
-                for id in 0..num_tasks+1 // TODO Do with Vec::chunks
-                {
-                    let suffix_array = shared_suffix_array.clone();
-                    let strand1 = shared_strand1.clone();
-                    let strand2 = shared_strand2.clone();
+        let mut start = 0;
+        for id in 0..num_tasks+1 // TODO Do with Vec::chunks
+        {
+            let suffix_array = shared_suffix_array.clone();
+            let strand1 = shared_strand1.clone();
+            let strand2 = shared_strand2.clone();
 
-                    let my_tx = tx.clone();
+            let my_tx = tx.clone();
 
-                    thread_pool.execute(move || {
-                        let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
-                        my_tx.send(utils::search_duplications(
-                                &strand1, &strand2, &suffix_array,
-                                start, end,
-                                kmer_size, max_gap_size,
-                                align)).unwrap();
-                    });
+            thread_pool.execute(move || {
+                let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
+                my_tx.send(utils::search_duplications(
+                        &strand1, &strand2, &suffix_array,
+                        start, end,
+                        kmer_size, max_gap_size,
+                        align)).unwrap();
+            });
 
-                    start += CHUNK_SIZE;
-                }
-            }
-
-            drop(tx);
-            println!("Collecting first pass...");
-            let mut passes: Vec<utils::ProcessingSD> = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
-            println!("Done.");
-
-            if align {
-                println!("Collecting second pass...");
-                passes = passes.iter()
-                    .map(|b| {utils::align_perfect(b.clone())}).collect();
-                println!("Done.");
-
-                println!("Collecting third pass...");
-                passes = passes.iter()
-                    .map(|b| {utils::align_fuzzy(&(shared_strand1.clone()), &(shared_strand2.clone()), b.clone())}).collect();
-                println!("Done.");
-            }
-
-            println!("Collecting final pass...");
-            result.extend(passes.iter().filter_map(|b| {
-                match *b {
-                    utils::ProcessingSD::Done(ref _p) => {
-                        let mut p = _p.clone();
-                        if reverse {
-                            p.right = (*shared_strand2.clone()).len() - p.right - p.size;
-                            if p.right < p.left {
-                                std::mem::swap(&mut p.left, &mut p.right);
-                            }
-                        }
-                        Some(p)
-                    }
-                    utils::ProcessingSD::ForFuzzy{ .. } => {println!("FOUND A FORFUZZY"); None}
-                    utils::ProcessingSD::ForSW{ .. }    => {println!("FOUND A FORSW"); None},
-                    utils::ProcessingSD::Empty          => {None}
-                }
-            }));
-
-            // result.append(&mut all_sds);
-            println!("Done for {} & {}.", kmer_size, max_gap_size);
-
+            start += CHUNK_SIZE;
         }
     }
+
+    drop(tx);
+    println!("Collecting first pass...");
+    let mut passes: Vec<utils::ProcessingSD> = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
+    println!("Done.");
+
+    if align {
+        println!("Collecting second pass...");
+        passes = passes.iter()
+            .map(|b| {utils::align_perfect(b.clone())}).collect();
+        println!("Done.");
+
+        println!("Collecting third pass...");
+        passes = passes.iter()
+            .map(|b| {utils::align_fuzzy(&(shared_strand1.clone()), &(shared_strand2.clone()), b.clone())}).collect();
+        println!("Done.");
+    }
+
+    println!("Collecting final pass...");
+    result.extend(passes.iter().filter_map(|b| {
+        match *b {
+            utils::ProcessingSD::Done(ref _p) => {
+                let mut p = _p.clone();
+                if reverse {
+                    p.right = (*shared_strand2.clone()).len() - p.right - p.size;
+                    if p.right < p.left {
+                        std::mem::swap(&mut p.left, &mut p.right);
+                    }
+                }
+                Some(p)
+            }
+            utils::ProcessingSD::ForFuzzy{ .. } => {println!("FOUND A FORFUZZY"); None}
+            utils::ProcessingSD::ForSW{ .. }    => {println!("FOUND A FORSW"); None},
+            utils::ProcessingSD::Empty          => {None}
+        }
+    }));
+
+    // result.append(&mut all_sds);
+    println!("Done for {} & {}.", kmer_size, max_gap_size);
+
     result
 }

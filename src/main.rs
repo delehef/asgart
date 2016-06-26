@@ -103,17 +103,16 @@ fn main() {
         println!("");
     }
 
-    println!("{}", String::from_utf8(read_fasta("test.fasta").unwrap()).unwrap());
-    // let result = search_duplications(
-    //     &args.arg_strand1_file, &args.arg_strand2_file,
-    //     args.arg_kmer_size, args.arg_gap_size,
-    //     args.flag_reverse, args.flag_translate, args.flag_align,
-    //     threads_count
-    //     );
-    // let mut out = File::create(&out_file).unwrap();
-    // for p in result {
-    //     writeln!(&mut out, "{}", format!("{};{};{};{}", p.left, p.right, p.size, p.rate)).unwrap();
-    // }
+    let result = search_duplications(
+        &args.arg_strand1_file, &args.arg_strand2_file,
+        args.arg_kmer_size, args.arg_gap_size,
+        args.flag_reverse, args.flag_translate, args.flag_align,
+        threads_count
+        );
+    let mut out = File::create(&out_file).unwrap();
+    for p in result {
+        writeln!(&mut out, "{}", format!("{};{};{};{}", p.left, p.right, p.size, p.rate)).unwrap();
+    }
 }
 
 fn search_duplications(

@@ -205,8 +205,9 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
                     if strand1[i] != b'N' && strand1[i] != b'n' {
                         let mut new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
                         if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                            current_segments.append(&mut new_matches);
-                            current_segments = merge_segments(&current_segments);
+                            // current_segments.append(&mut new_matches);
+                            // current_segments = merge_segments(&current_segments);
+                            append_merge_segments(&mut current_segments, &new_matches, max_gap_size);
                             gap = 0;
                             state = SearchState::Grow;
                         } else {
@@ -293,9 +294,6 @@ fn merge_segments(_segments: &[Segment]) -> Vec<Segment> {
 }
 
 fn append_merge_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta: u32) {
-    // let mut originals = _originals.to_vec();
-    // let mut r = Vec::new();
-
     for n in _news {
         for o in _originals.iter_mut() {
             if n.start >= o.start && n.start <= (o.end + delta as usize) &&

@@ -67,13 +67,15 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
     let file = try!(File::open(filename));
     let file = io::BufReader::new(file);
 
-    Ok(file.lines()
+
+    let mut r = file.lines()
        .filter_map(|result| result.ok())
        .filter(|line| !line.starts_with(">"))
-       .map(|line| line.trim().to_owned())
-       .fold(String::new(), |acc, x| acc+&x)
-       .into_bytes()
-      )
+       .fold(Vec::new(), |mut r, line| {r.extend(line.trim().as_bytes().iter().cloned()); r});
+
+    // r.retain(|c| *c != b'n' && *c != b'N');
+
+    Ok(r)
 }
 
 fn main() {
@@ -105,7 +107,7 @@ fn main() {
 
     let result = search_duplications(
         &args.arg_strand1_file, &args.arg_strand2_file,
-        args.arg_kmer_size, args.arg_gap_size,
+        args.arg_kmer_size, args.arg_gap_size + args.arg_kmer_size as u32,
         args.flag_reverse, args.flag_translate, args.flag_align,
         threads_count
         );

@@ -174,12 +174,12 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
 
             },
             SearchState::Grow => {
-                i += candidate_size/2;
+                i += candidate_size;
                 if strand1[i] == b'N' || strand1[i] == b'n' {
                     state = SearchState::SparseGrow;
                 } else {
                     let new_matches: Vec<Segment> = search(strand2, sa, &strand1[i..cmp::min(i+candidate_size, strand1.len()-1)], candidate_size)
-                        .into_iter().filter(|x| x.start != i && x.start > current_start).collect();
+                        .into_iter().filter(|x| x.start != i).collect();
 
                     if i >= strand1.len() - candidate_size {
                         state = SearchState::Proto;

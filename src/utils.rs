@@ -29,6 +29,7 @@ pub struct SD {
 
 #[derive(Clone)]
 pub struct Segment {
+    tag: usize,
     start: usize,
     end: usize,
 }
@@ -70,11 +71,13 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size
     let right_segments = make_right_arms(&psd, max_hole_size);
     let mut r = Vec::new();
 
-    for right_segment in &right_segments {
-        let size = cmp::min(psd.top - psd.bottom, right_segment.end - right_segment.start);
+    for right_segment in right_segments {
 
         // Ignore too small SD
+        // let size = cmp::min(psd.top - psd.bottom, right_segment.end - right_segment.start);
+        let size = right_segment.end - right_segment.start;
         if size < MIN_DUPLICATION_SIZE {continue;}
+
         // Ignore N-dominant SD
         if *(&strand1[psd.bottom..psd.top].iter().filter(|c| **c == b'n' || **c == b'N').count()) as f32> 0.1*(psd.top - psd.bottom) as f32 {continue;}
 
@@ -83,9 +86,19 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size
             {continue;}
 
         if align {
+            let ppsd = if right_segment.start != 0 {
+                ProtoSD {
+                    bottom: right_segment.tag,
+                    top: psd.top,
+                    matches: psd.matches.clone(),
+                }
+            } else {
+                psd.clone()
+            };
+
             if size > MAX_ALIGNMENT_SIZE {
                 r.push(ProcessingSD::ForFuzzy {
-                    psd: psd.clone(),
+                    psd: ppsd,
                     strand2_start: right_segment.start
                 });
             } else {
@@ -100,7 +113,12 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size
                 })
             }
         } else {
-            r.push(ProcessingSD::Done(SD{left: psd.bottom, right: right_segment.start, size: size, rate: 0.0}));
+            r.push(ProcessingSD::Done(SD{
+                left: cmp::max(psd.bottom, right_segment.tag),
+                right: right_segment.start,
+                size: size,
+                rate: 0.0
+            }));
         }
     }
 
@@ -186,9 +204,8 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
                     } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
                         // current_segments.append(&mut new_matches);
                         // current_segments = merge_segments(&current_segments);
-
-                        // XXX append_segments != merge_segments
-                        append_merge_segments(&mut current_segments, &new_matches, max_gap_size);
+                        append_merge_segments(&mut current_segments, &new_matches, max_gap_size, i);
+                        // merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
 
                         state = SearchState::Grow;
                     } else {
@@ -203,11 +220,12 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, sta
                     state = SearchState::Proto;
                 } else {
                     if strand1[i] != b'N' && strand1[i] != b'n' {
-                        let mut new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
+                        let new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
                         if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
                             // current_segments.append(&mut new_matches);
                             // current_segments = merge_segments(&current_segments);
-                            append_merge_segments(&mut current_segments, &new_matches, max_gap_size);
+                            append_merge_segments(&mut current_segments, &new_matches, max_gap_size, i);
+                            // merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
                             gap = 0;
                             state = SearchState::Grow;
                         } else {
@@ -293,7 +311,24 @@ fn merge_segments(_segments: &[Segment]) -> Vec<Segment> {
     r
 }
 
-fn append_merge_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta: u32) {
+fn append_merge_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta: u32, i: usize) {
+    for n in _news {
+        let mut added = false;
+        for o in _originals.iter_mut() {
+            if n.start >= o.start && n.start <= (o.end + delta as usize) &&
+                n.end > (o.end + delta as usize) {
+                o.end = n.end;
+                added = true;
+                continue;
+            }
+        }
+        if !added {
+            _originals.push(Segment{tag: i, start: n.start, end: n.end});
+        }
+    }
+}
+
+fn merge_or_drop_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta: u32) {
     for n in _news {
         for o in _originals.iter_mut() {
             if n.start >= o.start && n.start <= (o.end + delta as usize) &&
@@ -364,14 +399,14 @@ pub fn search(dna: &[u8], array: &[usize], pattern: &[u8], candidate_size: usize
             }
             let mut rr = Vec::new();
             for i in result {
-                rr.push(Segment{start: i, end: i+candidate_size});
+                rr.push(Segment{tag: 0, start: i, end: i+candidate_size});
             }
             return rr;
         }
     }
     let mut rr = Vec::new();
     for i in result {
-        rr.push(Segment{start: i, end: i+candidate_size});
+        rr.push(Segment{tag: 0, start: i, end: i+candidate_size});
     }
     rr
 }

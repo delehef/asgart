@@ -144,7 +144,9 @@ fn search_duplications(
         strand2.push(b'$');
         strand2
     };
+    println!("Building suffix array...");
     let shared_suffix_array = Arc::new(suffix_array(&strand2));
+    println!("Done.");
     let shared_strand2 = Arc::new(strand2);
 
 
@@ -178,23 +180,23 @@ fn search_duplications(
     }
 
     drop(tx);
-    println!("Collecting first pass...");
+    println!("Looking for hulls...");
     let mut passes: Vec<utils::ProcessingSD> = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
     println!("Done.");
 
     if align {
-        println!("Collecting second pass...");
+        println!("Running perfect alignments");
         passes = passes.iter()
             .map(|b| {utils::align_perfect(b.clone())}).collect();
         println!("Done.");
 
-        println!("Collecting third pass...");
+        println!("Running fuzzy alignment...");
         passes = passes.iter()
             .map(|b| {utils::align_fuzzy(&(shared_strand1.clone()), &(shared_strand2.clone()), b.clone())}).collect();
         println!("Done.");
     }
 
-    println!("Collecting final pass...");
+    println!("Re-ordering...");
     result.extend(passes.iter().filter_map(|b| {
         match *b {
             utils::ProcessingSD::Done(ref _p) => {

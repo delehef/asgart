@@ -199,15 +199,8 @@ fn search_duplications(
     println!("Re-ordering...");
     result.extend(passes.iter().filter_map(|b| {
         match *b {
-            utils::ProcessingSD::Done(ref _p) => {
-                let mut p = _p.clone();
-                if reverse {
-                    p.right = (*shared_strand2.clone()).len() - p.right - p.size;
-                    if p.right < p.left {
-                        std::mem::swap(&mut p.left, &mut p.right);
-                    }
-                }
-                Some(p)
+            utils::ProcessingSD::Done(ref p) => {
+                Some(p.clone())
             }
             utils::ProcessingSD::ForFuzzy{ .. } => {println!("FOUND A FORFUZZY"); None}
             utils::ProcessingSD::ForSW{ .. }    => {println!("FOUND A FORSW"); None},

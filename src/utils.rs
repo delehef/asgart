@@ -27,6 +27,16 @@ pub struct SD {
     pub rate: f32,
 }
 
+impl SD {
+    pub fn left_part(&self) -> (usize, usize) {
+        (self.left, self.size)
+    }
+
+    pub fn right_part(&self) -> (usize, usize) {
+        (self.right, self.size)
+    }
+}
+
 #[derive(Clone)]
 pub struct Segment {
     tag: usize,

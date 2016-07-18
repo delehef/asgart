@@ -5,6 +5,7 @@ extern crate threadpool;
 extern crate docopt;
 extern crate rustc_serialize;
 
+use std::cmp;
 use std::env;
 use std::io;
 use std::io::BufRead;
@@ -73,7 +74,7 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
        .filter(|line| !line.starts_with(">"))
        .fold(Vec::new(), |mut r, line| {r.extend(line.trim().as_bytes().iter().cloned()); r});
 
-    // r.retain(|c| *c != b'n' && *c != b'N');
+    r.retain(|c| *c != b'n' && *c != b'N');
 
     Ok(r)
 }
@@ -184,6 +185,7 @@ fn search_duplications(
     let mut passes: Vec<utils::ProcessingSD> = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
     println!("Done.");
 
+
     if align {
         println!("Running perfect alignments");
         passes = passes.iter()
@@ -207,9 +209,100 @@ fn search_duplications(
             utils::ProcessingSD::Empty          => {None}
         }
     }));
+    println!("Done.");
+    result.sort_by(|a, b|
+                   if a.left != b.left {
+                       (a.left).cmp(&b.left)
+                   } else {
+                       (a.right).cmp(&b.right)
+                   });
 
-    // result.append(&mut all_sds);
+    println!("Reducing overlapping...");
+    result = reduce_overlap(&result);
+    println!("Done.");
+
     println!("Done for {} & {}.", kmer_size, max_gap_size);
 
     result
+}
+
+// Returns true if x ⊂ y
+fn subsegment((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
+    let xend = xstart + xlen;
+    let yend = ystart + ylen;
+
+    xstart >= ystart && xend <= yend
+}
+
+fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
+    let xend = xstart + xlen;
+    let yend = ystart + ylen;
+
+    (xstart >= ystart && xstart <= yend && xend >= yend)
+    || (ystart >= xstart && ystart <= xend && yend >= xend)
+}
+
+fn merge(x: &utils::SD, y: &utils::SD) -> utils::SD {
+   let (xleft, yleft, xsize, ysize) = if x.left < y.left {
+       (x.left, y.left, x.size, y.size)
+   } else {
+       (y.left, x.left, x.size, y.size)
+   };
+   let lsize = (yleft-xleft) + ((xleft+xsize)-yleft) + ((yleft+ysize) - (xleft+xsize));
+
+   let (xright, yright, xsize, ysize) = if x.right < y.right {
+       (x.right, y.right, x.size, y.size)
+   } else {
+       (y.right, x.right, x.size, y.size)
+   };
+   let rsize = (yright-xright) + ((xright+xsize)-yright) + ((yright+ysize) - (xright+xsize));
+
+   utils::SD {
+       left: xleft,
+       right: xright,
+       size: cmp::min(lsize, rsize),
+       rate: x.rate
+   }
+}
+
+fn reduce_overlap(result: &[utils::SD]) -> Vec<utils::SD> {
+    fn _reduce(result: &[utils::SD]) -> Vec<utils::SD> {
+        let mut news: Vec<utils::SD> = Vec::new();
+        'to_insert: for x in result.iter() {
+            'news: for ref mut y in news.iter_mut() {
+                // x ⊂ y
+                if subsegment(x.left_part(), y.left_part()) && subsegment(x.right_part(), y.right_part())
+                {continue 'to_insert;}
+
+                // x ⊃ y
+                if subsegment(y.left_part(), x.left_part()) && subsegment(y.right_part(), x.right_part())
+                {
+                    y.left = x.left; y.right = x.right; y.size = x.size; y.rate = x.rate;
+                    continue 'to_insert;
+                }
+
+                if overlap(x.left_part(), y.left_part()) && overlap(x.right_part(), y.right_part())
+                {
+                    let z = merge(x, y);
+                    y.left = z.left;
+                    y.right = z.right;
+                    y.size = z.size;
+                    continue 'to_insert;
+                }
+            }
+            news.push(x.clone());
+        }
+        println!("{} reduced to {}", result.len(), news.len());
+        news
+    }
+
+    let mut old_size = result.len();
+    let mut news = _reduce(result);
+    let mut new_size = news.len();
+    while new_size < old_size {
+        old_size = news.len();
+        news = _reduce(&news);
+        new_size = news.len();
+    }
+    news
 }

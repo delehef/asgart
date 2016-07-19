@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::cmp;
-use bio::data_structures::suffix_array::SuffixArray;
+use bio::data_structures::suffix_array::RawSuffixArray;
 use std::fmt;
 use bio::alignment::pairwise::*;
 use bio::alignment::AlignmentOperation;
@@ -168,7 +168,7 @@ pub fn align_fuzzy(strand1: &[u8], strand2: &[u8], p: ProcessingSD) -> Processin
     }
 }
 
-pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &SuffixArray, start: usize, end: usize,
+pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &RawSuffixArray, start: usize, end: usize,
                            candidate_size: usize, max_gap_size: u32, align: bool) -> Vec<ProcessingSD> {
     let mut r = Vec::new();
 

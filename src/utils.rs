@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::cmp;
-use bio::data_structures::suffix_array::RawSuffixArray;
 use std::fmt;
 use bio::alignment::pairwise::*;
 use bio::alignment::AlignmentOperation;
@@ -168,7 +167,7 @@ pub fn align_fuzzy(strand1: &[u8], strand2: &[u8], p: ProcessingSD) -> Processin
     }
 }
 
-pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &RawSuffixArray, start: usize, end: usize,
+pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[usize], start: usize, end: usize,
                            candidate_size: usize, max_gap_size: u32, align: bool) -> Vec<ProcessingSD> {
     let mut r = Vec::new();
 
@@ -228,19 +227,17 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &RawSuffixArray, 
                 gap += 1;
                 if (gap > max_gap_size) || (i >= strand1.len() - candidate_size) {
                     state = SearchState::Proto;
-                } else {
-                    if strand1[i] != b'N' && strand1[i] != b'n' {
-                        let new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
-                        if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                            // current_segments.append(&mut new_matches);
-                            // current_segments = merge_segments(&current_segments);
-                            append_merge_segments(&mut current_segments, &new_matches, max_gap_size, i);
-                            // merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
-                            gap = 0;
-                            state = SearchState::Grow;
-                        } else {
-                            state = SearchState::SparseGrow;
-                        }
+                } else if strand1[i] != b'N' && strand1[i] != b'n' {
+                    let new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
+                    if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
+                        // current_segments.append(&mut new_matches);
+                        // current_segments = merge_segments(&current_segments);
+                        append_merge_segments(&mut current_segments, &new_matches, max_gap_size, i);
+                        // merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
+                        gap = 0;
+                        state = SearchState::Grow;
+                    } else {
+                        state = SearchState::SparseGrow;
                     }
                 }
             },
@@ -280,8 +277,7 @@ pub fn translate_nucleotide(n: u8) -> u8 {
         b'T' => b'A',
         b'G' => b'C',
         b'C' => b'G',
-        b'N' => b'N',
-        _    => b'N'
+        b'N' | _ => b'N',
     }
 }
 

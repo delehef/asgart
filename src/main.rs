@@ -71,7 +71,7 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
 
     let mut r = file.lines()
        .filter_map(|result| result.ok())
-       .filter(|line| !line.starts_with(">"))
+       .filter(|line| !line.starts_with('>'))
        .fold(Vec::new(), |mut r, line| {r.extend(line.trim().as_bytes().iter().cloned()); r});
 
     r.retain(|c| *c != b'n' && *c != b'N');
@@ -269,7 +269,7 @@ fn reduce_overlap(result: &[utils::SD]) -> Vec<utils::SD> {
     fn _reduce(result: &[utils::SD]) -> Vec<utils::SD> {
         let mut news: Vec<utils::SD> = Vec::new();
         'to_insert: for x in result.iter() {
-            'news: for ref mut y in news.iter_mut() {
+            for ref mut y in &mut news {
                 // x ⊂ y
                 if subsegment(x.left_part(), y.left_part()) && subsegment(x.right_part(), y.right_part())
                 {continue 'to_insert;}

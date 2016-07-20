@@ -18,7 +18,7 @@ macro_rules! log(
 );
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, RustcEncodable)]
 pub struct SD {
     pub left: usize,
     pub right: usize,

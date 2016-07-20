@@ -79,14 +79,31 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
     Ok(r)
 }
 
+#[derive(RustcEncodable)]
+struct Strand {
+    length: usize,
+    reversed: bool,
+    translated: bool,
+}
+
+#[derive(RustcEncodable)]
+struct RunResult {
+    strand1: Strand,
+    strand2: Strand,
+
+    SDs: Vec<utils::SD>,
+}
+
 fn main() {
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.argv(env::args()).help(true).version(Some(VERSION.to_string())).decode())
         .unwrap_or_else(|e| e.exit() )
         ;
 
-    let out_file = format!("{}sd_{}_{}{}{}.csv",
+    let out_file = format!("{}{}_vs_{}_{}_{}{}{}.json",
                            args.flag_prefix,
+                           &args.arg_strand1_file,
+                           &args.arg_strand2_file,
                            args.arg_kmer_size,
                            args.arg_gap_size,
                            if args.flag_reverse {"r"} else {""},
@@ -113,9 +130,7 @@ fn main() {
         threads_count
         );
     let mut out = File::create(&out_file).unwrap();
-    for p in result {
-        writeln!(&mut out, "{}", format!("{};{};{};{}", p.left, p.right, p.size, p.rate)).unwrap();
-    }
+    writeln!(&mut out, "{}", rustc_serialize::json::encode(&result).unwrap());
 }
 
 fn search_duplications(
@@ -130,7 +145,7 @@ fn search_duplications(
     align: bool,
 
     threads_count: usize,
-    ) -> Vec<utils::SD> {
+    ) -> RunResult {
 
     let mut result : Vec<utils::SD> = Vec::new();
 
@@ -223,7 +238,19 @@ fn search_duplications(
 
     println!("Done for {} & {}.", kmer_size, max_gap_size);
 
-    result
+    RunResult {
+        strand1: Strand {
+            length: shared_strand1.len(),
+            reversed: false,
+            translated: false,
+        },
+        strand2: Strand {
+            length: shared_strand2.len() - 1, // Drop the '$'
+            reversed: reverse,
+            translated: translate,
+        },
+        SDs: result,
+    }
 }
 
 // Returns true if x ⊂ y

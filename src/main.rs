@@ -236,7 +236,7 @@ fn search_duplications(
     result = reduce_overlap(&result);
     println!("Done.");
 
-    println!("Done for {} & {}.", kmer_size, max_gap_size);
+    println!("Done for {} & {}.", kmer_size, max_gap_size - kmer_size as u32);
 
     RunResult {
         strand1: Strand {

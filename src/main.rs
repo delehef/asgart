@@ -41,6 +41,7 @@ Options:
     --prefix=<prefix>       Prefix for the result file [default: ]
     -R, --reverse           Reverse the second DNA strand.
     -T, --translate         Translate the second DNA strand.
+    -i, --interlaced        Look for interlaced duplications (may drastically impair performances!)
     -A, --align             Try to perform alignment.
     -v, --verbose           Print additional informations to STDOUT.
 ";
@@ -57,6 +58,7 @@ struct Args {
     flag_reverse: bool,
     flag_translate: bool,
     flag_align: bool,
+    flag_interlaced: bool,
 
     flag_help: bool,
     flag_version: bool,
@@ -74,7 +76,7 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
        .filter(|line| !line.starts_with('>'))
        .fold(Vec::new(), |mut r, line| {r.extend(line.trim().as_bytes().iter().cloned()); r});
 
-    r.retain(|c| *c != b'n' && *c != b'N');
+    // r.retain(|c| *c != b'n' && *c != b'N');
 
     Ok(r)
 }
@@ -119,6 +121,7 @@ fn main() {
         println!("Output file              {}", &out_file);
         println!("Reverse 2nd strand       {}", args.flag_reverse);
         println!("Translate 2nd strand     {}", args.flag_translate);
+        println!("Interlaced SD            {}", args.flag_interlaced);
         println!("Threads count            {}", threads_count);
         println!("");
     }
@@ -126,7 +129,7 @@ fn main() {
     let result = search_duplications(
         &args.arg_strand1_file, &args.arg_strand2_file,
         args.arg_kmer_size, args.arg_gap_size + args.arg_kmer_size as u32,
-        args.flag_reverse, args.flag_translate, args.flag_align,
+        args.flag_reverse, args.flag_translate, args.flag_align, args.flag_interlaced,
         threads_count
         );
     let mut out = File::create(&out_file).unwrap();
@@ -142,6 +145,7 @@ fn search_duplications(
 
     reverse: bool,
     translate: bool,
+    interlaced: bool,
     align: bool,
 
     threads_count: usize,
@@ -154,7 +158,6 @@ fn search_duplications(
 
     let strand2 = {
         let mut strand2 = read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file));
-        // let mut strand2 = record2.unwrap().seq().to_vec();
         if translate { strand2 = utils::translated(&strand2[0..strand2.len()-1].to_vec()); }
         if reverse { strand2.reverse(); }
         strand2.push(b'$');
@@ -188,6 +191,7 @@ fn search_duplications(
                         &strand1, &strand2, &suffix_array,
                         start, end,
                         kmer_size, max_gap_size,
+                        interlaced,
                         align)).unwrap();
             });
 

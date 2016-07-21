@@ -168,7 +168,8 @@ pub fn align_fuzzy(strand1: &[u8], strand2: &[u8], p: ProcessingSD) -> Processin
 }
 
 pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[usize], start: usize, end: usize,
-                           candidate_size: usize, max_gap_size: u32, align: bool) -> Vec<ProcessingSD> {
+                           candidate_size: usize, max_gap_size: u32,
+                           interlaced: bool, align: bool) -> Vec<ProcessingSD> {
     let mut r = Vec::new();
 
     let mut i = start;
@@ -211,10 +212,12 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[usize], start: 
                     if i >= strand1.len() - candidate_size {
                         state = SearchState::Proto;
                     } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                        // current_segments.append(&mut new_matches);
-                        // current_segments = merge_segments(&current_segments);
-                        append_merge_segments(&mut current_segments, &new_matches, max_gap_size, i);
-                        // merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
+                        if interlaced {
+                            append_merge_segments(&mut current_segments, &new_matches,
+                                                  max_gap_size, i);
+                        } else {
+                            merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
+                        }
 
                         state = SearchState::Grow;
                     } else {
@@ -230,10 +233,12 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[usize], start: 
                 } else if strand1[i] != b'N' && strand1[i] != b'n' {
                     let new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
                     if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                        // current_segments.append(&mut new_matches);
-                        // current_segments = merge_segments(&current_segments);
-                        append_merge_segments(&mut current_segments, &new_matches, max_gap_size, i);
-                        // merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
+                        if interlaced {
+                            append_merge_segments(&mut current_segments, &new_matches,
+                                                  max_gap_size, i);
+                        } else {
+                            merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
+                        }
                         gap = 0;
                         state = SearchState::Grow;
                     } else {
@@ -296,22 +301,6 @@ fn merge_segments_with_delta(_segments: &[Segment], delta: u64) -> Vec<Segment> 
             r.last_mut().unwrap().end = current_segment.end;
         } else {
             r.push(current_segment.clone());
-        }
-    }
-    r
-}
-
-fn merge_segments(_segments: &[Segment]) -> Vec<Segment> {
-    let mut segments = _segments.to_vec();
-    let mut r = Vec::new();
-    segments.sort_by(|x, y| x.start.cmp(&y.start));
-
-    r.push(segments[0].clone());
-    for current_segment in segments.iter().skip(1) {
-        if r.last().unwrap().end < current_segment.start {
-            r.push(current_segment.clone());
-        } else if r.last().unwrap().end  < current_segment.end {
-            r.last_mut().unwrap().end = current_segment.end;
         }
     }
     r

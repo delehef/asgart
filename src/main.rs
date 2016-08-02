@@ -132,7 +132,8 @@ fn main() {
         args.flag_reverse, args.flag_translate, args.flag_align, args.flag_interlaced,
         threads_count
         );
-    let mut out = File::create(&out_file).unwrap();
+    let mut out = File::create(&out_file).expect(&format!("Unable to create `{}` for output", 
+                                                          &out_file));
     writeln!(&mut out, "{}", rustc_serialize::json::encode(&result).unwrap());
 }
 

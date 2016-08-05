@@ -1,8 +1,9 @@
-use std::collections::HashSet;
 use std::cmp;
 use std::fmt;
 use bio::alignment::pairwise::*;
 use bio::alignment::AlignmentOperation;
+
+use super::divsufsort;
 
 const MIN_DUPLICATION_SIZE: usize = 1000;
 const MAX_ALIGNMENT_SIZE: usize = 100000;
@@ -38,9 +39,9 @@ impl SD {
 
 #[derive(Clone)]
 pub struct Segment {
-    tag: usize,
-    start: usize,
-    end: usize,
+    pub tag: usize,
+    pub start: usize,
+    pub end: usize,
 }
 
 impl fmt::Debug for Segment {
@@ -167,7 +168,7 @@ pub fn align_fuzzy(strand1: &[u8], strand2: &[u8], p: ProcessingSD) -> Processin
     }
 }
 
-pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[usize], start: usize, end: usize,
+pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[i32], start: usize, end: usize,
                            candidate_size: usize, max_gap_size: u32,
                            interlaced: bool, align: bool) -> Vec<ProcessingSD> {
     let mut r = Vec::new();
@@ -264,18 +265,6 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[usize], start: 
     r
 }
 
-pub fn strcmp(s1: &[u8], s2: &[u8]) -> i32 {
-    assert!(s1.len() == s2.len());
-    let n = s2.len();
-
-    for i in 0..n {
-        if s1[i] != s2[i] {
-            return s1[i] as i32 - s2[i] as i32;
-        }
-    }
-    0
-}
-
 pub fn translate_nucleotide(n: u8) -> u8 {
     match n {
         b'A' => b'T',
@@ -351,60 +340,10 @@ fn segments_to_segments_distance(segments: &[Segment], others: &[Segment]) -> u3
     distance as u32
 }
 
-pub fn search(dna: &[u8], array: &[usize], pattern: &[u8], candidate_size: usize) -> Vec<Segment> {
-    let mut lo = 0;
-    let mut hi = dna.len()-1;
-    let mut result = HashSet::new();
-
-    while lo <= hi {
-        let mid = (lo+hi)/2;
-        if array[mid]+pattern.len() > dna.len() {break;}
-        let substring = &dna[array[mid]..array[mid]+pattern.len()];
-        let res = strcmp(pattern, substring);
-
-        if res > 0 {
-            lo = mid + 1;
-        } else if res < 0 {
-            hi = mid - 1;
-        } else { // TIME TO BLOB!
-            let mut l = mid;
-            let mut r = mid;
-            let mut expand_left = true;
-            let mut expand_right = true;
-
-            while expand_left || expand_right && array[r]+pattern.len() < dna.len() {
-                if expand_left {
-                    if *pattern == dna[array[l]..array[l]+pattern.len()-1] {
-                        result.insert(array[l]);
-                        l -= 1;
-                        if l == 0 { expand_left = false; }
-                    } else {
-                        expand_left = false;
-                    }
-                }
-                if expand_right {
-                    if *pattern == dna[array[r]..array[r]+pattern.len()] {
-                        result.insert(array[r]);
-                        r += 1;
-                        if r >= array.len() - 1 { expand_right = false; }
-                    } else {
-                        expand_right = false;
-                    }
-                }
-            }
-            let mut rr = Vec::new();
-            for i in result {
-                rr.push(Segment{tag: 0, start: i, end: i+candidate_size});
-            }
-            return rr;
-        }
-    }
-    let mut rr = Vec::new();
-    for i in result {
-        rr.push(Segment{tag: 0, start: i, end: i+candidate_size});
-    }
-    rr
+pub fn search(dna: &[u8], array: &[i32], pattern: &[u8], candidate_size: usize) -> Vec<Segment> {
+    divsufsort::r_sa_search(dna, array, pattern)
 }
+
 
 fn expand_nw(strand1: &[u8], strand2: &[u8], straight_start: usize, reverse_start: usize) -> SD {
     const PRECISION: f32 = 0.8;

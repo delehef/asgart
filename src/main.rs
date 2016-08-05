@@ -13,6 +13,7 @@ use std::io::Write;
 use std::fs::File;
 use std::sync::mpsc;
 use std::sync::Arc;
+use std::ascii::AsciiExt;
 
 use bio::data_structures::suffix_array::suffix_array;
 
@@ -21,6 +22,7 @@ use threadpool::ThreadPool;
 use docopt::Docopt;
 
 mod utils;
+mod divsufsort;
 
 const VERSION: &'static str = "
 Asgart v0.1
@@ -75,6 +77,8 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
        .filter_map(|result| result.ok())
        .filter(|line| !line.starts_with('>'))
        .fold(Vec::new(), |mut r, line| {r.extend(line.trim().as_bytes().iter().cloned()); r});
+
+    r = r.to_ascii_uppercase();
 
     // r.retain(|c| *c != b'n' && *c != b'N');
 
@@ -165,7 +169,7 @@ fn search_duplications(
         strand2
     };
     println!("Building suffix array...");
-    let shared_suffix_array = Arc::new(suffix_array(&strand2));
+    let shared_suffix_array = Arc::new(divsufsort::r_divsufsort(&strand2));
     println!("Done.");
     let shared_strand2 = Arc::new(strand2);
 

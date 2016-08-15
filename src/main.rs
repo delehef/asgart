@@ -31,7 +31,7 @@ Copyright © 2016 IRIT
 
 const USAGE: &'static str = "
 Usage:
-    asgart <strand1-file> <strand2-file> <kmer-size> <gap-size> [-v] [-R] [-T] [-A] [--threads=<tc>] [--prefix=<prefix>]
+    asgart <strand1-file> <strand2-file> <kmer-size> <gap-size> [-v] [-R] [-T] [-A] [-i] [--threads=<tc>] [--prefix=<prefix>]
     asgart --version
     asgart --help
 
@@ -150,8 +150,8 @@ fn search_duplications(
 
     reverse: bool,
     translate: bool,
-    interlaced: bool,
     align: bool,
+    interlaced: bool,
 
     threads_count: usize,
     ) -> RunResult {

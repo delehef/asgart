@@ -15,14 +15,14 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::ascii::AsciiExt;
 
-use bio::data_structures::suffix_array::suffix_array;
-
 use threadpool::ThreadPool;
 
 use docopt::Docopt;
 
+use divsufsort64::idx;
+
 mod utils;
-mod divsufsort;
+mod divsufsort64;
 
 const VERSION: &'static str = "
 Asgart v0.1
@@ -85,6 +85,16 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
     Ok(r)
 }
 
+pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
+    let mut sa = Vec::with_capacity(dna.len());
+    sa.resize(dna.len(), 0);
+    unsafe {
+        divsufsort64::divsufsort64(dna.as_ptr(), sa.as_mut_ptr(), dna.len() as i64);
+    }
+    sa
+}
+
+
 #[derive(RustcEncodable)]
 struct Strand {
     length: usize,
@@ -127,6 +137,7 @@ fn main() {
         println!("Translate 2nd strand     {}", args.flag_translate);
         println!("Interlaced SD            {}", args.flag_interlaced);
         println!("Threads count            {}", threads_count);
+        println!("libdivsufsort            v{:?}", unsafe{divsufsort64::divsufsort64_version()});
         println!("");
     }
 
@@ -169,7 +180,7 @@ fn search_duplications(
         strand2
     };
     println!("Building suffix array...");
-    let shared_suffix_array = Arc::new(divsufsort::r_divsufsort(&strand2));
+    let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
     println!("Done.");
     let shared_strand2 = Arc::new(strand2);
 

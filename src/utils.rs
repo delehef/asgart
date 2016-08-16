@@ -3,7 +3,7 @@ use std::fmt;
 use bio::alignment::pairwise::*;
 use bio::alignment::AlignmentOperation;
 
-use super::divsufsort;
+use super::divsufsort64::*;
 
 const MIN_DUPLICATION_SIZE: usize = 1000;
 const MAX_ALIGNMENT_SIZE: usize = 100000;
@@ -91,7 +91,8 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], strand2: &[u8], max_hole_size
         // Ignore N-dominant SD
         if *(&strand1[psd.bottom..psd.top].iter().filter(|c| **c == b'n' || **c == b'N').count()) as f32> 0.1*(psd.top - psd.bottom) as f32 {continue;}
 
-        if ((right_segment.start as i32 - psd.bottom as i32).abs() <= (psd.top - psd.bottom) as i32)
+        if ((right_segment.start as i64 - psd.bottom as i64).abs()
+            <= (psd.top - psd.bottom) as i64)
             || (right_segment.start == psd.bottom)
             {continue;}
 
@@ -168,8 +169,8 @@ pub fn align_fuzzy(strand1: &[u8], strand2: &[u8], p: ProcessingSD) -> Processin
     }
 }
 
-pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[i32], start: usize, end: usize,
-                           candidate_size: usize, max_gap_size: u32,
+pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: usize, end: usize,
+                           probe_size: usize, max_gap_size: u32,
                            interlaced: bool, align: bool) -> Vec<ProcessingSD> {
     let mut r = Vec::new();
 
@@ -182,7 +183,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[i32], start: us
     loop {
         match state {
             SearchState::Start => {
-                if i+candidate_size >= end-1 {
+                if i+probe_size >= end-1 {
                     break;
                 }
                 gap = 0;
@@ -191,7 +192,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[i32], start: us
                     i += 1;
                     state = SearchState::Start;
                 } else {
-                    current_segments = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size)
+                    current_segments = search(strand2, sa, &strand1[i..i+probe_size])
                         .into_iter().filter(|x| x.start != i).collect();
                     if current_segments.is_empty() {
                         i += 1;
@@ -203,14 +204,17 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[i32], start: us
 
             },
             SearchState::Grow => {
-                i += candidate_size;
+                i += probe_size;
                 if strand1[i] == b'N' || strand1[i] == b'n' {
                     state = SearchState::SparseGrow;
                 } else {
-                    let new_matches: Vec<Segment> = search(strand2, sa, &strand1[i..cmp::min(i+candidate_size, strand1.len()-1)], candidate_size)
+                    let new_matches: Vec<Segment> = search(strand2, sa, 
+                                                           &strand1[i..cmp::min(i+probe_size, 
+                                                                                strand1.len()-1)], 
+                                                           )
                         .into_iter().filter(|x| x.start != i).collect();
 
-                    if i >= strand1.len() - candidate_size {
+                    if i >= strand1.len() - probe_size {
                         state = SearchState::Proto;
                     } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
                         if interlaced {
@@ -229,10 +233,10 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[i32], start: us
             SearchState::SparseGrow => {
                 i += 1;
                 gap += 1;
-                if (gap > max_gap_size) || (i >= strand1.len() - candidate_size) {
+                if (gap > max_gap_size) || (i >= strand1.len() - probe_size) {
                     state = SearchState::Proto;
                 } else if strand1[i] != b'N' && strand1[i] != b'n' {
-                    let new_matches = search(strand2, sa, &strand1[i..i+candidate_size], candidate_size);
+                    let new_matches = search(strand2, sa, &strand1[i..i+probe_size]);
                     if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
                         if interlaced {
                             append_merge_segments(&mut current_segments, &new_matches,
@@ -340,8 +344,20 @@ fn segments_to_segments_distance(segments: &[Segment], others: &[Segment]) -> u3
     distance as u32
 }
 
-pub fn search(dna: &[u8], array: &[i32], pattern: &[u8], candidate_size: usize) -> Vec<Segment> {
-    divsufsort::r_sa_search(dna, array, pattern)
+pub fn search(dna: &[u8], sa: &[idx], pattern: &[u8]) -> Vec<Segment> {
+    let mut out = 0;
+    let count;
+    unsafe {
+        count = sa_search64(dna.as_ptr(), dna.len() as i64,
+            pattern.as_ptr(), pattern.len() as i64,
+            sa.as_ptr(), sa.len() as i64, &mut out);
+    }
+    let mut rr = Vec::new();
+    for i in 0..count {
+        let start = sa[(out+i) as usize];
+        rr.push(Segment{tag: 0, start: start as usize, end: start as usize + pattern.len()});
+    }
+    rr
 }
 
 

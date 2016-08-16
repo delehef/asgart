@@ -188,7 +188,7 @@ fn search_duplications(
     let thread_pool = ThreadPool::new(threads_count);
     let (tx, rx) = mpsc::channel();
     {
-        const CHUNK_SIZE: usize = 1000000;
+        const CHUNK_SIZE: usize = 200000;
         let num_tasks = (shared_strand1.len()-kmer_size)/CHUNK_SIZE;
         let chunk_overflow = (shared_strand1.len()-kmer_size)%CHUNK_SIZE;
 

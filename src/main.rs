@@ -2,11 +2,11 @@ extern crate uuid;
 extern crate bio;
 extern crate num_cpus;
 extern crate threadpool;
-extern crate docopt;
+#[macro_use]
+extern crate clap;
 extern crate rustc_serialize;
 
 use std::cmp;
-use std::env;
 use std::io;
 use std::io::BufRead;
 use std::io::Write;
@@ -17,55 +17,12 @@ use std::ascii::AsciiExt;
 
 use threadpool::ThreadPool;
 
-use docopt::Docopt;
+use clap::App;
 
 use divsufsort64::idx;
 
 mod utils;
 mod divsufsort64;
-
-const VERSION: &'static str = "
-Asgart v0.1
-Copyright © 2016 IRIT
-";
-
-const USAGE: &'static str = "
-Usage:
-    asgart <strand1-file> <strand2-file> <kmer-size> <gap-size> [-v] [-R] [-T] [-A] [-i] [--threads=<tc>] [--prefix=<prefix>]
-    asgart --version
-    asgart --help
-
-Options:
-    --help                  Show this message.
-    --version               Show the version of Asgart.
-
-    --threads=<tc>          Number of threads used, number of cores if 0 [default: 0].
-    --prefix=<prefix>       Prefix for the result file [default: ]
-    -R, --reverse           Reverse the second DNA strand.
-    -T, --translate         Translate the second DNA strand.
-    -i, --interlaced        Look for interlaced duplications (may drastically impair performances!)
-    -A, --align             Try to perform alignment.
-    -v, --verbose           Print additional informations to STDOUT.
-";
-
-#[derive(Debug, RustcDecodable)]
-struct Args {
-    arg_strand1_file: String,
-    arg_strand2_file: String,
-    arg_kmer_size: usize,
-    arg_gap_size: u32,
-    flag_prefix: String,
-    flag_threads: usize,
-
-    flag_reverse: bool,
-    flag_translate: bool,
-    flag_align: bool,
-    flag_interlaced: bool,
-
-    flag_help: bool,
-    flag_version: bool,
-    flag_verbose: bool,
-}
 
 
 fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
@@ -97,6 +54,7 @@ pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
 
 #[derive(RustcEncodable)]
 struct Strand {
+    name: String,
     length: usize,
     reversed: bool,
     translated: bool,
@@ -111,44 +69,83 @@ struct RunResult {
 }
 
 fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.argv(env::args()).help(true).version(Some(VERSION.to_string())).decode())
-        .unwrap_or_else(|e| e.exit() )
-        ;
+    struct Settings {
+        strand1_file: String,
+        strand2_file: String,
+        kmer_size: usize,
+        gap_size: u32,
 
-    let out_file = format!("{}{}_vs_{}_{}_{}{}{}.json",
-                           args.flag_prefix,
-                           &args.arg_strand1_file,
-                           &args.arg_strand2_file,
-                           args.arg_kmer_size,
-                           args.arg_gap_size,
-                           if args.flag_reverse {"r"} else {""},
-                           if args.flag_translate {"t"} else {""},
-                           );
-    let threads_count: usize = if args.flag_threads > 0 { args.flag_threads } else { num_cpus::get() };
+        reverse: bool,
+        translate: bool,
+        interlaced: bool,
+        trim: Vec<usize>,
 
-    if args.flag_verbose {
-        println!("1st strand file          {}", &args.arg_strand1_file);
-        println!("2nd strand file          {}", &args.arg_strand2_file);
-        println!("K-mers size              {}", args.arg_kmer_size);
-        println!("Max gap size             {}", args.arg_gap_size);
+        prefix: String,
+        threads_count: usize,
+
+        verbose: bool
+    }
+
+    let yaml = load_yaml!("cli.yaml");
+    let args = App::from_yaml(yaml)
+        .version(crate_version!())
+        .author(crate_authors!())
+        .get_matches();
+
+    let settings = Settings {
+        strand1_file: args.value_of("strand1").unwrap().to_owned(),
+        strand2_file: args.value_of("strand2").unwrap().to_owned(),
+        kmer_size: value_t_or_exit!(args, "probe_size", usize),
+        gap_size: value_t_or_exit!(args, "max_gap", u32),
+
+        reverse: args.is_present("reverse"),
+        translate: args.is_present("translate"),
+        interlaced: args.is_present("interlaced"),
+        trim: values_t!(args.values_of("trim"), usize).unwrap_or_else(|_| Vec::new()),
+
+        prefix: args.value_of("prefix").unwrap_or("").to_owned(),
+        threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
+        
+        verbose: true,
+    };
+
+    let out_file = if settings.prefix.is_empty() {
+        format!("{}_vs_{}_{}_{}{}{}.json",
+                &settings.strand1_file,
+                &settings.strand2_file,
+                settings.kmer_size,
+                settings.gap_size,
+                if settings.reverse {"r"} else {""},
+                if settings.translate {"t"} else {""},
+                )
+    } else {
+        settings.prefix + ".json"
+    };
+
+    if settings.verbose {
+        println!("1st strand file          {}", &settings.strand1_file);
+        println!("2nd strand file          {}", &settings.strand2_file);
+        println!("K-mers size              {}", settings.kmer_size);
+        println!("Max gap size             {}", settings.gap_size);
         println!("Output file              {}", &out_file);
-        println!("Reverse 2nd strand       {}", args.flag_reverse);
-        println!("Translate 2nd strand     {}", args.flag_translate);
-        println!("Interlaced SD            {}", args.flag_interlaced);
-        println!("Threads count            {}", threads_count);
+        println!("Reverse 2nd strand       {}", settings.reverse);
+        println!("Translate 2nd strand     {}", settings.translate);
+        println!("Interlaced SD            {}", settings.interlaced);
+        println!("Threads count            {}", settings.threads_count);
+        if settings.trim.len() > 0 {
+            println!("Trimming                 {} - {}", settings.trim[0], settings.trim[1]);
+        }
         println!("libdivsufsort            v{:?}", unsafe{divsufsort64::divsufsort64_version()});
         println!("");
     }
 
     let result = search_duplications(
-        &args.arg_strand1_file, &args.arg_strand2_file,
-        args.arg_kmer_size, args.arg_gap_size + args.arg_kmer_size as u32,
-        args.flag_reverse, args.flag_translate, args.flag_align, args.flag_interlaced,
-        threads_count
+        &settings.strand1_file, &settings.strand2_file,
+        settings.kmer_size, settings.gap_size + settings.kmer_size as u32,
+        settings.reverse, settings.translate, false, settings.interlaced,
+        settings.threads_count
         );
-    let mut out = File::create(&out_file).expect(&format!("Unable to create `{}` for output", 
-                                                          &out_file));
+    let mut out = File::create(&out_file).expect(&format!("Unable to create `{}`", &out_file));
     writeln!(&mut out, "{}", rustc_serialize::json::encode(&result).unwrap());
 }
 
@@ -260,11 +257,13 @@ fn search_duplications(
 
     RunResult {
         strand1: Strand {
+            name: strand1_file.to_owned(),
             length: shared_strand1.len(),
             reversed: false,
             translated: false,
         },
         strand2: Strand {
+            name: strand2_file.to_owned(),
             length: shared_strand2.len() - 1, // Drop the '$'
             reversed: reverse,
             translated: translate,

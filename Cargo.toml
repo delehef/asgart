@@ -8,11 +8,11 @@ bio             = "*"
 num_cpus        = "*"
 uuid            = "*"
 threadpool      = "0.1"
-docopt          = "0.6"
 rustc-serialize = "0.3"
 
-[features]
-swap_dna = []
+[dependencies.clap]
+version = "2.10.*"
+features = [ "yaml", "suggestions", "color" ]
 
 [profile.release]
 opt-level = 3

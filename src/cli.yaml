@@ -1,0 +1,33 @@
+name: asgart
+version: 0.1.0
+about: A Segmental duplications Gathering and Refinment Tool
+args:
+    - reverse:
+        short: R
+        long: reverse
+        help: Reverse the second strand
+    - translate:
+        short: T
+        long: translate
+        help: Translate the second strand
+    - interlaced:
+        short: i
+        long: interlaced
+        help: Look for interlaced duplications (may drastically impair performances!)
+    - trim:
+        long: trim
+        help: Trim the first strand
+        takes_value: true
+        number_of_values: 2
+        value_names:
+            - start
+            - end
+    - STRAND1:
+        help: First strand, FASTA format
+        required: true
+        index: 1
+    - STRAND2:
+        help: Second strand, FASTA format
+        required: true
+        index: 2
+

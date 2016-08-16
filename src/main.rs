@@ -2,7 +2,8 @@ extern crate uuid;
 extern crate bio;
 extern crate num_cpus;
 extern crate threadpool;
-extern crate docopt;
+#[macro_use]
+extern crate clap;
 extern crate rustc_serialize;
 
 use std::cmp;
@@ -17,7 +18,7 @@ use std::ascii::AsciiExt;
 
 use threadpool::ThreadPool;
 
-use docopt::Docopt;
+use clap::{App,Arg};
 
 use divsufsort64::idx;
 
@@ -31,7 +32,8 @@ Copyright © 2016 IRIT
 
 const USAGE: &'static str = "
 Usage:
-    asgart <strand1-file> <strand2-file> <kmer-size> <gap-size> [-v] [-R] [-T] [-A] [-i] [--threads=<tc>] [--prefix=<prefix>]
+    asgart <strand1-file> <strand2-file> <kmer-size> <gap-size> [-v] [-R] [-T] [-A] [-i] 
+    [--threads=<tc>] [--prefix=<prefix>] [--trim=<start,end>]
     asgart --version
     asgart --help
 
@@ -41,11 +43,7 @@ Options:
 
     --threads=<tc>          Number of threads used, number of cores if 0 [default: 0].
     --prefix=<prefix>       Prefix for the result file [default: ]
-    -R, --reverse           Reverse the second DNA strand.
-    -T, --translate         Translate the second DNA strand.
-    -i, --interlaced        Look for interlaced duplications (may drastically impair performances!)
-    -A, --align             Try to perform alignment.
-    -v, --verbose           Print additional informations to STDOUT.
+    --trim=<start,end>      Blabla
 ";
 
 #[derive(Debug, RustcDecodable)]
@@ -97,6 +95,7 @@ pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
 
 #[derive(RustcEncodable)]
 struct Strand {
+    name: String,
     length: usize,
     reversed: bool,
     translated: bool,
@@ -111,45 +110,43 @@ struct RunResult {
 }
 
 fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.argv(env::args()).help(true).version(Some(VERSION.to_string())).decode())
-        .unwrap_or_else(|e| e.exit() )
-        ;
+    let yaml = load_yaml!("cli.yaml");
+    let app = App::from_yaml(yaml).get_matches();
 
-    let out_file = format!("{}{}_vs_{}_{}_{}{}{}.json",
-                           args.flag_prefix,
-                           &args.arg_strand1_file,
-                           &args.arg_strand2_file,
-                           args.arg_kmer_size,
-                           args.arg_gap_size,
-                           if args.flag_reverse {"r"} else {""},
-                           if args.flag_translate {"t"} else {""},
-                           );
-    let threads_count: usize = if args.flag_threads > 0 { args.flag_threads } else { num_cpus::get() };
+    // let out_file = format!("{}{}_vs_{}_{}_{}{}{}.json",
+    //                        args.flag_prefix,
+    //                        &args.arg_strand1_file,
+    //                        &args.arg_strand2_file,
+    //                        args.arg_kmer_size,
+    //                        args.arg_gap_size,
+    //                        if args.flag_reverse {"r"} else {""},
+    //                        if args.flag_translate {"t"} else {""},
+    //                        );
+    // let threads_count: usize = if args.flag_threads > 0 { args.flag_threads } else { num_cpus::get() };
 
-    if args.flag_verbose {
-        println!("1st strand file          {}", &args.arg_strand1_file);
-        println!("2nd strand file          {}", &args.arg_strand2_file);
-        println!("K-mers size              {}", args.arg_kmer_size);
-        println!("Max gap size             {}", args.arg_gap_size);
-        println!("Output file              {}", &out_file);
-        println!("Reverse 2nd strand       {}", args.flag_reverse);
-        println!("Translate 2nd strand     {}", args.flag_translate);
-        println!("Interlaced SD            {}", args.flag_interlaced);
-        println!("Threads count            {}", threads_count);
-        println!("libdivsufsort            v{:?}", unsafe{divsufsort64::divsufsort64_version()});
-        println!("");
-    }
+    // if args.flag_verbose {
+    //     println!("1st strand file          {}", &args.arg_strand1_file);
+    //     println!("2nd strand file          {}", &args.arg_strand2_file);
+    //     println!("K-mers size              {}", args.arg_kmer_size);
+    //     println!("Max gap size             {}", args.arg_gap_size);
+    //     println!("Output file              {}", &out_file);
+    //     println!("Reverse 2nd strand       {}", args.flag_reverse);
+    //     println!("Translate 2nd strand     {}", args.flag_translate);
+    //     println!("Interlaced SD            {}", args.flag_interlaced);
+    //     println!("Threads count            {}", threads_count);
+    //     println!("libdivsufsort            v{:?}", unsafe{divsufsort64::divsufsort64_version()});
+    //     println!("");
+    // }
 
-    let result = search_duplications(
-        &args.arg_strand1_file, &args.arg_strand2_file,
-        args.arg_kmer_size, args.arg_gap_size + args.arg_kmer_size as u32,
-        args.flag_reverse, args.flag_translate, args.flag_align, args.flag_interlaced,
-        threads_count
-        );
-    let mut out = File::create(&out_file).expect(&format!("Unable to create `{}` for output", 
-                                                          &out_file));
-    writeln!(&mut out, "{}", rustc_serialize::json::encode(&result).unwrap());
+    // let result = search_duplications(
+    //     &args.arg_strand1_file, &args.arg_strand2_file,
+    //     args.arg_kmer_size, args.arg_gap_size + args.arg_kmer_size as u32,
+    //     args.flag_reverse, args.flag_translate, args.flag_align, args.flag_interlaced,
+    //     threads_count
+    //     );
+    // let mut out = File::create(&out_file).expect(&format!("Unable to create `{}` for output", 
+    //                                                       &out_file));
+    // writeln!(&mut out, "{}", rustc_serialize::json::encode(&result).unwrap());
 }
 
 fn search_duplications(
@@ -260,11 +257,13 @@ fn search_duplications(
 
     RunResult {
         strand1: Strand {
+            name: strand1_file.to_owned(),
             length: shared_strand1.len(),
             reversed: false,
             translated: false,
         },
         strand2: Strand {
+            name: strand2_file.to_owned(),
             length: shared_strand2.len() - 1, // Drop the '$'
             reversed: reverse,
             translated: translate,

@@ -143,6 +143,7 @@ fn main() {
         &settings.strand1_file, &settings.strand2_file,
         settings.kmer_size, settings.gap_size + settings.kmer_size as u32,
         settings.reverse, settings.translate, false, settings.interlaced,
+        if !settings.trim.is_empty() {Some((settings.trim[0], settings.trim[1]))} else {None},
         settings.threads_count
         );
     let mut out = File::create(&out_file).expect(&format!("Unable to create `{}`", &out_file));
@@ -160,6 +161,7 @@ fn search_duplications(
     translate: bool,
     align: bool,
     interlaced: bool,
+    trim: Option<(usize, usize)>,
 
     threads_count: usize,
     ) -> RunResult {

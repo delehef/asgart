@@ -175,8 +175,7 @@ fn search_duplications(
     interlaced: bool,
     trim: Option<(usize, usize)>,
 
-    threads_count: usize,
-    ) -> RunResult {
+    threads_count: usize,) -> RunResult {
     let total = SystemTime::now();
 
     let strand1 = read_fasta(strand1_file).expect(&format!("Unable to read {}", strand1_file));
@@ -190,6 +189,15 @@ fn search_duplications(
         strand2
     };
 
+    let (shift, stop) = trim.unwrap_or((0, shared_strand1.len()));
+    if stop > shared_strand1.len() {
+        panic!("ERROR: {} greater than `{}` length ({}bp)", stop, strand1_file,
+               shared_strand1.len());
+    }
+    if stop <= shift {
+        panic!("ERROR: {} greater than {}", shift, stop);
+    }
+
     log!("Building suffix array...");
     let now = SystemTime::now();
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
@@ -201,11 +209,13 @@ fn search_duplications(
     let (tx, rx) = mpsc::channel();
     {
         const CHUNK_SIZE: usize = 200000;
-        let num_tasks = (shared_strand1.len()-kmer_size)/CHUNK_SIZE;
-        let chunk_overflow = (shared_strand1.len()-kmer_size)%CHUNK_SIZE;
+        let size = stop - shift;
 
-        let mut start = 0;
-        for id in 0..num_tasks+1 // TODO Do with Vec::chunks
+        let num_tasks = (size - kmer_size)/CHUNK_SIZE;
+        let chunk_overflow = (size - kmer_size)%CHUNK_SIZE;
+
+        let mut start = shift;
+        for id in 0..num_tasks+1
         {
             let suffix_array = shared_suffix_array.clone();
             let strand1 = shared_strand1.clone();

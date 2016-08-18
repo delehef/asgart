@@ -14,6 +14,7 @@ use std::fs::File;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::ascii::AsciiExt;
+use std::time::SystemTime;
 
 use threadpool::ThreadPool;
 
@@ -176,8 +177,7 @@ fn search_duplications(
 
     threads_count: usize,
     ) -> RunResult {
-
-
+    let total = SystemTime::now();
 
     let strand1 = read_fasta(strand1_file).expect(&format!("Unable to read {}", strand1_file));
     let shared_strand1 = Arc::new(strand1);
@@ -191,9 +191,10 @@ fn search_duplications(
     };
 
     log!("Building suffix array...");
+    let now = SystemTime::now();
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
-    log!("Done.");
     let shared_strand2 = Arc::new(strand2);
+    log!("Done in {}s.", now.elapsed().unwrap().as_secs());
 
 
     let thread_pool = ThreadPool::new(threads_count);
@@ -224,11 +225,12 @@ fn search_duplications(
             start += CHUNK_SIZE;
         }
     }
-
     drop(tx);
+
     log!("Looking for hulls...");
+    let now = SystemTime::now();
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
-    log!("Done.");
+    log!("Done in {}s.", now.elapsed().unwrap().as_secs());
 
 
     log!("Re-ordering...");
@@ -245,7 +247,9 @@ fn search_duplications(
     result = reduce_overlap(&result);
     log!("Done.");
 
-    log!("Done for {} & {}.", kmer_size, max_gap_size - kmer_size as u32);
+    log!("{} & {} ({}/{}) processed in {}s.",
+        strand1_file, strand2_file, kmer_size, max_gap_size - kmer_size as u32,
+        total.elapsed().unwrap().as_secs());
 
     RunResult {
         strand1: Strand {

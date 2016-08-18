@@ -154,7 +154,7 @@ fn main() {
     let result = search_duplications(
         &settings.strand1_file, &settings.strand2_file,
         settings.kmer_size, settings.gap_size + settings.kmer_size as u32,
-        settings.reverse, settings.translate, false, settings.interlaced,
+        settings.reverse, settings.translate, settings.interlaced,
         if !settings.trim.is_empty() {Some((settings.trim[0], settings.trim[1]))} else {None},
         settings.threads_count,
         );
@@ -171,7 +171,6 @@ fn search_duplications(
 
     reverse: bool,
     translate: bool,
-    align: bool,
     interlaced: bool,
     trim: Option<(usize, usize)>,
 
@@ -179,7 +178,6 @@ fn search_duplications(
     ) -> RunResult {
 
 
-    let mut result : Vec<utils::SD> = Vec::new();
 
     let strand1 = read_fasta(strand1_file).expect(&format!("Unable to read {}", strand1_file));
     let shared_strand1 = Arc::new(strand1);
@@ -220,8 +218,7 @@ fn search_duplications(
                         &strand1, &strand2, &suffix_array,
                         start, end,
                         kmer_size, max_gap_size,
-                        interlaced,
-                        align)).unwrap();
+                        interlaced)).unwrap();
             });
 
             start += CHUNK_SIZE;
@@ -230,40 +227,19 @@ fn search_duplications(
 
     drop(tx);
     log!("Looking for hulls...");
-    let mut passes: Vec<utils::ProcessingSD> = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
+    let mut result = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
     log!("Done.");
 
-
-    if align {
-        log!("Running perfect alignments");
-        passes = passes.iter()
-            .map(|b| {utils::align_perfect(b.clone())}).collect();
-        log!("Done.");
-
-        log!("Running fuzzy alignment...");
-        passes = passes.iter()
-            .map(|b| {utils::align_fuzzy(&(shared_strand1.clone()), &(shared_strand2.clone()), b.clone())}).collect();
-        log!("Done.");
-    }
 
     log!("Re-ordering...");
-    result.extend(passes.iter().filter_map(|b| {
-        match *b {
-            utils::ProcessingSD::Done(ref p) => {
-                Some(p.clone())
-            }
-            utils::ProcessingSD::ForFuzzy{ .. } => {log!("FOUND A FORFUZZY"); None}
-            utils::ProcessingSD::ForSW{ .. }    => {log!("FOUND A FORSW"); None},
-            utils::ProcessingSD::Empty          => {None}
-        }
-    }));
-    log!("Done.");
     result.sort_by(|a, b|
                    if a.left != b.left {
                        (a.left).cmp(&b.left)
                    } else {
                        (a.right).cmp(&b.right)
                    });
+    log!("Done.");
+
 
     log!("Reducing overlapping...");
     result = reduce_overlap(&result);

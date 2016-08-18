@@ -9,16 +9,6 @@ const MIN_DUPLICATION_SIZE: usize = 1000;
 const MAX_ALIGNMENT_SIZE: usize = 100000;
 
 
-macro_rules! log(
-    ($($arg:tt)*) => (
-        // match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
-        //     Ok(_) => {},
-        //     Err(x) => {} //panic!("Unable to write to stderr: {}", x),
-        // }
-    )
-);
-
-
 #[derive(Debug, Clone, RustcEncodable)]
 pub struct SD {
     pub left: usize,

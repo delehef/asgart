@@ -24,6 +24,7 @@ use divsufsort64::idx;
 mod utils;
 mod divsufsort64;
 
+static mut VERBOSE: bool = false;
 
 fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
     let file = try!(File::open(filename));
@@ -68,6 +69,18 @@ struct RunResult {
     SDs: Vec<utils::SD>,
 }
 
+macro_rules! log(
+    ($($arg:tt)*) => (
+        let v = unsafe { VERBOSE };
+        if v {
+            match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
+                Ok(_) => {},
+                Err(_) => {}
+            }
+        }
+        )
+);
+
 fn main() {
     struct Settings {
         strand1_file: String,
@@ -82,8 +95,6 @@ fn main() {
 
         prefix: String,
         threads_count: usize,
-
-        verbose: bool
     }
 
     let yaml = load_yaml!("cli.yaml");
@@ -106,8 +117,9 @@ fn main() {
         prefix: args.value_of("prefix").unwrap_or("").to_owned(),
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
         
-        verbose: true,
     };
+
+    unsafe { VERBOSE = args.is_present("verbose"); }
 
     let out_file = if settings.prefix.is_empty() {
         format!("{}_vs_{}_{}_{}{}{}.json",
@@ -122,7 +134,7 @@ fn main() {
         settings.prefix + ".json"
     };
 
-    if settings.verbose {
+    if unsafe {VERBOSE} {
         println!("1st strand file          {}", &settings.strand1_file);
         println!("2nd strand file          {}", &settings.strand2_file);
         println!("K-mers size              {}", settings.kmer_size);
@@ -144,7 +156,7 @@ fn main() {
         settings.kmer_size, settings.gap_size + settings.kmer_size as u32,
         settings.reverse, settings.translate, false, settings.interlaced,
         if !settings.trim.is_empty() {Some((settings.trim[0], settings.trim[1]))} else {None},
-        settings.threads_count
+        settings.threads_count,
         );
     let mut out = File::create(&out_file).expect(&format!("Unable to create `{}`", &out_file));
     writeln!(&mut out, "{}", rustc_serialize::json::encode(&result).unwrap());
@@ -166,6 +178,7 @@ fn search_duplications(
     threads_count: usize,
     ) -> RunResult {
 
+
     let mut result : Vec<utils::SD> = Vec::new();
 
     let strand1 = read_fasta(strand1_file).expect(&format!("Unable to read {}", strand1_file));
@@ -178,9 +191,10 @@ fn search_duplications(
         strand2.push(b'$');
         strand2
     };
-    println!("Building suffix array...");
+
+    log!("Building suffix array...");
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
-    println!("Done.");
+    log!("Done.");
     let shared_strand2 = Arc::new(strand2);
 
 
@@ -215,35 +229,35 @@ fn search_duplications(
     }
 
     drop(tx);
-    println!("Looking for hulls...");
+    log!("Looking for hulls...");
     let mut passes: Vec<utils::ProcessingSD> = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
-    println!("Done.");
+    log!("Done.");
 
 
     if align {
-        println!("Running perfect alignments");
+        log!("Running perfect alignments");
         passes = passes.iter()
             .map(|b| {utils::align_perfect(b.clone())}).collect();
-        println!("Done.");
+        log!("Done.");
 
-        println!("Running fuzzy alignment...");
+        log!("Running fuzzy alignment...");
         passes = passes.iter()
             .map(|b| {utils::align_fuzzy(&(shared_strand1.clone()), &(shared_strand2.clone()), b.clone())}).collect();
-        println!("Done.");
+        log!("Done.");
     }
 
-    println!("Re-ordering...");
+    log!("Re-ordering...");
     result.extend(passes.iter().filter_map(|b| {
         match *b {
             utils::ProcessingSD::Done(ref p) => {
                 Some(p.clone())
             }
-            utils::ProcessingSD::ForFuzzy{ .. } => {println!("FOUND A FORFUZZY"); None}
-            utils::ProcessingSD::ForSW{ .. }    => {println!("FOUND A FORSW"); None},
+            utils::ProcessingSD::ForFuzzy{ .. } => {log!("FOUND A FORFUZZY"); None}
+            utils::ProcessingSD::ForSW{ .. }    => {log!("FOUND A FORSW"); None},
             utils::ProcessingSD::Empty          => {None}
         }
     }));
-    println!("Done.");
+    log!("Done.");
     result.sort_by(|a, b|
                    if a.left != b.left {
                        (a.left).cmp(&b.left)
@@ -251,11 +265,11 @@ fn search_duplications(
                        (a.right).cmp(&b.right)
                    });
 
-    println!("Reducing overlapping...");
+    log!("Reducing overlapping...");
     result = reduce_overlap(&result);
-    println!("Done.");
+    log!("Done.");
 
-    println!("Done for {} & {}.", kmer_size, max_gap_size - kmer_size as u32);
+    log!("Done for {} & {}.", kmer_size, max_gap_size - kmer_size as u32);
 
     RunResult {
         strand1: Strand {
@@ -340,7 +354,6 @@ fn reduce_overlap(result: &[utils::SD]) -> Vec<utils::SD> {
             }
             news.push(x.clone());
         }
-        println!("{} reduced to {}", result.len(), news.len());
         news
     }
 

@@ -2,6 +2,7 @@
 name = "asgart"
 version = "0.1.0"
 authors = ["Franklin Delehelle <franklin.delehelle@irit.fr>"]
+license = "GPLv3"
 
 [dependencies]
 bio             = "*"
@@ -9,15 +10,8 @@ num_cpus        = "*"
 uuid            = "*"
 threadpool      = "0.1"
 rustc-serialize = "0.3"
+palette         = "0.2.1"
 
 [dependencies.clap]
 version = "2.10.*"
 features = [ "yaml", "suggestions", "color" ]
-
-[profile.release]
-opt-level = 3
-debug = true
-rpath = false
-lto = false
-debug-assertions = false
-codegen-units = 1

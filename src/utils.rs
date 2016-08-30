@@ -2,27 +2,10 @@ use std::cmp;
 use std::fmt;
 
 use super::divsufsort64::*;
+use super::structs::SD;
 
 const MIN_DUPLICATION_SIZE: usize = 1000;
 
-
-#[derive(Debug, Clone, RustcEncodable)]
-pub struct SD {
-    pub left: usize,
-    pub right: usize,
-    pub size: usize,
-    pub rate: f32,
-}
-
-impl SD {
-    pub fn left_part(&self) -> (usize, usize) {
-        (self.left, self.size)
-    }
-
-    pub fn right_part(&self) -> (usize, usize) {
-        (self.right, self.size)
-    }
-}
 
 #[derive(Clone)]
 pub struct Segment {
@@ -78,7 +61,7 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], max_hole_size: u32) -> Vec<SD
             left: cmp::max(psd.bottom, right_segment.tag),
             right: right_segment.start,
             size: size,
-            rate: 0.0
+            identity: 0.0
         });
     }
 

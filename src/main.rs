@@ -24,6 +24,9 @@ use divsufsort64::idx;
 
 mod utils;
 mod divsufsort64;
+mod structs;
+
+use structs::{Strand,RunResult,SD};
 
 static mut VERBOSE: bool = false;
 
@@ -53,22 +56,6 @@ pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
     sa
 }
 
-
-#[derive(RustcEncodable)]
-struct Strand {
-    name: String,
-    length: usize,
-    reversed: bool,
-    translated: bool,
-}
-
-#[derive(RustcEncodable)]
-struct RunResult {
-    strand1: Strand,
-    strand2: Strand,
-
-    SDs: Vec<utils::SD>,
-}
 
 macro_rules! log(
     ($($arg:tt)*) => (
@@ -274,7 +261,7 @@ fn search_duplications(
             reversed: reverse,
             translated: translate,
         },
-        SDs: result,
+        sds: result,
     }
 }
 
@@ -294,7 +281,7 @@ fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bo
     || (ystart >= xstart && ystart <= xend && yend >= xend)
 }
 
-fn merge(x: &utils::SD, y: &utils::SD) -> utils::SD {
+fn merge(x: &SD, y: &SD) -> SD {
    let (xleft, yleft, xsize, ysize) = if x.left < y.left {
        (x.left, y.left, x.size, y.size)
    } else {
@@ -309,17 +296,17 @@ fn merge(x: &utils::SD, y: &utils::SD) -> utils::SD {
    };
    let rsize = (yright-xright) + ((xright+xsize)-yright) + ((yright+ysize) - (xright+xsize));
 
-   utils::SD {
+   SD {
        left: xleft,
        right: xright,
        size: cmp::min(lsize, rsize),
-       rate: x.rate
+       identity: x.identity
    }
 }
 
-fn reduce_overlap(result: &[utils::SD]) -> Vec<utils::SD> {
-    fn _reduce(result: &[utils::SD]) -> Vec<utils::SD> {
-        let mut news: Vec<utils::SD> = Vec::new();
+fn reduce_overlap(result: &[SD]) -> Vec<SD> {
+    fn _reduce(result: &[SD]) -> Vec<SD> {
+        let mut news: Vec<SD> = Vec::new();
         'to_insert: for x in result.iter() {
             for ref mut y in &mut news {
                 // x ⊂ y
@@ -329,7 +316,7 @@ fn reduce_overlap(result: &[utils::SD]) -> Vec<utils::SD> {
                 // x ⊃ y
                 if subsegment(y.left_part(), x.left_part()) && subsegment(y.right_part(), x.right_part())
                 {
-                    y.left = x.left; y.right = x.right; y.size = x.size; y.rate = x.rate;
+                    y.left = x.left; y.right = x.right; y.size = x.size; y.identity = x.identity;
                     continue 'to_insert;
                 }
 

@@ -71,12 +71,15 @@ impl ChordPlotter {
 
     fn plot_chord(&mut self, dx: f64, dy: f64) {
         self.svg += &format!(
-            "<g transform='translate({}, {})'>",
+            "\n<g transform='translate({}, {})'>",
             dx, dy
             );
+        {
+            let radius = self.radius;
+            self.ellipse(radius, radius, radius, radius);
+        }
 
         for sd in &self.result.sds {
-            if sd.size < 5000 {continue;}
             let (left, right) = if !self.result.strand2.reversed {
                 (sd.left as i64, sd.right as i64)
             } else {
@@ -144,7 +147,7 @@ impl ChordPlotter {
         , self.width, self.height, self.svg)
     }
 
-    fn ellipse(&mut self, cx: i32, cy: i32, rx: i32, ry: i32) {
+    fn ellipse(&mut self, cx: f64, cy: f64, rx: f64, ry: f64) {
         self.svg += &format!(
             "<ellipse cx='{}' cy='{}' rx='{}' ry='{}' style='stroke:black; fill: none'/>",
             cx, cy, rx, ry);

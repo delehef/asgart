@@ -82,6 +82,7 @@ fn main() {
         trim: Vec<usize>,
 
         prefix: String,
+        out: String,
         threads_count: usize,
     }
 
@@ -103,14 +104,16 @@ fn main() {
         trim: values_t!(args.values_of("trim"), usize).unwrap_or_else(|_| Vec::new()),
 
         prefix: args.value_of("prefix").unwrap_or("").to_owned(),
+        out: args.value_of("out").unwrap_or("").to_owned(),
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
         
     };
 
     unsafe { VERBOSE = args.is_present("verbose"); }
 
-    let out_file = if settings.prefix.is_empty() {
-        format!("{}_vs_{}_{}_{}{}{}.json",
+    let out_file = if settings.out.is_empty() {
+        format!("{}{}_vs_{}_{}_{}{}{}.json",
+                &settings.prefix,
                 &settings.strand1_file,
                 &settings.strand2_file,
                 settings.kmer_size,
@@ -119,7 +122,7 @@ fn main() {
                 if settings.translate {"t"} else {""},
                 )
     } else {
-        settings.prefix + ".json"
+        settings.out + ".json"
     };
 
     if unsafe {VERBOSE} {

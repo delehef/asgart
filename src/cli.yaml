@@ -32,6 +32,11 @@ args:
         help: Prefix of the output file
         takes_value: true
         number_of_values: 1
+    - out:
+        long: out
+        help: Override default file name
+        takes_value: true
+        number_of_values: 1
 
     - strand1:
         help: First strand, FASTA format

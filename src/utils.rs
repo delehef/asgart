@@ -88,35 +88,33 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                 }
                 gap = 0;
                 current_start = i;
-                if strand1[i] == b'N' || strand1[i] == b'n' {
+                state = if strand1[i] == b'N' || strand1[i] == b'n' {
                     i += 1;
-                    state = SearchState::Start;
+                    SearchState::Start
                 } else {
                     current_segments = searcher.search(strand2, sa, &strand1[i..i+probe_size])
                         .into_iter().filter(|x| x.start != i).collect();
                     if current_segments.is_empty() {
                         i += 1;
-                        state = SearchState::Start;
+                        SearchState::Start
                     } else {
-                        state = SearchState::Grow;
+                        SearchState::Grow
                     }
                 }
-
             },
             SearchState::Grow => {
                 i += probe_size;
-                if strand1[i] == b'N' || strand1[i] == b'n' {
-                    state = SearchState::SparseGrow;
+                state = if strand1[i] == b'N' || strand1[i] == b'n' {
+                    SearchState::SparseGrow
+                } else if i+probe_size > strand1.len()-1 {
+                    SearchState::Proto
                 } else {
                     let new_matches: Vec<Segment> = searcher.search(strand2, sa, 
-                                                                    &strand1[i..cmp::min(i+probe_size, 
-                                                                                         strand1.len()-1)], 
-                                                                    )
+                                                                    &strand1[i..i+probe_size])
                         .into_iter().filter(|x| x.start != i).collect();
 
-                    if i >= strand1.len() - probe_size {
-                        state = SearchState::Proto;
-                    } else if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
+                    if segments_to_segments_distance(&new_matches, &current_segments) <= 
+                        max_gap_size {
                         if interlaced {
                             append_merge_segments(&mut current_segments, &new_matches,
                                                   max_gap_size, i);
@@ -124,17 +122,17 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                             merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
                         }
 
-                        state = SearchState::Grow;
+                        SearchState::Grow
                     } else {
-                        state = SearchState::SparseGrow;
+                        SearchState::SparseGrow
                     }
                 }
             },
             SearchState::SparseGrow => {
                 i += 1;
                 gap += 1;
-                if (gap > max_gap_size) || (i >= strand1.len() - probe_size) {
-                    state = SearchState::Proto;
+                state = if (gap > max_gap_size) || (i >= strand1.len() - probe_size) {
+                    SearchState::Proto
                 } else if strand1[i] != b'N' && strand1[i] != b'n' {
                     let new_matches = searcher.search(strand2, sa, &strand1[i..i+probe_size]);
                     if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
@@ -145,10 +143,12 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                             merge_or_drop_segments(&mut current_segments, &new_matches, max_gap_size);
                         }
                         gap = 0;
-                        state = SearchState::Grow;
+                        SearchState::Grow
                     } else {
-                        state = SearchState::SparseGrow;
+                        SearchState::SparseGrow
                     }
+                } else {
+                    SearchState::SparseGrow
                 }
             },
             SearchState::Proto => {

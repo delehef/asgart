@@ -1,11 +1,135 @@
 use std::cmp;
 use std::fmt;
+use std::mem;
+use std::collections::HashMap;
 
 use super::divsufsort64::*;
 use super::structs::SD;
 
 const MIN_DUPLICATION_SIZE: usize = 1000;
 
+pub struct Searcher {
+    cache: HashMap<u64, (usize, usize)>,
+}
+impl Searcher {
+    pub fn new(dna: &[u8], sa: &[idx]) -> Searcher {
+        let mut s = Searcher {
+            cache: HashMap::new()
+        };
+
+        let ALPHABET = [b'A', b'T', b'G', b'C', b'N'];
+        unsafe{
+        for a in ALPHABET.iter() {
+            for b in ALPHABET.iter() {
+                for c in ALPHABET.iter() {
+                    for d in ALPHABET.iter() {
+                        for e in ALPHABET.iter() {
+                            for f in ALPHABET.iter() {
+                                for g in ALPHABET.iter() {
+                                    for h in ALPHABET.iter() {
+                                        let index = mem::transmute::<[u8; 8], u64>([*a, *b, *c, *d, 
+                                                                                   *e, *f, *g, 
+                                                                                   *h]);
+                                        let p = vec![*a, *b, *c, *d, *e, *f, *g, *h];
+                                        let (start, count) : (usize, usize) = {
+                                            let mut out = 0;
+                                            let count = sa_searchb64(
+                                                dna.as_ptr(), dna.len() as i64,
+                                                p.as_ptr(), p.len() as i64,
+                                                sa.as_ptr(), sa.len() as i64,
+                                                &mut out,
+                                                0, sa.len() as i64
+                                                );
+                                            (out as usize, count as usize)
+                                        };
+                                        s.cache.insert(index, (start, start+count));
+                                        // println!("Caching {}", index);
+                                        // if count != 0 {
+                                        //     println!("Caching {}", 
+                                        //              String::from_utf8(p.clone()).unwrap());
+                                        //     println!("{}\t{}", start, String::from_utf8(
+                                        //             dna[sa[start] as usize..(sa[start]+8) as 
+                                        //             usize].to_vec()
+                                        //             ).unwrap());
+                                        //     println!("...");
+                                        //     println!("{}\t{}", start+count-1, String::from_utf8(
+                                        //             dna[sa[start+count-1] as 
+                                        //             usize..(sa[start+count-1]+8) as 
+                                        //             usize].to_vec()
+                                        //             ).unwrap());
+                                        //     println!("{}\t{}", start+count, String::from_utf8(
+                                        //             dna[sa[start+count] as 
+                                        //             usize..(sa[start+count]+8) as 
+                                        //             usize].to_vec()
+                                        //             ).unwrap());
+
+                                        //     let mut pp = p.clone();
+                                        //     pp.extend(vec![b'T', b'T', b'G', b'C']);
+
+                                        //     let mut out = 0;
+                                        //     let cc = sa_search64(
+                                        //         dna.as_ptr(), dna.len() as i64,
+                                        //         pp.as_ptr(), pp.len() as i64,
+                                        //         sa.as_ptr(), sa.len() as i64,
+                                        //         &mut out
+                                        //         );
+                                        //     println!("First try: {} {}", out, cc);
+
+                                        //     let cc2 = sa_searchb64(
+                                        //         dna.as_ptr(), dna.len() as i64,
+                                        //         pp.as_ptr(), pp.len() as i64,
+                                        //         sa.as_ptr(), sa.len() as i64,
+                                        //         &mut out,
+                                        //         start as idx, (start+count) as idx
+                                        //         );
+                                        //     println!("Second try: {} {}", out, cc2);
+                                        //     println!("");
+                                        //     println!("");
+                                        // }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+
+        println!("DONE");
+        s
+    }
+
+    pub fn search(&self, dna: &[u8], sa: &[idx], pattern: &[u8]) -> Vec<Segment> {
+        let index = unsafe {
+            mem::transmute::<[u8; 8], u64>(
+                [pattern[0], pattern[1], pattern[2], pattern[3], pattern[4], pattern[5], 
+                pattern[6], pattern[7]]
+                )
+        };
+
+        let mut out = 0;
+        if !self.cache.contains_key(&index) {
+            panic!("Unable to find {} ({})", index, 
+                   String::from_utf8(pattern[0..8].to_vec()).unwrap());
+        }
+
+        let (lstart, rstart) = self.cache[&index];
+        let count = unsafe {
+            sa_searchb64(dna.as_ptr(), dna.len() as i64,
+            pattern.as_ptr(), pattern.len() as i64,
+            sa.as_ptr(), sa.len() as i64, &mut out,
+            lstart as idx, rstart as idx)
+        };
+
+        let mut rr = Vec::new();
+        for i in 0..count {
+            let start = sa[(out+i) as usize];
+            rr.push(Segment{tag: 0, start: start as usize, end: start as usize + pattern.len()});
+        }
+        rr
+    }
+}
 
 #[derive(Clone)]
 pub struct Segment {
@@ -70,7 +194,7 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], max_hole_size: u32) -> Vec<SD
 
 pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: usize, end: usize,
                            probe_size: usize, max_gap_size: u32,
-                           interlaced: bool) -> Vec<SD> {
+                           interlaced: bool, searcher: &Searcher) -> Vec<SD> {
     let mut r = Vec::new();
 
     let mut i = start;
@@ -91,7 +215,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                     i += 1;
                     state = SearchState::Start;
                 } else {
-                    current_segments = search(strand2, sa, &strand1[i..i+probe_size])
+                    current_segments = searcher.search(strand2, sa, &strand1[i..i+probe_size])
                         .into_iter().filter(|x| x.start != i).collect();
                     if current_segments.is_empty() {
                         i += 1;
@@ -107,10 +231,10 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                 if strand1[i] == b'N' || strand1[i] == b'n' {
                     state = SearchState::SparseGrow;
                 } else {
-                    let new_matches: Vec<Segment> = search(strand2, sa, 
-                                                           &strand1[i..cmp::min(i+probe_size, 
-                                                                                strand1.len()-1)], 
-                                                           )
+                    let new_matches: Vec<Segment> = searcher.search(strand2, sa, 
+                                                                    &strand1[i..cmp::min(i+probe_size, 
+                                                                                         strand1.len()-1)], 
+                                                                    )
                         .into_iter().filter(|x| x.start != i).collect();
 
                     if i >= strand1.len() - probe_size {
@@ -135,7 +259,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                 if (gap > max_gap_size) || (i >= strand1.len() - probe_size) {
                     state = SearchState::Proto;
                 } else if strand1[i] != b'N' && strand1[i] != b'n' {
-                    let new_matches = search(strand2, sa, &strand1[i..i+probe_size]);
+                    let new_matches = searcher.search(strand2, sa, &strand1[i..i+probe_size]);
                     if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
                         if interlaced {
                             append_merge_segments(&mut current_segments, &new_matches,
@@ -243,18 +367,3 @@ fn segments_to_segments_distance(segments: &[Segment], others: &[Segment]) -> u3
     distance as u32
 }
 
-pub fn search(dna: &[u8], sa: &[idx], pattern: &[u8]) -> Vec<Segment> {
-    let mut out = 0;
-    let count;
-    unsafe {
-        count = sa_search64(dna.as_ptr(), dna.len() as i64,
-            pattern.as_ptr(), pattern.len() as i64,
-            sa.as_ptr(), sa.len() as i64, &mut out);
-    }
-    let mut rr = Vec::new();
-    for i in 0..count {
-        let start = sa[(out+i) as usize];
-        rr.push(Segment{tag: 0, start: start as usize, end: start as usize + pattern.len()});
-    }
-    rr
-}

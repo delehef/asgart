@@ -50,10 +50,17 @@ extern "C" {
 	pub fn divsufsort64(T: *const sauchar_t, SA: *mut saidx64_t, n: saidx64_t)
      -> saint_t;
 	pub fn divsufsort64_version() -> *const ::std::os::raw::c_char;
-	pub fn sa_search64(T: *const sauchar_t, Tsize: saidx64_t,
+    pub fn sa_search64(T: *const sauchar_t, Tsize: saidx64_t,
                        P: *const sauchar_t, Psize: saidx64_t,
                        SA: *const saidx64_t, SAsize: saidx64_t,
                        left: *mut saidx64_t) -> saidx64_t;
+
+    pub fn sa_searchb64(T: *const sauchar_t, Tsize: saidx64_t,
+                       P: *const sauchar_t, Psize: saidx64_t,
+                       SA: *const saidx64_t, SAsize: saidx64_t,
+                       left: *mut saidx64_t,
+                       init_left: saidx64_t, init_right: saidx64_t,
+                       ) -> saidx64_t;
 }
 
 pub type idx = saidx64_t;

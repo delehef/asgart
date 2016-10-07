@@ -43,6 +43,7 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
     r = r.to_ascii_uppercase();
 
     // r.retain(|c| *c != b'n' && *c != b'N');
+    r.retain(|c| *c != b'>');
 
     Ok(r)
 }
@@ -191,6 +192,7 @@ fn search_duplications(
     log!("Building suffix array...");
     let now = SystemTime::now();
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
+    let shared_searcher = Arc::new(utils::Searcher::new(&strand2, &shared_suffix_array.clone()));
     let shared_strand2 = Arc::new(strand2);
     log!("Done in {}s.", now.elapsed().unwrap().as_secs());
 
@@ -210,6 +212,7 @@ fn search_duplications(
             let suffix_array = shared_suffix_array.clone();
             let strand1 = shared_strand1.clone();
             let strand2 = shared_strand2.clone();
+            let searcher = shared_searcher.clone();
 
             let my_tx = tx.clone();
 
@@ -219,7 +222,7 @@ fn search_duplications(
                         &strand1, &strand2, &suffix_array,
                         start, end,
                         kmer_size, max_gap_size,
-                        interlaced)).unwrap();
+                        interlaced, &searcher)).unwrap();
             });
 
             start += CHUNK_SIZE;

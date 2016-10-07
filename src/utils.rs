@@ -190,7 +190,7 @@ fn merge_segments_with_delta(_segments: &[Segment], delta: u64) -> Vec<Segment> 
 
     r.push(segments[0].clone());
     for current_segment in segments.iter().skip(1) {
-        if current_segment.start - r.last().unwrap().end <= delta as usize{
+        if current_segment.start as i64 - r.last().unwrap().end as i64 <= delta as i64 {
             r.last_mut().unwrap().end = current_segment.end;
         } else {
             r.push(current_segment.clone());

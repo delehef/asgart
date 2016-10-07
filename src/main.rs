@@ -2,9 +2,9 @@ extern crate uuid;
 extern crate bio;
 extern crate num_cpus;
 extern crate threadpool;
+extern crate rustc_serialize;
 #[macro_use]
 extern crate clap;
-extern crate rustc_serialize;
 
 use std::cmp;
 use std::io;
@@ -25,6 +25,7 @@ use divsufsort64::idx;
 mod utils;
 mod divsufsort64;
 mod structs;
+mod searcher;
 
 use structs::{Strand,RunResult,SD};
 
@@ -192,7 +193,8 @@ fn search_duplications(
     log!("Building suffix array...");
     let now = SystemTime::now();
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
-    let shared_searcher = Arc::new(utils::Searcher::new(&strand2, &shared_suffix_array.clone()));
+    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2, 
+                                                           &shared_suffix_array.clone()));
     let shared_strand2 = Arc::new(strand2);
     log!("Done in {}s.", now.elapsed().unwrap().as_secs());
 

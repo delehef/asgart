@@ -4,6 +4,7 @@ use std::fmt;
 use super::divsufsort64::*;
 use super::structs::SD;
 use super::searcher::Searcher;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 const MIN_DUPLICATION_SIZE: usize = 1000;
 
@@ -71,7 +72,8 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], max_hole_size: u32) -> Vec<SD
 
 pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: usize, end: usize,
                            probe_size: usize, max_gap_size: u32,
-                           interlaced: bool, searcher: &Searcher) -> Vec<SD> {
+                           interlaced: bool, searcher: &Searcher,
+                           progress: &AtomicUsize) -> Vec<SD> {
     let mut r = Vec::new();
 
     let mut i = start;
@@ -162,6 +164,8 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                     r.append(&mut result);
                 }
                 state = SearchState::Start;
+                // println!("{} - {} -> {}", start-start, end-start, i-start);
+                progress.store(cmp::min(i-start, end-start), Ordering::Relaxed);
             },
         }
     }

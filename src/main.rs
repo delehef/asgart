@@ -6,6 +6,8 @@ extern crate rustc_serialize;
 #[macro_use]
 extern crate clap;
 
+use std::{thread, time};
+use std::time::Duration;
 use std::cmp;
 use std::io;
 use std::io::BufRead;
@@ -15,6 +17,8 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::ascii::AsciiExt;
 use std::time::SystemTime;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::TryRecvError;
 
 use threadpool::ThreadPool;
 
@@ -200,6 +204,7 @@ fn search_duplications(
 
 
     let thread_pool = ThreadPool::new(threads_count);
+    let (tx_monitor, rx_monitor) = mpsc::channel();
     let (tx, rx) = mpsc::channel();
     {
         const CHUNK_SIZE: usize = 200000;
@@ -208,15 +213,19 @@ fn search_duplications(
         let num_tasks = (size - kmer_size)/CHUNK_SIZE;
         let chunk_overflow = (size - kmer_size)%CHUNK_SIZE;
 
+        let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(num_tasks);
+
         let mut start = shift;
         for id in 0..num_tasks+1
         {
+            progresses.push(Arc::new(AtomicUsize::new(0)));
             let suffix_array = shared_suffix_array.clone();
             let strand1 = shared_strand1.clone();
             let strand2 = shared_strand2.clone();
             let searcher = shared_searcher.clone();
 
             let my_tx = tx.clone();
+            let my_progress = progresses[id].clone();
 
             thread_pool.execute(move || {
                 let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
@@ -224,17 +233,38 @@ fn search_duplications(
                         &strand1, &strand2, &suffix_array,
                         start, end,
                         kmer_size, max_gap_size,
-                        interlaced, &searcher)).unwrap();
+                        interlaced, &searcher,
+                        &my_progress)).unwrap();
             });
 
             start += CHUNK_SIZE;
         }
+
+        let total = shared_strand1.len();
+        thread::spawn(move || {
+            loop {
+                thread::sleep(Duration::from_millis(1000));
+                match rx_monitor.try_recv() {
+                    Ok(_) | Err(TryRecvError::Disconnected) => {
+                        break;
+                    }
+                    Err(TryRecvError::Empty) => {
+                        let mut current = 0;
+                        for x in progresses.iter() {
+                            current += x.load(Ordering::Relaxed);
+                        }
+                        log!("{}%", (current as f64/total as f64 * 100.0) as u32);
+                    }
+                }
+            }
+        });
     }
     drop(tx);
 
     log!("Looking for hulls...");
     let now = SystemTime::now();
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
+    let _ = tx_monitor.send(());
     log!("Done in {}s.", now.elapsed().unwrap().as_secs());
 
 

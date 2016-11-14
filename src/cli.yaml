@@ -13,6 +13,11 @@ args:
         short: i
         long: interlaced
         help: Look for interlaced duplications (may drastically impair performances!)
+    - minsize:
+        long: minsize
+        help: minimal size to keep a duplication
+        takes_value: true
+
     - trim:
         long: trim
         help: Trim the first strand

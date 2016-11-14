@@ -6,8 +6,6 @@ use super::structs::SD;
 use super::searcher::Searcher;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-const MIN_DUPLICATION_SIZE: usize = 1000;
-
 
 #[derive(Clone)]
 pub struct Segment {
@@ -41,14 +39,15 @@ fn make_right_arms(p: &ProtoSD, max_hole_size: u32) -> Vec<Segment> {
     merge_segments_with_delta(&matches, max_hole_size as u64)
 }
 
-fn make_duplications(psd: ProtoSD, strand1: &[u8], max_hole_size: u32) -> Vec<SD> {
+fn make_duplications(psd: ProtoSD, strand1: &[u8],
+                     max_hole_size: u32, min_duplication_size: usize) -> Vec<SD> {
     let right_segments = make_right_arms(&psd, max_hole_size);
     let mut r = Vec::new();
 
     for right_segment in right_segments {
         // Ignore too small SD
         let size = right_segment.end - right_segment.start;
-        if size < MIN_DUPLICATION_SIZE {continue;}
+        if size < min_duplication_size {continue;}
 
         // Ignore N-dominant SD
         if *(&strand1[psd.bottom..psd.top].iter().filter(|c| **c == b'n' || **c == b'N').count()) as f32> 0.1*(psd.top - psd.bottom) as f32 {continue;}
@@ -71,7 +70,7 @@ fn make_duplications(psd: ProtoSD, strand1: &[u8], max_hole_size: u32) -> Vec<SD
 }
 
 pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: usize, end: usize,
-                           probe_size: usize, max_gap_size: u32,
+                           probe_size: usize, max_gap_size: u32, min_duplication_size: usize,
                            interlaced: bool, searcher: &Searcher,
                            progress: &AtomicUsize) -> Vec<SD> {
     let mut r = Vec::new();
@@ -154,13 +153,14 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                 }
             },
             SearchState::Proto => {
-                if i - current_start >= MIN_DUPLICATION_SIZE {
+                if i - current_start >= min_duplication_size {
                     let psd = ProtoSD {
                         bottom: current_start,
                         top: i,
                         matches: current_segments.clone()
                     };
-                    let mut result = make_duplications(psd, strand1, max_gap_size);
+                    let mut result = make_duplications(psd, strand1, max_gap_size, 
+                                                       min_duplication_size);
                     r.append(&mut result);
                 }
                 state = SearchState::Start;

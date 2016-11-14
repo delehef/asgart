@@ -81,6 +81,7 @@ fn main() {
         strand2_file: String,
         kmer_size: usize,
         gap_size: u32,
+        min_duplication_size: usize,
 
         reverse: bool,
         translate: bool,
@@ -103,11 +104,12 @@ fn main() {
         strand2_file: args.value_of("strand2").unwrap().to_owned(),
         kmer_size: value_t_or_exit!(args, "probe_size", usize),
         gap_size: value_t_or_exit!(args, "max_gap", u32),
+        min_duplication_size: value_t!(args, "minsize", usize).unwrap_or_else(|_| 1000),
 
         reverse: args.is_present("reverse"),
         translate: args.is_present("translate"),
         interlaced: args.is_present("interlaced"),
-        trim: values_t!(args.values_of("trim"), usize).unwrap_or_else(|_| Vec::new()),
+        trim: values_t!(args, "trim", usize).unwrap_or_else(|_| Vec::new()),
 
         prefix: args.value_of("prefix").unwrap_or("").to_owned(),
         out: args.value_of("out").unwrap_or("").to_owned(),
@@ -150,7 +152,8 @@ fn main() {
 
     let result = search_duplications(
         &settings.strand1_file, &settings.strand2_file,
-        settings.kmer_size, settings.gap_size + settings.kmer_size as u32,
+        settings.kmer_size, settings.gap_size + settings.kmer_size as u32, 
+        settings.min_duplication_size,
         settings.reverse, settings.translate, settings.interlaced,
         if !settings.trim.is_empty() {Some((settings.trim[0], settings.trim[1]))} else {None},
         settings.threads_count,
@@ -165,6 +168,7 @@ fn search_duplications(
 
     kmer_size: usize,
     max_gap_size: u32,
+    min_duplication_size: usize,
 
     reverse: bool,
     translate: bool,
@@ -232,7 +236,7 @@ fn search_duplications(
                 my_tx.send(utils::search_duplications(
                         &strand1, &strand2, &suffix_array,
                         start, end,
-                        kmer_size, max_gap_size,
+                        kmer_size, max_gap_size, min_duplication_size,
                         interlaced, &searcher,
                         &my_progress)).unwrap();
             });

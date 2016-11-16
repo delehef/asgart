@@ -6,7 +6,7 @@ extern crate rustc_serialize;
 #[macro_use]
 extern crate clap;
 
-use std::{thread, time};
+use std::thread;
 use std::time::Duration;
 use std::cmp;
 use std::io;
@@ -114,7 +114,6 @@ fn main() {
         prefix: args.value_of("prefix").unwrap_or("").to_owned(),
         out: args.value_of("out").unwrap_or("").to_owned(),
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
-        
     };
 
     unsafe { VERBOSE = args.is_present("verbose"); }
@@ -152,7 +151,7 @@ fn main() {
 
     let result = search_duplications(
         &settings.strand1_file, &settings.strand2_file,
-        settings.kmer_size, settings.gap_size + settings.kmer_size as u32, 
+        settings.kmer_size, settings.gap_size + settings.kmer_size as u32,
         settings.min_duplication_size,
         settings.reverse, settings.translate, settings.interlaced,
         if !settings.trim.is_empty() {Some((settings.trim[0], settings.trim[1]))} else {None},
@@ -189,10 +188,12 @@ fn search_duplications(
         strand2
     };
 
-    let (shift, stop) = trim.unwrap_or((0, shared_strand1.len()));
+    let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len()));
     if stop > shared_strand1.len() {
-        panic!("ERROR: {} greater than `{}` length ({}bp)", stop, strand1_file,
-               shared_strand1.len());
+        stop = shared_strand1.len();
+        println!("WARNING: {} greater than `{}` length ({}bp)", stop, strand1_file,
+                 shared_strand1.len());
+        println!("WARNING: Using {} instead of {}", shared_strand1.len(), stop);
     }
     if stop <= shift {
         panic!("ERROR: {} greater than {}", shift, stop);
@@ -201,7 +202,7 @@ fn search_duplications(
     log!("Building suffix array...");
     let now = SystemTime::now();
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
-    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2, 
+    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2,
                                                            &shared_suffix_array.clone()));
     let shared_strand2 = Arc::new(strand2);
     log!("Done in {}s.", now.elapsed().unwrap().as_secs());

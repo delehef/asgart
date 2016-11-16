@@ -189,8 +189,8 @@ fn search_duplications(
     };
 
     let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len()));
-    if stop > shared_strand1.len() {
-        stop = shared_strand1.len();
+    if stop >= shared_strand1.len() {
+        stop = shared_strand1.len()-1;
         println!("WARNING: {} greater than `{}` length ({}bp)", stop, strand1_file,
                  shared_strand1.len());
         println!("WARNING: Using {} instead of {}", shared_strand1.len(), stop);

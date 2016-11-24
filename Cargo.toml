@@ -11,6 +11,9 @@ uuid            = "*"
 threadpool      = "0.1"
 rustc-serialize = "0.3"
 palette         = "0.2.1"
+log             = "0.3"
+env_logger      = "0.3"
+colored         = "1.3"
 
 [dependencies.clap]
 version = "2.10.*"

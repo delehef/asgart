@@ -3,10 +3,20 @@ extern crate bio;
 extern crate num_cpus;
 extern crate threadpool;
 extern crate rustc_serialize;
+extern crate env_logger;
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate log;
+extern crate colored;
 
-use std::{thread, time};
+mod utils;
+mod divsufsort64;
+mod structs;
+mod searcher;
+mod logger;
+
+use std::thread;
 use std::time::Duration;
 use std::cmp;
 use std::io;
@@ -20,20 +30,14 @@ use std::time::SystemTime;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
 
+use log::LogLevelFilter;
 use threadpool::ThreadPool;
-
 use clap::App;
-
 use divsufsort64::idx;
 
-mod utils;
-mod divsufsort64;
-mod structs;
-mod searcher;
-
 use structs::{Strand,RunResult,SD};
+use logger::Logger;
 
-static mut VERBOSE: bool = false;
 
 fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
     let file = try!(File::open(filename));
@@ -62,18 +66,6 @@ pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
     sa
 }
 
-
-macro_rules! log(
-    ($($arg:tt)*) => (
-        let v = unsafe { VERBOSE };
-        if v {
-            match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
-                Ok(_) => {},
-                Err(_) => {}
-            }
-        }
-        )
-);
 
 fn main() {
     struct Settings {
@@ -114,10 +106,9 @@ fn main() {
         prefix: args.value_of("prefix").unwrap_or("").to_owned(),
         out: args.value_of("out").unwrap_or("").to_owned(),
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
-        
     };
 
-    unsafe { VERBOSE = args.is_present("verbose"); }
+    Logger::init(if args.is_present("verbose") { LogLevelFilter::Trace } else { LogLevelFilter::Off }).unwrap();
 
     let out_file = if settings.out.is_empty() {
         format!("{}{}_vs_{}_{}_{}{}{}.json",
@@ -133,21 +124,17 @@ fn main() {
         settings.out + ".json"
     };
 
-    if unsafe {VERBOSE} {
-        println!("1st strand file          {}", &settings.strand1_file);
-        println!("2nd strand file          {}", &settings.strand2_file);
-        println!("K-mers size              {}", settings.kmer_size);
-        println!("Max gap size             {}", settings.gap_size);
-        println!("Output file              {}", &out_file);
-        println!("Reverse 2nd strand       {}", settings.reverse);
-        println!("Translate 2nd strand     {}", settings.translate);
-        println!("Interlaced SD            {}", settings.interlaced);
-        println!("Threads count            {}", settings.threads_count);
-        if settings.trim.len() > 0 {
-            println!("Trimming                 {} - {}", settings.trim[0], settings.trim[1]);
-        }
-        println!("libdivsufsort            v{:?}", unsafe{divsufsort64::divsufsort64_version()});
-        println!("");
+    info!("1st strand file          {}", &settings.strand1_file);
+    info!("2nd strand file          {}", &settings.strand2_file);
+    info!("K-mers size              {}", settings.kmer_size);
+    info!("Max gap size             {}", settings.gap_size);
+    info!("Output file              {}", &out_file);
+    info!("Reverse 2nd strand       {}", settings.reverse);
+    info!("Translate 2nd strand     {}", settings.translate);
+    info!("Interlaced SD            {}", settings.interlaced);
+    info!("Threads count            {}", settings.threads_count);
+    if settings.trim.len() > 0 {
+        info!("Trimming                 {} - {}", settings.trim[0], settings.trim[1]);
     }
 
     let result = search_duplications(
@@ -191,20 +178,22 @@ fn search_duplications(
 
     let (shift, stop) = trim.unwrap_or((0, shared_strand1.len()));
     if stop > shared_strand1.len() {
-        panic!("ERROR: {} greater than `{}` length ({}bp)", stop, strand1_file,
+        error!("ERROR: {} greater than `{}` length ({}bp)", stop, strand1_file,
                shared_strand1.len());
+        panic!();
     }
     if stop <= shift {
-        panic!("ERROR: {} greater than {}", shift, stop);
+        error!("ERROR: {} greater than {}", shift, stop);
+        panic!();
     }
 
-    log!("Building suffix array...");
+    info!("Building suffix array...");
     let now = SystemTime::now();
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
     let shared_searcher = Arc::new(searcher::Searcher::new(&strand2, 
                                                            &shared_suffix_array.clone()));
     let shared_strand2 = Arc::new(strand2);
-    log!("Done in {}s.", now.elapsed().unwrap().as_secs());
+    info!("Done in {}s.", now.elapsed().unwrap().as_secs());
 
 
     let thread_pool = ThreadPool::new(threads_count);
@@ -257,7 +246,7 @@ fn search_duplications(
                         for x in progresses.iter() {
                             current += x.load(Ordering::Relaxed);
                         }
-                        log!("{}%", (current as f64/total as f64 * 100.0) as u32);
+                        trace!("{}%", (current as f64/total as f64 * 100.0) as u32);
                     }
                 }
             }
@@ -265,28 +254,28 @@ fn search_duplications(
     }
     drop(tx);
 
-    log!("Looking for hulls...");
+    info!("Looking for hulls...");
     let now = SystemTime::now();
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
     let _ = tx_monitor.send(());
-    log!("Done in {}s.", now.elapsed().unwrap().as_secs());
+    info!("Done in {}s.", now.elapsed().unwrap().as_secs());
 
 
-    log!("Re-ordering...");
+    info!("Re-ordering...");
     result.sort_by(|a, b|
                    if a.left != b.left {
                        (a.left).cmp(&b.left)
                    } else {
                        (a.right).cmp(&b.right)
                    });
-    log!("Done.");
+    info!("Done.");
 
 
-    log!("Reducing overlapping...");
+    info!("Reducing overlapping...");
     result = reduce_overlap(&result);
-    log!("Done.");
+    info!("Done.");
 
-    log!("{} & {} ({}/{}) processed in {}s.",
+    info!("{} & {} ({}/{}) processed in {}s.\n\n",
         strand1_file, strand2_file, kmer_size, max_gap_size - kmer_size as u32,
         total.elapsed().unwrap().as_secs());
 

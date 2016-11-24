@@ -134,12 +134,12 @@ fn main() {
     info!("Interlaced SD            {}", settings.interlaced);
     info!("Threads count            {}", settings.threads_count);
     if settings.trim.len() > 0 {
-        info!("Trimming                 {} - {}", settings.trim[0], settings.trim[1]);
+        info!("Trimming                 {} → {}\n", settings.trim[0], settings.trim[1]);
     }
 
     let result = search_duplications(
         &settings.strand1_file, &settings.strand2_file,
-        settings.kmer_size, settings.gap_size + settings.kmer_size as u32, 
+        settings.kmer_size, settings.gap_size + settings.kmer_size as u32,
         settings.min_duplication_size,
         settings.reverse, settings.translate, settings.interlaced,
         if !settings.trim.is_empty() {Some((settings.trim[0], settings.trim[1]))} else {None},
@@ -168,6 +168,14 @@ fn search_duplications(
     let strand1 = read_fasta(strand1_file).expect(&format!("Unable to read {}", strand1_file));
     let shared_strand1 = Arc::new(strand1);
 
+    let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len()));
+    if stop >= shared_strand1.len() {
+        warn!("Trimming: {} greater than `{}` length ({}bp)", stop, strand1_file,
+              shared_strand1.len());
+        warn!("Using {} instead of {}\n", shared_strand1.len()-1, stop);
+        stop = shared_strand1.len()-1;
+    }
+
     let strand2 = {
         let mut strand2 = read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file));
         if translate { strand2 = utils::translated(&strand2[0..strand2.len()-1].to_vec()); }
@@ -176,12 +184,6 @@ fn search_duplications(
         strand2
     };
 
-    let (shift, stop) = trim.unwrap_or((0, shared_strand1.len()));
-    if stop > shared_strand1.len() {
-        error!("ERROR: {} greater than `{}` length ({}bp)", stop, strand1_file,
-               shared_strand1.len());
-        panic!();
-    }
     if stop <= shift {
         error!("ERROR: {} greater than {}", shift, stop);
         panic!();
@@ -190,10 +192,10 @@ fn search_duplications(
     info!("Building suffix array...");
     let now = SystemTime::now();
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
-    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2, 
+    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2,
                                                            &shared_suffix_array.clone()));
     let shared_strand2 = Arc::new(strand2);
-    info!("Done in {}s.", now.elapsed().unwrap().as_secs());
+    info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
 
 
     let thread_pool = ThreadPool::new(threads_count);
@@ -258,7 +260,7 @@ fn search_duplications(
     let now = SystemTime::now();
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
     let _ = tx_monitor.send(());
-    info!("Done in {}s.", now.elapsed().unwrap().as_secs());
+    info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
 
 
     info!("Re-ordering...");
@@ -268,12 +270,12 @@ fn search_duplications(
                    } else {
                        (a.right).cmp(&b.right)
                    });
-    info!("Done.");
+    info!("Done.\n");
 
 
     info!("Reducing overlapping...");
     result = reduce_overlap(&result);
-    info!("Done.");
+    info!("Done.\n");
 
     info!("{} & {} ({}/{}) processed in {}s.\n\n",
         strand1_file, strand2_file, kmer_size, max_gap_size - kmer_size as u32,

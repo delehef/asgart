@@ -19,7 +19,7 @@ impl log::Log for Logger {
                      match record.level() {
                          LogLevel::Error => { format!("{} {}", "✖".red(),    record.args().to_string().red().bold()) }
                          LogLevel::Warn  => { format!("{} {}", "⚠".yellow(), record.args().to_string().yellow()) }
-                         LogLevel::Info  => { format!("{} {}", "⬨".cyan(),   record.args()) }
+                         LogLevel::Info  => { format!("{} {}", "▷".cyan(),   record.args()) }
                          LogLevel::Trace => { format!("{} {}", "✓".green(),  record.args().to_string().green()) }
                          LogLevel::Debug => { format!("{} {}", "❖".blue(),   record.args().to_string().blue()) }
                      });

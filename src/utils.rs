@@ -89,6 +89,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
                 }
                 gap = 0;
                 current_start = i;
+                progress.store(cmp::min(i-start, end-start), Ordering::Relaxed);
                 state = if strand1[i] == b'N' || strand1[i] == b'n' {
                     i += 1;
                     SearchState::Start
@@ -105,6 +106,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
             },
             SearchState::Grow => {
                 i += probe_size;
+                progress.store(cmp::min(i-start, end-start), Ordering::Relaxed);
                 state = if strand1[i] == b'N' || strand1[i] == b'n' {
                     SearchState::SparseGrow
                 } else if i+probe_size > strand1.len()-1 {
@@ -132,6 +134,7 @@ pub fn search_duplications(strand1: &[u8], strand2: &[u8], sa: &[idx], start: us
             SearchState::SparseGrow => {
                 i += 1;
                 gap += 1;
+                progress.store(cmp::min(i-start, end-start), Ordering::Relaxed);
                 state = if (gap > max_gap_size) || (i >= strand1.len() - probe_size) {
                     SearchState::Proto
                 } else if strand1[i] != b'N' && strand1[i] != b'n' {

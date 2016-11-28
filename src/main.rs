@@ -9,6 +9,7 @@ extern crate clap;
 #[macro_use]
 extern crate log;
 extern crate colored;
+extern crate pbr;
 
 mod utils;
 mod divsufsort64;
@@ -34,6 +35,7 @@ use log::LogLevelFilter;
 use threadpool::ThreadPool;
 use clap::App;
 use divsufsort64::idx;
+use pbr::ProgressBar;
 
 use structs::{Strand,RunResult,SD};
 use logger::Logger;
@@ -50,9 +52,11 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
        .fold(Vec::new(), |mut r, line| {r.extend(line.trim().as_bytes().iter().cloned()); r});
 
     r = r.to_ascii_uppercase();
+    let ALPHABET = [b'A', b'T', b'G', b'C', b'N'];
 
     // r.retain(|c| *c != b'n' && *c != b'N');
-    r.retain(|c| *c != b'>');
+    // r.retain(|c| *c != b'>');
+    for c in r.iter_mut() { if !ALPHABET.contains(c) { *c = b'N' } }
 
     Ok(r)
 }
@@ -166,6 +170,18 @@ fn search_duplications(
     let total = SystemTime::now();
 
     let strand1 = read_fasta(strand1_file).expect(&format!("Unable to read {}", strand1_file));
+    let strand2 = {
+        let mut strand2 = if strand2_file != strand1_file {
+            read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file))
+        } else {
+            info!("Using same file for strands 1 & 2\n");
+            strand1.clone()
+        };
+        if translate { strand2 = utils::translated(&strand2[0..strand2.len()-1].to_vec()); }
+        if reverse { strand2.reverse(); }
+        strand2.push(b'$');
+        strand2
+    };
     let shared_strand1 = Arc::new(strand1);
 
     let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len()));
@@ -176,13 +192,6 @@ fn search_duplications(
         stop = shared_strand1.len()-1;
     }
 
-    let strand2 = {
-        let mut strand2 = read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file));
-        if translate { strand2 = utils::translated(&strand2[0..strand2.len()-1].to_vec()); }
-        if reverse { strand2.reverse(); }
-        strand2.push(b'$');
-        strand2
-    };
 
     if stop <= shift {
         error!("ERROR: {} greater than {}", shift, stop);

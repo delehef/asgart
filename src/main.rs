@@ -247,8 +247,9 @@ fn search_duplications(
 
         let total = shared_strand1.len();
         thread::spawn(move || {
+            let mut pb = ProgressBar::new(100);
             loop {
-                thread::sleep(Duration::from_millis(1000));
+                thread::sleep(Duration::from_millis(500));
                 match rx_monitor.try_recv() {
                     Ok(_) | Err(TryRecvError::Disconnected) => {
                         break;
@@ -258,7 +259,8 @@ fn search_duplications(
                         for x in progresses.iter() {
                             current += x.load(Ordering::Relaxed);
                         }
-                        trace!("{}%", (current as f64/total as f64 * 100.0) as u32);
+                        let percent = (current as f64/total as f64 * 100.0) as u64;
+                        pb.set(percent);
                     }
                 }
             }

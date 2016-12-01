@@ -2,7 +2,7 @@ use std::mem;
 use std::collections::HashMap;
 
 use super::divsufsort64::*;
-use super::utils::Segment;
+use super::automaton::Segment;
 
 pub struct Searcher {
     cache: HashMap<u64, (usize, usize)>,

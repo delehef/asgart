@@ -11,6 +11,7 @@ extern crate log;
 extern crate colored;
 extern crate pbr;
 
+mod automaton;
 mod utils;
 mod divsufsort64;
 mod structs;
@@ -233,7 +234,7 @@ fn search_duplications(
 
             thread_pool.execute(move || {
                 let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
-                my_tx.send(utils::search_duplications(
+                my_tx.send(automaton::search_duplications(
                         &strand1, &strand2, &suffix_array,
                         start, end,
                         kmer_size, max_gap_size, min_duplication_size,

@@ -185,7 +185,7 @@ fn search_duplications(
     };
     let shared_strand1 = Arc::new(strand1);
 
-    let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len()));
+    let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len()-1));
     if stop >= shared_strand1.len() {
         warn!("Trimming: {} greater than `{}` length ({}bp)", stop, strand1_file,
               shared_strand1.len());

@@ -56,7 +56,7 @@ fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
                            record.desc().unwrap_or(""));
         let mut seq = record.seq().to_vec();
         seq = seq.to_ascii_uppercase();
-        for c in seq.iter_mut() {
+        for c in &mut seq {
             if !(structs::ALPHABET).contains(c) {
                 *c = b'N'
             }
@@ -156,7 +156,7 @@ fn main() {
     info!("Translate 2nd strand     {}", settings.translate);
     info!("Interlaced SD            {}", settings.interlaced);
     info!("Threads count            {}", settings.threads_count);
-    if settings.trim.len() > 0 {
+    if !settings.trim.is_empty() {
         info!("Trimming                 {} → {}\n",
               settings.trim[0],
               settings.trim[1]);
@@ -301,7 +301,7 @@ fn search_duplications(strand1_file: &str,
                     }
                     Err(TryRecvError::Empty) => {
                         let mut current = 0;
-                        for x in progresses.iter() {
+                        for x in &progresses {
                             current += x.load(Ordering::Relaxed);
                         }
                         let percent = (current as f64 / total as f64 * 100.0) as u64;

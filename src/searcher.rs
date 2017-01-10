@@ -37,14 +37,14 @@ impl Searcher {
         let mut s = Searcher { cache: HashMap::new() };
 
         unsafe {
-            for a in ALPHABET.iter() {
-                for b in ALPHABET.iter() {
-                    for c in ALPHABET.iter() {
-                        for d in ALPHABET.iter() {
-                            for e in ALPHABET.iter() {
-                                for f in ALPHABET.iter() {
-                                    for g in ALPHABET.iter() {
-                                        for h in ALPHABET.iter() {
+            for a in &ALPHABET {
+                for b in &ALPHABET {
+                    for c in &ALPHABET {
+                        for d in &ALPHABET {
+                            for e in &ALPHABET {
+                                for f in &ALPHABET {
+                                    for g in &ALPHABET {
+                                        for h in &ALPHABET {
                                             let p = vec![*a, *b, *c, *d, *e, *f, *g, *h];
                                             let index = Searcher::indexize(&p);
                                             let (start, count): (usize, usize) = {

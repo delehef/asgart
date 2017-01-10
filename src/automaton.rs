@@ -60,10 +60,10 @@ fn make_duplications(psd: ProtoSD,
         }
 
         // Ignore N-dominant SD
-        if *(&strand1[psd.bottom..psd.top]
+        if strand1[psd.bottom..psd.top]
             .iter()
             .filter(|c| **c == b'n' || **c == b'N')
-            .count()) as f32 > 0.1 * (psd.top - psd.bottom) as f32 {
+            .count() as f32 > 0.1 * (psd.top - psd.bottom) as f32 {
             continue;
         }
 

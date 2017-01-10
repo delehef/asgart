@@ -1,9 +1,9 @@
 pub fn translate_nucleotide(n: u8) -> u8 {
     match n {
-        b'A'     => b'T',
-        b'T'     => b'A',
-        b'G'     => b'C',
-        b'C'     => b'G',
+        b'A' => b'T',
+        b'T' => b'A',
+        b'G' => b'C',
+        b'C' => b'G',
         b'N' | _ => b'N',
     }
 }

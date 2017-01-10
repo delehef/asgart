@@ -1,9 +1,17 @@
+pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
+
+#[derive(RustcEncodable, RustcDecodable, Clone)]
+pub struct Start {
+    pub name: String,
+    pub position: usize,
+    pub length: usize,
+}
+
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Strand {
     pub name: String,
     pub length: usize,
-    pub reversed: bool,
-    pub translated: bool,
+    pub map: Vec<Start>,
 }
 
 
@@ -20,16 +28,18 @@ pub struct RunResult {
 pub struct SD {
     pub left: usize,
     pub right: usize,
-    pub size: usize,
+    pub length: usize,
     pub identity: f32,
+    pub reversed: bool,
+    pub translated: bool,
 }
 
 impl SD {
     pub fn left_part(&self) -> (usize, usize) {
-        (self.left, self.size)
+        (self.left, self.length)
     }
 
     pub fn right_part(&self) -> (usize, usize) {
-        (self.right, self.size)
+        (self.right, self.length)
     }
 }

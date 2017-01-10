@@ -76,8 +76,10 @@ fn make_duplications(psd: ProtoSD,
         r.push(SD {
             left: cmp::max(psd.bottom, right_segment.tag),
             right: right_segment.start,
-            size: size,
+            length: size,
             identity: 0.0,
+            reversed: false,
+            translated: false,
         });
     }
 

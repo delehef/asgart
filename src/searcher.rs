@@ -1,8 +1,9 @@
 use std::mem;
 use std::collections::HashMap;
 
-use super::divsufsort64::*;
-use super::automaton::Segment;
+use structs::ALPHABET;
+use divsufsort64::*;
+use automaton::Segment;
 
 pub struct Searcher {
     cache: HashMap<u64, (usize, usize)>,
@@ -35,7 +36,6 @@ impl Searcher {
     pub fn new(dna: &[u8], sa: &[idx]) -> Searcher {
         let mut s = Searcher { cache: HashMap::new() };
 
-        let ALPHABET = [b'A', b'T', b'G', b'C', b'N'];
         unsafe {
             for a in ALPHABET.iter() {
                 for b in ALPHABET.iter() {

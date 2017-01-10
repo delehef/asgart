@@ -81,18 +81,18 @@ impl ChordPlotter {
         }
 
         for sd in &self.result.sds {
-            let (left, right) = if !self.result.strand2.reversed {
+            let (left, right) = if !sd.reversed {
                 (sd.left as i64, sd.right as i64)
             } else {
                 let (a, b) = (sd.left as i64,
-                              self.length as i64 - sd.right as i64 - sd.size as i64);
+                              self.length as i64 - sd.right as i64 - sd.length as i64);
                 (std::cmp::min(a, b), std::cmp::max(a, b))
             };
 
             let t_left1 = self.angle(left as f64);
             let t_right2 = self.angle(right as f64);
-            let t_left2 = self.angle((left + sd.size as i64) as f64);
-            let t_right1 = self.angle((right + sd.size as i64) as f64);
+            let t_left2 = self.angle((left + sd.length as i64) as f64);
+            let t_right1 = self.angle((right + sd.length as i64) as f64);
 
             let pleft1 = self.cartesian(t_left1, self.radius);
             let pleft2 = self.cartesian(t_left2, self.radius);
@@ -150,10 +150,11 @@ impl ChordPlotter {
     }
 
     fn plot(&mut self) -> String {
-        format!("<?xml version='1.0' encoding='iso-8859-1' standalone='no' ?> <!DOCTYPE svg PUBLIC 
-        '-//W3C//DTD SVG 1.0//EN' 'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg 
-        version='1.0' width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' 
-        xmlns:xlink='http://www.w3.org/1999/xlink'>{}</svg>",
+        format!("<?xml version='1.0' encoding='iso-8859-1' standalone='no' ?> <!DOCTYPE svg \
+                 PUBLIC '-//W3C//DTD SVG 1.0//EN' \
+                 'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
+                 width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
+                 xmlns:xlink='http://www.w3.org/1999/xlink'>{}</svg>",
                 self.width,
                 self.height,
                 self.svg)

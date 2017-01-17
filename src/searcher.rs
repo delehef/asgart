@@ -97,7 +97,7 @@ impl Searcher {
                          rstart as idx)
         };
 
-        let mut rr = Vec::new();
+        let mut rr = Vec::with_capacity(count as usize);
         for i in 0..count {
             let start = sa[(out + i) as usize];
             rr.push(Segment {

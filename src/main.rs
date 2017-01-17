@@ -22,7 +22,6 @@ use std::thread;
 use std::time::Duration;
 use std::cmp;
 use std::io;
-use std::io::BufRead;
 use std::io::Write;
 use std::fs::File;
 use std::sync::mpsc;
@@ -32,34 +31,48 @@ use std::time::SystemTime;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
 
+use bio::io::fasta;
 use log::LogLevelFilter;
 use threadpool::ThreadPool;
 use clap::App;
 use divsufsort64::idx;
 use pbr::ProgressBar;
 
-use structs::{Strand,RunResult,SD};
+use structs::{Strand, RunResult, SD, Start};
 use logger::Logger;
 
+fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
+    let mut map = Vec::new();
+    let mut r = Vec::new();
 
-fn read_fasta(filename: &str) -> Result<Vec<u8>, io::Error> {
-    let file = try!(File::open(filename));
-    let file = io::BufReader::new(file);
+    let reader = fasta::Reader::from_file(filename).expect("Unable to read");
+    let mut counter = 0;
+
+    for record in reader.records() {
+        let record = record.unwrap();
+
+        let name = format!("{} {}",
+                           record.id().unwrap_or(""),
+                           record.desc().unwrap_or(""));
+        let mut seq = record.seq().to_vec();
+        seq = seq.to_ascii_uppercase();
+        for c in &mut seq {
+            if !(structs::ALPHABET).contains(c) {
+                *c = b'N'
+            }
+        }
+
+        map.push(Start {
+            name: name,
+            position: counter,
+            length: seq.len(),
+        });
+        counter += seq.len();
+        r.append(&mut seq);
+    }
 
 
-    let mut r = file.lines()
-       .filter_map(|result| result.ok())
-       .filter(|line| !line.starts_with('>'))
-       .fold(Vec::new(), |mut r, line| {r.extend(line.trim().as_bytes().iter().cloned()); r});
-
-    r = r.to_ascii_uppercase();
-    let ALPHABET = [b'A', b'T', b'G', b'C', b'N'];
-
-    // r.retain(|c| *c != b'n' && *c != b'N');
-    // r.retain(|c| *c != b'>');
-    for c in r.iter_mut() { if !ALPHABET.contains(c) { *c = b'N' } }
-
-    Ok(r)
+    Ok((map, r))
 }
 
 pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
@@ -113,7 +126,12 @@ fn main() {
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
     };
 
-    Logger::init(if args.is_present("verbose") { LogLevelFilter::Trace } else { LogLevelFilter::Off }).unwrap();
+    Logger::init(if args.is_present("verbose") {
+            LogLevelFilter::Trace
+        } else {
+            LogLevelFilter::Off
+        })
+        .unwrap();
 
     let out_file = if settings.out.is_empty() {
         format!("{}{}_vs_{}_{}_{}{}{}.json",
@@ -138,59 +156,76 @@ fn main() {
     info!("Translate 2nd strand     {}", settings.translate);
     info!("Interlaced SD            {}", settings.interlaced);
     info!("Threads count            {}", settings.threads_count);
-    if settings.trim.len() > 0 {
-        info!("Trimming                 {} → {}\n", settings.trim[0], settings.trim[1]);
+    if !settings.trim.is_empty() {
+        info!("Trimming                 {} → {}\n",
+              settings.trim[0],
+              settings.trim[1]);
     }
 
-    let result = search_duplications(
-        &settings.strand1_file, &settings.strand2_file,
-        settings.kmer_size, settings.gap_size + settings.kmer_size as u32,
-        settings.min_duplication_size,
-        settings.reverse, settings.translate, settings.interlaced,
-        if !settings.trim.is_empty() {Some((settings.trim[0], settings.trim[1]))} else {None},
-        settings.threads_count,
-        );
+    let result = search_duplications(&settings.strand1_file,
+                                     &settings.strand2_file,
+                                     settings.kmer_size,
+                                     settings.gap_size + settings.kmer_size as u32,
+                                     settings.min_duplication_size,
+                                     settings.reverse,
+                                     settings.translate,
+                                     settings.interlaced,
+                                     if !settings.trim.is_empty() {
+                                         Some((settings.trim[0], settings.trim[1]))
+                                     } else {
+                                         None
+                                     },
+                                     settings.threads_count);
     let mut out = File::create(&out_file).expect(&format!("Unable to create `{}`", &out_file));
-    writeln!(&mut out, "{}", rustc_serialize::json::encode(&result).unwrap());
+    writeln!(&mut out,
+             "{}",
+             rustc_serialize::json::as_pretty_json(&result));
 }
 
-fn search_duplications(
-    strand1_file: &str,
-    strand2_file: &str,
+fn search_duplications(strand1_file: &str,
+                       strand2_file: &str,
 
-    kmer_size: usize,
-    max_gap_size: u32,
-    min_duplication_size: usize,
+                       kmer_size: usize,
+                       max_gap_size: u32,
+                       min_duplication_size: usize,
 
-    reverse: bool,
-    translate: bool,
-    interlaced: bool,
-    trim: Option<(usize, usize)>,
+                       reverse: bool,
+                       translate: bool,
+                       interlaced: bool,
+                       trim: Option<(usize, usize)>,
 
-    threads_count: usize,) -> RunResult {
+                       threads_count: usize)
+                       -> RunResult {
     let total = SystemTime::now();
 
-    let strand1 = read_fasta(strand1_file).expect(&format!("Unable to read {}", strand1_file));
-    let strand2 = {
-        let mut strand2 = if strand2_file != strand1_file {
+    let (map1, strand1) = read_fasta(strand1_file)
+        .expect(&format!("Unable to read {}", strand1_file));
+    let (map2, strand2) = {
+        let (map2, mut strand2) = if strand2_file != strand1_file {
             read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file))
         } else {
             info!("Using same file for strands 1 & 2\n");
-            strand1.clone()
+            (map1.clone(), strand1.clone())
         };
-        if translate { strand2 = utils::translated(&strand2[0..strand2.len()-1].to_vec()); }
-        if reverse { strand2.reverse(); }
+        if translate {
+            strand2 = utils::translated(&strand2);
+        }
+        if reverse {
+            strand2.reverse();
+        }
         strand2.push(b'$');
-        strand2
+        (map2, strand2)
     };
     let shared_strand1 = Arc::new(strand1);
 
-    let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len()-1));
+    let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len() - 1));
     if stop >= shared_strand1.len() {
-        warn!("Trimming: {} greater than `{}` length ({}bp)", stop, strand1_file,
+        warn!("Trimming: {} greater than `{}` length ({}bp)",
+              stop,
+              strand1_file,
               shared_strand1.len());
-        warn!("Using {} instead of {}\n", shared_strand1.len()-1, stop);
-        stop = shared_strand1.len()-1;
+        warn!("Using {} instead of {}\n", shared_strand1.len() - 1, stop);
+        stop = shared_strand1.len() - 1;
     }
 
 
@@ -202,8 +237,7 @@ fn search_duplications(
     info!("Building suffix array...");
     let now = SystemTime::now();
     let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
-    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2,
-                                                           &shared_suffix_array.clone()));
+    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2, &shared_suffix_array.clone()));
     let shared_strand2 = Arc::new(strand2);
     info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
 
@@ -215,14 +249,13 @@ fn search_duplications(
         const CHUNK_SIZE: usize = 200000;
         let size = stop - shift;
 
-        let num_tasks = (size - kmer_size)/CHUNK_SIZE;
-        let chunk_overflow = (size - kmer_size)%CHUNK_SIZE;
+        let num_tasks = (size - kmer_size) / CHUNK_SIZE;
+        let chunk_overflow = (size - kmer_size) % CHUNK_SIZE;
 
         let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(num_tasks);
 
         let mut start = shift;
-        for id in 0..num_tasks+1
-        {
+        for id in 0..num_tasks + 1 {
             progresses.push(Arc::new(AtomicUsize::new(0)));
             let suffix_array = shared_suffix_array.clone();
             let strand1 = shared_strand1.clone();
@@ -233,13 +266,24 @@ fn search_duplications(
             let my_progress = progresses[id].clone();
 
             thread_pool.execute(move || {
-                let end = start + if id<num_tasks {CHUNK_SIZE} else {chunk_overflow};
-                my_tx.send(automaton::search_duplications(
-                        &strand1, &strand2, &suffix_array,
-                        start, end,
-                        kmer_size, max_gap_size, min_duplication_size,
-                        interlaced, &searcher,
-                        &my_progress)).unwrap();
+                let end = start +
+                          if id < num_tasks {
+                    CHUNK_SIZE
+                } else {
+                    chunk_overflow
+                };
+                my_tx.send(automaton::search_duplications(&strand1,
+                                                         &strand2,
+                                                         &suffix_array,
+                                                         start,
+                                                         end,
+                                                         kmer_size,
+                                                         max_gap_size,
+                                                         min_duplication_size,
+                                                         interlaced,
+                                                         &searcher,
+                                                         &my_progress))
+                    .unwrap();
             });
 
             start += CHUNK_SIZE;
@@ -251,15 +295,16 @@ fn search_duplications(
             loop {
                 thread::sleep(Duration::from_millis(500));
                 match rx_monitor.try_recv() {
-                    Ok(_) | Err(TryRecvError::Disconnected) => {
+                    Ok(_) |
+                    Err(TryRecvError::Disconnected) => {
                         break;
                     }
                     Err(TryRecvError::Empty) => {
                         let mut current = 0;
-                        for x in progresses.iter() {
+                        for x in &progresses {
                             current += x.load(Ordering::Relaxed);
                         }
-                        let percent = (current as f64/total as f64 * 100.0) as u64;
+                        let percent = (current as f64 / total as f64 * 100.0) as u64;
                         pb.set(percent);
                     }
                 }
@@ -270,18 +315,32 @@ fn search_duplications(
 
     info!("Looking for hulls...");
     let now = SystemTime::now();
-    let mut result = rx.iter().fold(Vec::new(), |mut a, b| {a.append(&mut b.clone()); a});
+    let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
+        a.extend(b.iter().map(|sd| {
+            SD {
+                left: sd.left,
+                right: sd.right,
+                length: sd.length,
+                identity: sd.identity,
+                reversed: reverse,
+                translated: translate,
+            }
+        }));
+        // for sd in b {
+        //     a.push();
+        // }
+        a
+    });
     let _ = tx_monitor.send(());
     info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
 
 
     info!("Re-ordering...");
-    result.sort_by(|a, b|
-                   if a.left != b.left {
-                       (a.left).cmp(&b.left)
-                   } else {
-                       (a.right).cmp(&b.right)
-                   });
+    result.sort_by(|a, b| if a.left != b.left {
+        (a.left).cmp(&b.left)
+    } else {
+        (a.right).cmp(&b.right)
+    });
     info!("Done.\n");
 
 
@@ -290,21 +349,22 @@ fn search_duplications(
     info!("Done.\n");
 
     info!("{} & {} ({}/{}) processed in {}s.\n\n",
-        strand1_file, strand2_file, kmer_size, max_gap_size - kmer_size as u32,
-        total.elapsed().unwrap().as_secs());
+          strand1_file,
+          strand2_file,
+          kmer_size,
+          max_gap_size - kmer_size as u32,
+          total.elapsed().unwrap().as_secs());
 
     RunResult {
         strand1: Strand {
             name: strand1_file.to_owned(),
             length: shared_strand1.len(),
-            reversed: false,
-            translated: false,
+            map: map1,
         },
         strand2: Strand {
             name: strand2_file.to_owned(),
             length: shared_strand2.len() - 1, // Drop the '$'
-            reversed: reverse,
-            translated: translate,
+            map: map2,
         },
         sds: result,
     }
@@ -322,31 +382,34 @@ fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bo
     let xend = xstart + xlen;
     let yend = ystart + ylen;
 
-    (xstart >= ystart && xstart <= yend && xend >= yend)
-    || (ystart >= xstart && ystart <= xend && yend >= xend)
+    (xstart >= ystart && xstart <= yend && xend >= yend) ||
+    (ystart >= xstart && ystart <= xend && yend >= xend)
 }
 
 fn merge(x: &SD, y: &SD) -> SD {
-   let (xleft, yleft, xsize, ysize) = if x.left < y.left {
-       (x.left, y.left, x.size, y.size)
-   } else {
-       (y.left, x.left, x.size, y.size)
-   };
-   let lsize = (yleft-xleft) + ((xleft+xsize)-yleft) + ((yleft+ysize) - (xleft+xsize));
+    let (xleft, yleft, xsize, ysize) = if x.left < y.left {
+        (x.left, y.left, x.length, y.length)
+    } else {
+        (y.left, x.left, x.length, y.length)
+    };
+    let lsize = (yleft - xleft) + ((xleft + xsize) - yleft) + ((yleft + ysize) - (xleft + xsize));
 
-   let (xright, yright, xsize, ysize) = if x.right < y.right {
-       (x.right, y.right, x.size, y.size)
-   } else {
-       (y.right, x.right, x.size, y.size)
-   };
-   let rsize = (yright-xright) + ((xright+xsize)-yright) + ((yright+ysize) - (xright+xsize));
+    let (xright, yright, xsize, ysize) = if x.right < y.right {
+        (x.right, y.right, x.length, y.length)
+    } else {
+        (y.right, x.right, x.length, y.length)
+    };
+    let rsize = (yright - xright) + ((xright + xsize) - yright) +
+                ((yright + ysize) - (xright + xsize));
 
-   SD {
-       left: xleft,
-       right: xright,
-       size: cmp::min(lsize, rsize),
-       identity: x.identity
-   }
+    SD {
+        left: xleft,
+        right: xright,
+        length: cmp::min(lsize, rsize),
+        identity: x.identity,
+        reversed: x.reversed,
+        translated: x.translated,
+    }
 }
 
 fn reduce_overlap(result: &[SD]) -> Vec<SD> {
@@ -355,22 +418,27 @@ fn reduce_overlap(result: &[SD]) -> Vec<SD> {
         'to_insert: for x in result.iter() {
             for ref mut y in &mut news {
                 // x ⊂ y
-                if subsegment(x.left_part(), y.left_part()) && subsegment(x.right_part(), y.right_part())
-                {continue 'to_insert;}
-
-                // x ⊃ y
-                if subsegment(y.left_part(), x.left_part()) && subsegment(y.right_part(), x.right_part())
-                {
-                    y.left = x.left; y.right = x.right; y.size = x.size; y.identity = x.identity;
+                if subsegment(x.left_part(), y.left_part()) &&
+                   subsegment(x.right_part(), y.right_part()) {
                     continue 'to_insert;
                 }
 
-                if overlap(x.left_part(), y.left_part()) && overlap(x.right_part(), y.right_part())
-                {
+                // x ⊃ y
+                if subsegment(y.left_part(), x.left_part()) &&
+                   subsegment(y.right_part(), x.right_part()) {
+                    y.left = x.left;
+                    y.right = x.right;
+                    y.length = x.length;
+                    y.identity = x.identity;
+                    continue 'to_insert;
+                }
+
+                if overlap(x.left_part(), y.left_part()) &&
+                   overlap(x.right_part(), y.right_part()) {
                     let z = merge(x, y);
                     y.left = z.left;
                     y.right = z.right;
-                    y.size = z.size;
+                    y.length = z.length;
                     continue 'to_insert;
                 }
             }

@@ -17,11 +17,19 @@ impl log::Log for Logger {
         if record.level() <= self.level {
             println!("{}",
                      match record.level() {
-                         LogLevel::Error => { format!("{} {}", "✖".red(),    record.args().to_string().red().bold()) }
-                         LogLevel::Warn  => { format!("{} {}", "⚠".yellow(), record.args().to_string().yellow()) }
-                         LogLevel::Info  => { format!("{} {}", "▷".cyan(),   record.args()) }
-                         LogLevel::Trace => { format!("{} {}", "✓".green(),  record.args().to_string().green()) }
-                         LogLevel::Debug => { format!("{} {}", "❖".blue(),   record.args().to_string().blue()) }
+                         LogLevel::Error => {
+                             format!("{} {}", "✖".red(), record.args().to_string().red().bold())
+                         }
+                         LogLevel::Warn => {
+                             format!("{} {}", "⚠".yellow(), record.args().to_string().yellow())
+                         }
+                         LogLevel::Info => format!("{} {}", "▷".cyan(), record.args()),
+                         LogLevel::Trace => {
+                             format!("{} {}", "✓".green(), record.args().to_string().green())
+                         }
+                         LogLevel::Debug => {
+                             format!("{} {}", "❖".blue(), record.args().to_string().blue())
+                         }
                      });
         }
     }
@@ -31,7 +39,7 @@ impl Logger {
     pub fn init(level: LogLevelFilter) -> Result<(), SetLoggerError> {
         log::set_logger(|max_log_level| {
             max_log_level.set(level);
-            Box::new(Logger {level: level})
+            Box::new(Logger { level: level })
         })
     }
 }

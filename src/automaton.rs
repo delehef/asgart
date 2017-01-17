@@ -264,7 +264,7 @@ fn merge_or_drop_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delt
 }
 
 fn segments_to_segments_distance(segments: &[Segment], others: &[Segment]) -> u32 {
-    let mut distance = 250000000;
+    let mut distance = 4000000000;
     for other in others {
         for segment in segments {
             if other.start >= segment.start && other.start <= segment.end {

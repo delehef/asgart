@@ -251,6 +251,8 @@ fn append_merge_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta
     }
 }
 
+#[no_mangle]
+#[inline(never)]
 fn merge_or_drop_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta: u32) {
     for n in _news {
         for o in _originals.iter_mut() {

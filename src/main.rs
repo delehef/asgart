@@ -18,6 +18,7 @@ mod structs;
 mod searcher;
 mod logger;
 
+use std::path;
 use std::thread;
 use std::time::Duration;
 use std::cmp;
@@ -136,8 +137,8 @@ fn main() {
     let out_file = if settings.out.is_empty() {
         format!("{}{}_vs_{}_{}_{}{}{}.json",
                 &settings.prefix,
-                &settings.strand1_file,
-                &settings.strand2_file,
+                path::Path::new(&settings.strand1_file).file_name().unwrap().to_str().unwrap(),
+                path::Path::new(&settings.strand2_file).file_name().unwrap().to_str().unwrap(),
                 settings.kmer_size,
                 settings.gap_size,
                 if settings.reverse {"r"} else {""},

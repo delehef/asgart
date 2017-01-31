@@ -20,3 +20,6 @@ pbr             = {git = "https://github.com/delehef/pb.git"}
 [dependencies.clap]
 version = "2.19.*"
 features = [ "yaml", "suggestions", "color" ]
+
+[profile.release]
+debug = true

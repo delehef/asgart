@@ -320,7 +320,7 @@ fn search_duplications(strand1_file: &str,
             start += CHUNK_SIZE;
         }
 
-        let total = shared_strand1.len();
+        let total = stop - shift;
         thread::spawn(move || {
             let mut pb = ProgressBar::new(100);
             loop {

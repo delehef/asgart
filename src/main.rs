@@ -50,7 +50,7 @@ fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
     let mut counter = 0;
 
     for record in reader.records() {
-        let record = record.unwrap();
+        let record = record.expect(&format!("Unable to read {:?}: not a FASTA file", path::Path::new(filename).file_name().unwrap()));
 
         let name = format!("{} {}",
                            record.id().unwrap_or(""),

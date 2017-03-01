@@ -42,6 +42,69 @@ use pbr::ProgressBar;
 use structs::{Strand, RunResult, SD, Start};
 use logger::Logger;
 
+fn prepare_data(strand1_file: &str,
+                strand2_file: &str,
+                reverse: bool,
+                translate: bool,
+                trim: Option<(usize, usize)>)
+                -> (std::vec::Vec<u8>,
+                    std::vec::Vec<u8>,
+                    std::vec::Vec<structs::Start>,
+                    std::vec::Vec<structs::Start>,
+                    std::vec::Vec<i64>,
+                    usize,
+                    usize) {
+    //
+    // Read and map the FASTA files to process
+    //
+    let (map1, strand1) = read_fasta(strand1_file)
+        .expect(&format!("Unable to read {}", strand1_file));
+    let (map2, strand2) = {
+        let (map2, mut strand2) = if strand2_file != strand1_file {
+            read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file))
+        } else {
+            info!("Using same file for strands 1 & 2\n");
+            (map1.clone(), strand1.clone())
+        };
+        if translate {
+            strand2 = utils::translated(&strand2);
+        }
+        if reverse {
+            strand2.reverse();
+        }
+        strand2.push(b'$');
+        (map2, strand2)
+    };
+
+    //
+    // Ensure that shift & stop actually stay in the FASTA
+    //
+    let (shift, mut stop) = trim.unwrap_or((0, strand1.len() - 1));
+    if stop >= strand1.len() {
+        warn!("Trimming: {} greater than `{}` length ({}bp)",
+              stop,
+              strand1_file,
+              strand1.len());
+        warn!("Using {} instead of {}\n", strand1.len() - 1, stop);
+        stop = strand1.len() - 1;
+    }
+    if stop <= shift {
+        error!("ERROR: {} greater than {}", shift, stop);
+        panic!();
+    }
+
+
+    //
+    // Build the suffix array
+    //
+    info!("Building suffix array...");
+    let now = SystemTime::now();
+    let suffix_array = r_divsufsort(&strand2);
+    info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
+
+    (strand1, strand2, map1, map2, suffix_array, shift, stop)
+}
+
 fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
     let mut map = Vec::new();
     let mut r = Vec::new();
@@ -197,50 +260,18 @@ fn search_duplications(strand1_file: &str,
 
                        threads_count: usize)
                        -> RunResult {
+
     let total = SystemTime::now();
 
-    let (map1, strand1) = read_fasta(strand1_file)
-        .expect(&format!("Unable to read {}", strand1_file));
-    let (map2, strand2) = {
-        let (map2, mut strand2) = if strand2_file != strand1_file {
-            read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file))
-        } else {
-            info!("Using same file for strands 1 & 2\n");
-            (map1.clone(), strand1.clone())
-        };
-        if translate {
-            strand2 = utils::translated(&strand2);
-        }
-        if reverse {
-            strand2.reverse();
-        }
-        strand2.push(b'$');
-        (map2, strand2)
-    };
+    let (strand1, strand2, map1, map2, suffix_array, shift, stop) =
+        prepare_data(strand1_file, strand2_file, reverse, translate, trim);
+
+
     let shared_strand1 = Arc::new(strand1);
-
-    let (shift, mut stop) = trim.unwrap_or((0, shared_strand1.len() - 1));
-    if stop >= shared_strand1.len() {
-        warn!("Trimming: {} greater than `{}` length ({}bp)",
-              stop,
-              strand1_file,
-              shared_strand1.len());
-        warn!("Using {} instead of {}\n", shared_strand1.len() - 1, stop);
-        stop = shared_strand1.len() - 1;
-    }
-
-
-    if stop <= shift {
-        error!("ERROR: {} greater than {}", shift, stop);
-        panic!();
-    }
-
-    info!("Building suffix array...");
-    let now = SystemTime::now();
-    let shared_suffix_array = Arc::new(r_divsufsort(&strand2));
-    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2, &shared_suffix_array.clone()));
     let shared_strand2 = Arc::new(strand2);
-    info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
+    let shared_suffix_array = Arc::new(suffix_array);
+    let shared_searcher = Arc::new(searcher::Searcher::new(&shared_strand2.clone(),
+                                                           &shared_suffix_array.clone()));
 
 
     let thread_pool = ThreadPool::new(threads_count);
@@ -258,12 +289,11 @@ fn search_duplications(strand1_file: &str,
         let mut start = shift;
         for id in 0..num_tasks + 1 {
             progresses.push(Arc::new(AtomicUsize::new(0)));
+            let my_tx = tx.clone();
             let suffix_array = shared_suffix_array.clone();
             let strand1 = shared_strand1.clone();
             let strand2 = shared_strand2.clone();
             let searcher = shared_searcher.clone();
-
-            let my_tx = tx.clone();
             let my_progress = progresses[id].clone();
 
             thread_pool.execute(move || {
@@ -290,7 +320,7 @@ fn search_duplications(strand1_file: &str,
             start += CHUNK_SIZE;
         }
 
-        let total = shared_strand1.len();
+        let total = stop - shift;
         thread::spawn(move || {
             let mut pb = ProgressBar::new(100);
             loop {
@@ -327,9 +357,6 @@ fn search_duplications(strand1_file: &str,
                 translated: translate,
             }
         }));
-        // for sd in b {
-        //     a.push();
-        // }
         a
     });
     let _ = tx_monitor.send(());

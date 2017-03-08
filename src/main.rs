@@ -385,15 +385,21 @@ fn search_duplications(strand1_file: &str,
 
     RunResult {
         strand1: Strand {
-            name: strand1_file.to_owned(),
+            name: path::Path::new(strand1_file).file_name().unwrap().to_str().unwrap().to_owned(),
             length: shared_strand1.len(),
             map: map1,
         },
         strand2: Strand {
-            name: strand2_file.to_owned(),
+            name: path::Path::new(strand2_file).file_name().unwrap().to_str().unwrap().to_owned(),
             length: shared_strand2.len() - 1, // Drop the '$'
             map: map2,
         },
+
+        reverse: reverse,
+        translate: translate,
+        kmer: kmer_size,
+        gap: max_gap_size as usize,
+
         sds: result,
     }
 }

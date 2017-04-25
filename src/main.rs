@@ -190,6 +190,7 @@ fn main() {
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
     };
 
+    let verbose = args.is_present("verbose");
     Logger::init(if args.is_present("verbose") {
             LogLevelFilter::Trace
         } else {
@@ -239,7 +240,8 @@ fn main() {
                                      } else {
                                          None
                                      },
-                                     settings.threads_count);
+                                     settings.threads_count,
+                                     verbose);
     let mut out = File::create(&out_file).expect(&format!("Unable to create `{}`", &out_file));
     writeln!(&mut out,
              "{}",
@@ -258,7 +260,9 @@ fn search_duplications(strand1_file: &str,
                        interlaced: bool,
                        trim: Option<(usize, usize)>,
 
-                       threads_count: usize)
+                       threads_count: usize,
+
+                       verbose: bool)
                        -> RunResult {
 
     let total = SystemTime::now();
@@ -321,26 +325,28 @@ fn search_duplications(strand1_file: &str,
         }
 
         let total = stop - shift;
-        thread::spawn(move || {
-            let mut pb = ProgressBar::new(100);
-            loop {
-                thread::sleep(Duration::from_millis(500));
-                match rx_monitor.try_recv() {
-                    Ok(_) |
-                    Err(TryRecvError::Disconnected) => {
-                        break;
-                    }
-                    Err(TryRecvError::Empty) => {
-                        let mut current = 0;
-                        for x in &progresses {
-                            current += x.load(Ordering::Relaxed);
+        if verbose {
+            thread::spawn(move || {
+                let mut pb = ProgressBar::new(100);
+                loop {
+                    thread::sleep(Duration::from_millis(500));
+                    match rx_monitor.try_recv() {
+                        Ok(_) |
+                        Err(TryRecvError::Disconnected) => {
+                            break;
                         }
-                        let percent = (current as f64 / total as f64 * 100.0) as u64;
-                        pb.set(percent);
+                        Err(TryRecvError::Empty) => {
+                            let mut current = 0;
+                            for x in &progresses {
+                                current += x.load(Ordering::Relaxed);
+                            }
+                            let percent = (current as f64 / total as f64 * 100.0) as u64;
+                            pb.set(percent);
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
     }
     drop(tx);
 

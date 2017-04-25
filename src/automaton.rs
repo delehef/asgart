@@ -100,6 +100,7 @@ pub fn search_duplications(strand1: &[u8],
                            -> Vec<SD> {
     let mut r = Vec::new();
 
+    let mut prune = 0;
     let mut i = start;
     let mut gap = 0;
     let mut current_start = 0;
@@ -113,6 +114,7 @@ pub fn search_duplications(strand1: &[u8],
                     break;
                 }
                 gap = 0;
+                prune = 0;
                 current_start = i;
                 progress.store(cmp::min(i - start, end - start), Ordering::Relaxed);
                 state = if strand1[i] == b'N' || strand1[i] == b'n' {
@@ -139,6 +141,20 @@ pub fn search_duplications(strand1: &[u8],
                 } else if i + probe_size > strand1.len() - 1 {
                     SearchState::Proto
                 } else {
+                    prune += 1;
+                    if prune > 2*(min_duplication_size/probe_size) {
+                        // println!("Pruning from {}", current_segments.len());
+                        // for ref segment in current_segments.iter() {
+                        //     println!("BBB\t{}", segment.end - segment.start);
+                        // }
+                        current_segments.retain(|ref segment| (segment.end - segment.start) > min_duplication_size);
+                        prune = 0;
+                        // println!("to {}", current_segments.len());
+                        // for ref segment in current_segments.iter() {
+                        //     println!("AAA\t{}", segment.end - segment.start);
+                        // }
+                    }
+
                     let new_matches: Vec<Segment> =
                         searcher.search(strand2, sa, &strand1[i..i + probe_size])
                             .into_iter()
@@ -159,6 +175,8 @@ pub fn search_duplications(strand1: &[u8],
                         }
 
                         SearchState::Grow
+                    } else if current_segments.len() == 0 {
+                           SearchState::Start
                     } else {
                         SearchState::SparseGrow
                     }

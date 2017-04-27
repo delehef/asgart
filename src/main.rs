@@ -39,21 +39,23 @@ use clap::App;
 use divsufsort64::idx;
 use pbr::ProgressBar;
 
-use structs::{Strand, RunResult, SD, Start};
+use structs::{StrandResult, RunResult, SD, Start};
 use logger::Logger;
+
+struct Strand {
+    pub file_name: String,
+    pub data: std::sync::Arc<Vec<u8>>,
+    pub map: Vec<Start>,
+}
 
 fn prepare_data(strand1_file: &str,
                 strand2_file: &str,
                 reverse: bool,
                 translate: bool,
                 trim: Option<(usize, usize)>)
-                -> (std::vec::Vec<u8>,
-                    std::vec::Vec<u8>,
-                    std::vec::Vec<structs::Start>,
-                    std::vec::Vec<structs::Start>,
-                    std::vec::Vec<i64>,
-                    usize,
-                    usize) {
+                -> (Strand, Strand,
+                    std::sync::Arc<std::vec::Vec<i64>>,
+                    std::sync::Arc<searcher::Searcher>) {
     //
     // Read and map the FASTA files to process
     //
@@ -92,17 +94,53 @@ fn prepare_data(strand1_file: &str,
         error!("ERROR: {} greater than {}", shift, stop);
         panic!();
     }
+    let size = stop - shift;
+    let strand1 = strand1[shift..stop].to_vec();
 
+    //
+    // Invert strands 1 & 2 to ensure efficient processing
+    //
+    let (strand1, strand2)= if size > strand2.len() {
+        (
+            Strand {
+                file_name: strand1_file.to_owned(),
+                data: Arc::new(strand1),
+                map: map1,
+            },
+            Strand {
+                file_name: strand2_file.to_owned(),
+                data: Arc::new(strand2),
+                map: map2,
+            }
+        )
+    } else {
+        (
+            Strand {
+                file_name: strand2_file.to_owned(),
+                data: Arc::new(strand2),
+                map: map2,
+            },
+            Strand {
+                file_name: strand1_file.to_owned(),
+                data: Arc::new(strand1),
+                map: map1,
+            }
+        )
+    };
 
     //
     // Build the suffix array
     //
     info!("Building suffix array...");
     let now = SystemTime::now();
-    let suffix_array = r_divsufsort(&strand2);
+    let suffix_array = r_divsufsort(&strand2.data);
     info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
 
-    (strand1, strand2, map1, map2, suffix_array, shift, stop)
+    let shared_suffix_array = Arc::new(suffix_array);
+    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(),
+                                                           &shared_suffix_array.clone()));
+
+    (strand1, strand2, shared_suffix_array, shared_searcher)
 }
 
 fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
@@ -243,7 +281,7 @@ fn main() {
     let mut out = File::create(&out_file).expect(&format!("Unable to create `{}`", &out_file));
     writeln!(&mut out,
              "{}",
-             rustc_serialize::json::as_pretty_json(&result));
+             rustc_serialize::json::as_pretty_json(&result)).expect("Unable to write results");
 }
 
 fn search_duplications(strand1_file: &str,
@@ -263,36 +301,28 @@ fn search_duplications(strand1_file: &str,
 
     let total = SystemTime::now();
 
-    let (strand1, strand2, map1, map2, suffix_array, shift, stop) =
+    let (strand1, strand2, shared_suffix_array, shared_searcher) =
         prepare_data(strand1_file, strand2_file, reverse, translate, trim);
-
-
-    let shared_strand1 = Arc::new(strand1);
-    let shared_strand2 = Arc::new(strand2);
-    let shared_suffix_array = Arc::new(suffix_array);
-    let shared_searcher = Arc::new(searcher::Searcher::new(&shared_strand2.clone(),
-                                                           &shared_suffix_array.clone()));
 
 
     let thread_pool = ThreadPool::new(threads_count);
     let (tx_monitor, rx_monitor) = mpsc::channel();
     let (tx, rx) = mpsc::channel();
     {
-        const CHUNK_SIZE: usize = 200000;
-        let size = stop - shift;
+        const CHUNK_SIZE: usize = 50000;
 
-        let num_tasks = (size - kmer_size) / CHUNK_SIZE;
-        let chunk_overflow = (size - kmer_size) % CHUNK_SIZE;
+        let num_tasks = (strand1.data.len() - kmer_size) / CHUNK_SIZE;
+        let chunk_overflow = (strand1.data.len() - kmer_size) % CHUNK_SIZE;
 
         let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(num_tasks);
 
-        let mut start = shift;
+        let mut start = 0;
         for id in 0..num_tasks + 1 {
             progresses.push(Arc::new(AtomicUsize::new(0)));
             let my_tx = tx.clone();
             let suffix_array = shared_suffix_array.clone();
-            let strand1 = shared_strand1.clone();
-            let strand2 = shared_strand2.clone();
+            let strand1 = strand1.data.clone();
+            let strand2 = strand2.data.clone();
             let searcher = shared_searcher.clone();
             let my_progress = progresses[id].clone();
 
@@ -320,7 +350,7 @@ fn search_duplications(strand1_file: &str,
             start += CHUNK_SIZE;
         }
 
-        let total = stop - shift;
+        let total = strand1.data.len();
         thread::spawn(move || {
             let mut pb = ProgressBar::new(100);
             loop {
@@ -384,15 +414,15 @@ fn search_duplications(strand1_file: &str,
           total.elapsed().unwrap().as_secs());
 
     RunResult {
-        strand1: Strand {
-            name: path::Path::new(strand1_file).file_name().unwrap().to_str().unwrap().to_owned(),
-            length: shared_strand1.len(),
-            map: map1,
+        strand1: StrandResult {
+            name: path::Path::new(&strand1.file_name).file_name().unwrap().to_str().unwrap().to_owned(),
+            length: strand1.data.len(),
+            map: strand1.map,
         },
-        strand2: Strand {
-            name: path::Path::new(strand2_file).file_name().unwrap().to_str().unwrap().to_owned(),
-            length: shared_strand2.len() - 1, // Drop the '$'
-            map: map2,
+        strand2: StrandResult {
+            name: path::Path::new(&strand2.file_name).file_name().unwrap().to_str().unwrap().to_owned(),
+            length: strand2.data.len() - 1, // Drop the '$'
+            map: strand2.map,
         },
 
         reverse: reverse,

@@ -2,7 +2,9 @@
 
 #![allow(non_camel_case_types,
          non_upper_case_globals,
-         non_snake_case)]
+         non_snake_case,
+         unused_must_use,
+         dead_code)]
 pub type int8_t = i8;
 pub type int16_t = i16;
 pub type int32_t = i32;

@@ -8,7 +8,7 @@ pub struct Start {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct Strand {
+pub struct StrandResult {
     pub name: String,
     pub length: usize,
     pub map: Vec<Start>,
@@ -17,8 +17,8 @@ pub struct Strand {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct RunResult {
-    pub strand1: Strand,
-    pub strand2: Strand,
+    pub strand1: StrandResult,
+    pub strand2: StrandResult,
 
     pub reverse: bool,
     pub translate: bool,

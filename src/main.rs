@@ -55,7 +55,8 @@ fn prepare_data(strand1_file: &str,
                 trim: Option<(usize, usize)>)
                 -> (Strand, Strand,
                     std::sync::Arc<std::vec::Vec<i64>>,
-                    std::sync::Arc<searcher::Searcher>) {
+                    std::sync::Arc<searcher::Searcher>,
+                    ) {
     //
     // Read and map the FASTA files to process
     //
@@ -95,12 +96,13 @@ fn prepare_data(strand1_file: &str,
         panic!();
     }
     let size = stop - shift;
-    let strand1 = strand1[shift..stop].to_vec();
+    // let strand1 = strand1[shift..stop].to_vec();
+
 
     //
     // Invert strands 1 & 2 to ensure efficient processing
     //
-    let (strand1, strand2)= if size > strand2.len() {
+    let (strand1, strand2, shift1, shift2) = if size > strand2.len() {
         (
             Strand {
                 file_name: strand1_file.to_owned(),
@@ -111,7 +113,9 @@ fn prepare_data(strand1_file: &str,
                 file_name: strand2_file.to_owned(),
                 data: Arc::new(strand2),
                 map: map2,
-            }
+            },
+            shift,
+            0
         )
     } else {
         (
@@ -124,7 +128,9 @@ fn prepare_data(strand1_file: &str,
                 file_name: strand1_file.to_owned(),
                 data: Arc::new(strand1),
                 map: map1,
-            }
+            },
+            0,
+            shift
         )
     };
 
@@ -138,7 +144,9 @@ fn prepare_data(strand1_file: &str,
 
     let shared_suffix_array = Arc::new(suffix_array);
     let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(),
-                                                           &shared_suffix_array.clone()));
+                                                           &shared_suffix_array.clone(),
+                                                           shift, stop
+    ));
 
     (strand1, strand2, shared_suffix_array, shared_searcher)
 }
@@ -431,8 +439,6 @@ fn search_duplications(strand1_file: &str,
             map: strand2.map,
         },
 
-        reverse: reverse,
-        translate: translate,
         kmer: kmer_size,
         gap: max_gap_size as usize,
 

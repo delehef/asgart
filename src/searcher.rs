@@ -7,6 +7,8 @@ use automaton::Segment;
 
 pub struct Searcher {
     cache: HashMap<u64, (usize, usize)>,
+    min: usize,
+    max: usize,
 }
 
 static CACHE_LEN: usize = 8;
@@ -33,8 +35,8 @@ impl Searcher {
         unsafe { mem::transmute::<[u8; 8], u64>([p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]]) }
     }
 
-    pub fn new(dna: &[u8], sa: &[idx]) -> Searcher {
-        let mut s = Searcher { cache: HashMap::new() };
+    pub fn new(dna: &[u8], sa: &[idx], min: usize, max: usize) -> Searcher {
+        let mut s = Searcher { cache: HashMap::new(), min: min, max: max };
 
         unsafe {
             for a in &ALPHABET {
@@ -99,12 +101,14 @@ impl Searcher {
 
         let mut rr = Vec::with_capacity(count as usize);
         for i in 0..count {
-            let start = sa[(out + i) as usize];
-            rr.push(Segment {
-                tag: 0,
-                start: start as usize,
-                end: start as usize + pattern.len(),
-            });
+            let start = sa[(out + i) as usize] as usize;
+            if start >= self.min && start <= self.max {
+                rr.push(Segment {
+                    tag: 0,
+                    start: start,
+                    end: start + pattern.len(),
+                });
+            }
         }
         rr
     }

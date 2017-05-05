@@ -20,8 +20,6 @@ pub struct RunResult {
     pub strand1: StrandResult,
     pub strand2: StrandResult,
 
-    pub reverse: bool,
-    pub translate: bool,
     pub kmer: usize,
     pub gap: usize,
 

@@ -102,13 +102,13 @@ impl Searcher {
         let mut rr = Vec::with_capacity(count as usize);
         for i in 0..count {
             let start = sa[(out + i) as usize] as usize;
-            if start >= self.min && start <= self.max {
+            // if start >= self.min && start <= self.max {
                 rr.push(Segment {
                     tag: 0,
-                    start: start,
-                    end: start + pattern.len(),
+                    start: self.min + start,
+                    end: self.min + start + pattern.len(),
                 });
-            }
+            // }
         }
         rr
     }

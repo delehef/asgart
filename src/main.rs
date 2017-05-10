@@ -96,7 +96,7 @@ fn prepare_data(strand1_file: &str,
         panic!();
     }
     let size = stop - shift;
-    // let strand1 = strand1[shift..stop].to_vec();
+    let strand1 = strand1[shift..stop].to_vec();
 
 
     //

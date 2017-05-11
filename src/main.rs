@@ -102,7 +102,7 @@ fn prepare_data(strand1_file: &str,
     //
     // Invert strands 1 & 2 to ensure efficient processing
     //
-    let (strand1, strand2, shift1, shift2) = if size > strand2.len() {
+    let (strand1, strand2, shift1, shift2) = if strand2.len() < size {
         (
             Strand {
                 file_name: strand1_file.to_owned(),
@@ -145,7 +145,7 @@ fn prepare_data(strand1_file: &str,
     let shared_suffix_array = Arc::new(suffix_array);
     let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(),
                                                            &shared_suffix_array.clone(),
-                                                           shift, stop
+                                                           shift2, stop
     ));
 
     (strand1, strand2, shared_suffix_array, shared_searcher)
@@ -393,8 +393,8 @@ fn search_duplications(strand1_file: &str,
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
-                left: sd.left,
-                right: sd.right,
+                left: cmp::min(sd.left, sd.right),
+                right: cmp::max(sd.left, sd.right),
                 length: sd.length,
                 identity: sd.identity,
                 reversed: reverse,

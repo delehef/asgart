@@ -4,6 +4,7 @@ extern crate asgart;
 extern crate rustc_serialize;
 extern crate palette;
 
+use std::cmp;
 use std::env;
 use std::io::prelude::*;
 use std::fs::File;
@@ -30,7 +31,7 @@ impl ChordPlotter {
         let result: RunResult = json::decode(&s).unwrap();
 
         ChordPlotter {
-            length: result.strand1.length as f64,
+            length: cmp::max(result.strand1.length, result.strand2.length) as f64,
             result: result,
             width: width,
             height: height,
@@ -91,8 +92,8 @@ impl ChordPlotter {
 
             let t_left1 = self.angle(left as f64);
             let t_right2 = self.angle(right as f64);
-            let t_left2 = self.angle((left + 10*sd.length as i64) as f64);
-            let t_right1 = self.angle((right + 10*sd.length as i64) as f64);
+            let t_left2 = self.angle((left + sd.length as i64) as f64);
+            let t_right1 = self.angle((right + sd.length as i64) as f64);
 
             let pleft1 = self.cartesian(t_left1, self.radius);
             let pleft2 = self.cartesian(t_left2, self.radius);

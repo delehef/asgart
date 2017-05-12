@@ -393,8 +393,8 @@ fn search_duplications(strand1_file: &str,
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
-                left: cmp::min(sd.left, sd.right),
-                right: cmp::max(sd.left, sd.right),
+                left: if reverse {sd.left} else {cmp::min(sd.left, sd.right)},
+                right: if reverse {sd.right} else {cmp::max(sd.left, sd.right)},
                 length: sd.length,
                 identity: sd.identity,
                 reversed: reverse,

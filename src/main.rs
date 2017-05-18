@@ -429,12 +429,12 @@ fn search_duplications(strand1_file: &str,
 
     RunResult {
         strand1: StrandResult {
-            name: path::Path::new(&strand1.file_name).file_name().unwrap().to_str().unwrap().to_owned(),
+            name: strand1.file_name.to_owned(),
             length: strand1.data.len(),
             map: strand1.map,
         },
         strand2: StrandResult {
-            name: path::Path::new(&strand2.file_name).file_name().unwrap().to_str().unwrap().to_owned(),
+            name: strand2.file_name.to_owned(),
             length: strand2.data.len() - 1, // Drop the '$'
             map: strand2.map,
         },

@@ -44,7 +44,7 @@ use logger::Logger;
 
 struct Strand {
     pub file_name: String,
-    pub data: std::sync::Arc<Vec<u8>>,
+    pub data: Vec<u8>,
     pub map: Vec<Start>,
 }
 
@@ -53,7 +53,9 @@ fn prepare_data(strand1_file: &str,
                 reverse: bool,
                 translate: bool,
                 trim: Option<(usize, usize)>)
-                -> (Strand, Strand,
+                -> (
+                    std::sync::Arc<Strand>,
+                    std::sync::Arc<Strand>,
                     std::sync::Arc<std::vec::Vec<i64>>,
                     std::sync::Arc<searcher::Searcher>,
                     ) {
@@ -69,13 +71,6 @@ fn prepare_data(strand1_file: &str,
             info!("Using same file for strands 1 & 2\n");
             (map1.clone(), strand1.clone())
         };
-        if translate {
-            strand2 = utils::translated(&strand2);
-        }
-        if reverse {
-            strand2.reverse();
-        }
-        strand2.push(b'$');
         (map2, strand2)
     };
 
@@ -102,16 +97,17 @@ fn prepare_data(strand1_file: &str,
     //
     // Invert strands 1 & 2 to ensure efficient processing
     //
-    let (strand1, strand2, shift1, shift2) = if strand2.len() < size {
+    let (strand1, mut strand2, shift1, shift2) = if strand2.len() < size {
+
         (
             Strand {
                 file_name: strand1_file.to_owned(),
-                data: Arc::new(strand1),
+                data: strand1,
                 map: map1,
             },
             Strand {
                 file_name: strand2_file.to_owned(),
-                data: Arc::new(strand2),
+                data: strand2,
                 map: map2,
             },
             shift,
@@ -121,18 +117,26 @@ fn prepare_data(strand1_file: &str,
         (
             Strand {
                 file_name: strand2_file.to_owned(),
-                data: Arc::new(strand2),
+                data: strand2,
                 map: map2,
             },
             Strand {
                 file_name: strand1_file.to_owned(),
-                data: Arc::new(strand1),
+                data: strand1,
                 map: map1,
             },
             0,
             shift
         )
     };
+
+    if translate {
+        strand2.data = utils::translated(&*strand2.data);
+    }
+    if reverse {
+        strand2.data.reverse();
+    }
+    strand2.data.push(b'$');
 
     //
     // Build the suffix array
@@ -148,7 +152,7 @@ fn prepare_data(strand1_file: &str,
                                                            shift2, stop
     ));
 
-    (strand1, strand2, shared_suffix_array, shared_searcher)
+    (Arc::new(strand1), Arc::new(strand2), shared_suffix_array, shared_searcher)
 }
 
 fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
@@ -333,8 +337,8 @@ fn search_duplications(strand1_file: &str,
             progresses.push(Arc::new(AtomicUsize::new(0)));
             let my_tx = tx.clone();
             let suffix_array = shared_suffix_array.clone();
-            let strand1 = strand1.data.clone();
-            let strand2 = strand2.data.clone();
+            let strand1 = strand1.clone();
+            let strand2 = strand2.clone();
             let searcher = shared_searcher.clone();
             let my_progress = progresses[id].clone();
 
@@ -345,8 +349,8 @@ fn search_duplications(strand1_file: &str,
                 } else {
                     chunk_overflow
                 };
-                my_tx.send(automaton::search_duplications(&strand1,
-                                                         &strand2,
+                my_tx.send(automaton::search_duplications(&strand1.data,
+                                                         &strand2.data,
                                                          &suffix_array,
                                                          start,
                                                          end,
@@ -431,12 +435,12 @@ fn search_duplications(strand1_file: &str,
         strand1: StrandResult {
             name: path::Path::new(&strand1.file_name).file_name().unwrap().to_str().unwrap().to_owned(),
             length: strand1.data.len(),
-            map: strand1.map,
+            map: strand1.map.clone(),
         },
         strand2: StrandResult {
             name: path::Path::new(&strand2.file_name).file_name().unwrap().to_str().unwrap().to_owned(),
             length: strand2.data.len() - 1, // Drop the '$'
-            map: strand2.map,
+            map: strand2.map.clone(),
         },
 
         kmer: kmer_size,

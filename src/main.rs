@@ -97,7 +97,7 @@ fn prepare_data(strand1_file: &str,
     //
     // Invert strands 1 & 2 to ensure efficient processing
     //
-    let (strand1, mut strand2, shift1, shift2) = if strand2.len() < size {
+    let (mut strand1, mut strand2, shift1, shift2) = if strand2.len() < size {
 
         (
             Strand {
@@ -131,10 +131,10 @@ fn prepare_data(strand1_file: &str,
     };
 
     if translate {
-        strand2.data = utils::translated(&*strand2.data);
+        strand1.data = utils::translated(&*strand1.data);
     }
     if reverse {
-        strand2.data.reverse();
+        strand1.data.reverse();
     }
     strand2.data.push(b'$');
 
@@ -149,8 +149,7 @@ fn prepare_data(strand1_file: &str,
     let shared_suffix_array = Arc::new(suffix_array);
     let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(),
                                                            &shared_suffix_array.clone(),
-                                                           shift2, stop
-    ));
+                                                           shift2, stop));
 
     (Arc::new(strand1), Arc::new(strand2), shared_suffix_array, shared_searcher)
 }
@@ -397,8 +396,8 @@ fn search_duplications(strand1_file: &str,
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
-                left: if reverse {sd.left} else {cmp::min(sd.left, sd.right)},
-                right: if reverse {sd.right} else {cmp::max(sd.left, sd.right)},
+                left: if !reverse {sd.left} else {strand1.data.len() - sd.left - sd.length},
+                right: sd.right,
                 length: sd.length,
                 identity: sd.identity,
                 reversed: reverse,

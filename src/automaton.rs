@@ -216,7 +216,6 @@ pub fn search_duplications(strand1: &[u8],
                     r.append(&mut result);
                 }
                 state = SearchState::Start;
-                // println!("{} - {} -> {}", start-start, end-start, i-start);
                 progress.store(cmp::min(i - start, end - start), Ordering::Relaxed);
             }
         }

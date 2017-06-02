@@ -63,20 +63,20 @@ impl FlatPlotter {
                 );
 
         for sd in &self.result.sds {
-            let (mut left, mut right) = if !sd.reversed {
-                (sd.left as f64, sd.right as f64)
-            } else {
-                let (a, b) = (sd.left as i64,
-                              self.result.strand2.length as i64 - sd.right as i64 - sd.length as i64);
-                (std::cmp::min(a, b) as f64, std::cmp::max(a, b) as f64)
-            };
+            let (mut left, mut right) = (sd.left as f64, sd.right as f64);
+            // let (mut left, mut right) = if !sd.reversed {
+            //     (sd.left as f64, sd.right as f64)
+            // } else {
+            //     (sd.left as f64, self.result.strand1.length as f64 - sd.right as f64 - sd.length as f64)
+            //     // (std::cmp::min(a, b) as f64, std::cmp::max(a, b) as f64)
+            // };
 
-            if !(left >= 3031042417.0 || right >= 3031042417.0) || sd.reversed {
-                continue
-            }
+            // right = right + 3037642440.0;
+            if !sd.reversed {continue}
+            if right <= 3031042417.0 || left <= 3031042417.0 {continue}
 
-            left = left/self.max_length * self.width;
-            right = right/self.max_length * self.width;
+            left = (left - 0.0)/self.max_length * self.width;
+            right = (right - 0.0)/self.max_length * self.width;
 
             let color = Rgb::from_hsv(Hsv {
                 hue: RgbHue::from_radians((left/self.width) as f64 * 2.0 * PI),
@@ -88,17 +88,21 @@ impl FlatPlotter {
                                 (color.green * 255.0) as i8,
                                 (color.blue * 255.0) as i8);
 
+            let thickness = sd.length as f64/self.max_length*self.width;
             self.svg += &format!(r#"
                 <line
                 x1='{}' y1='{}' x2='{}' y2='{}'
-                fill='{}' fill-opacity='0.3' stroke='{}' stroke-opacity='0.9'/>
+                fill='{}' fill-opacity='0.3' stroke='{}' stroke-opacity='0.9'
+                stroke-width='{}'/>
                 "#,
-                left,
+                left-thickness/2.0,
                 10,
-                right,
+                right+thickness/2.0,
                 self.height-10.0,
                 color,
-                color);
+                color,
+                thickness,
+            );
         }
         // self.ticks(10000000, 40.0, 10, "#000000");
         // self.ticks(5000000, 20.0, 8, "#666666");

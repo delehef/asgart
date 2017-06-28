@@ -65,7 +65,7 @@ fn prepare_data(strand1_file: &str,
     let (map1, strand1) = read_fasta(strand1_file)
         .expect(&format!("Unable to read {}", strand1_file));
     let (map2, strand2) = {
-        let (map2, mut strand2) = if strand2_file != strand1_file {
+        let (map2, strand2) = if strand2_file != strand1_file {
             read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file))
         } else {
             info!("Using same file for strands 1 & 2\n");
@@ -97,7 +97,7 @@ fn prepare_data(strand1_file: &str,
     //
     // Invert strands 1 & 2 to ensure efficient processing
     //
-    let (mut strand1, mut strand2, shift1, shift2) = if strand2.len() < size {
+    let (mut strand1, mut strand2, _, shift2) = if strand2.len() < size {
 
         (
             Strand {
@@ -149,7 +149,7 @@ fn prepare_data(strand1_file: &str,
     let shared_suffix_array = Arc::new(suffix_array);
     let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(),
                                                            &shared_suffix_array.clone(),
-                                                           shift2, stop));
+                                                           shift2));
 
     (Arc::new(strand1), Arc::new(strand2), shared_suffix_array, shared_searcher)
 }
@@ -297,6 +297,8 @@ fn main() {
              rustc_serialize::json::as_pretty_json(&result)).expect("Unable to write results");
 }
 
+#[allow(unknown_lints)]
+#[allow(too_many_arguments)]
 fn search_duplications(strand1_file: &str,
                        strand2_file: &str,
 
@@ -495,7 +497,7 @@ fn reduce_overlap(result: &[SD]) -> Vec<SD> {
     fn _reduce(result: &[SD]) -> Vec<SD> {
         let mut news: Vec<SD> = Vec::new();
         'to_insert: for x in result.iter() {
-            for ref mut y in &mut news {
+            for y in news.iter_mut() {
                 // x ⊂ y
                 if subsegment(x.left_part(), y.left_part()) &&
                    subsegment(x.right_part(), y.right_part()) {

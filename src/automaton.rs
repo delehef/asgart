@@ -44,12 +44,12 @@ fn make_right_arms(p: &ProtoSD, max_hole_size: u32) -> Vec<Segment> {
 }
 
 
-fn make_duplications(psd: ProtoSD,
+fn make_duplications(psd: &ProtoSD,
                      strand1: &[u8],
                      max_hole_size: u32,
                      min_duplication_size: usize)
                      -> Vec<SD> {
-    let right_segments = make_right_arms(&psd, max_hole_size);
+    let right_segments = make_right_arms(psd, max_hole_size);
     let mut r = Vec::new();
 
     for right_segment in right_segments {
@@ -86,6 +86,8 @@ fn make_duplications(psd: ProtoSD,
     r
 }
 
+#[allow(unknown_lints)]
+#[allow(too_many_arguments)]
 pub fn search_duplications(strand1: &[u8],
                            strand2: &[u8],
                            sa: &[idx],
@@ -143,7 +145,7 @@ pub fn search_duplications(strand1: &[u8],
                 } else {
                     prune += 1;
                     if prune > 2*(min_duplication_size/probe_size) {
-                        current_segments.retain(|ref segment| (segment.end - segment.start) > 
+                        current_segments.retain(|segment| (segment.end - segment.start) > 
                                                 min_duplication_size);
                         prune = 0;
                     }
@@ -168,7 +170,7 @@ pub fn search_duplications(strand1: &[u8],
                         }
 
                         SearchState::Grow
-                    } else if current_segments.len() == 0 {
+                    } else if current_segments.is_empty() {
                            SearchState::Start
                     } else {
                         SearchState::SparseGrow
@@ -212,7 +214,7 @@ pub fn search_duplications(strand1: &[u8],
                         matches: current_segments.clone(),
                     };
                     let mut result =
-                        make_duplications(psd, strand1, max_gap_size, min_duplication_size);
+                        make_duplications(&psd, strand1, max_gap_size, min_duplication_size);
                     r.append(&mut result);
                 }
                 state = SearchState::Start;
@@ -261,8 +263,6 @@ fn append_merge_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta
     }
 }
 
-#[no_mangle]
-#[inline(never)]
 fn merge_or_drop_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta: u32) {
     for n in _news {
         for o in _originals.iter_mut() {

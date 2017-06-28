@@ -1,5 +1,3 @@
-#![feature(step_by)]
-
 extern crate asgart;
 extern crate rustc_serialize;
 extern crate palette;
@@ -23,7 +21,7 @@ struct FlatPlotter {
 }
 
 impl FlatPlotter {
-    fn new(json_file: &str, width: f64) -> FlatPlotter {
+    fn new(json_file: &str) -> FlatPlotter {
         let mut f = File::open(json_file).unwrap();
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
@@ -40,7 +38,7 @@ impl FlatPlotter {
         }
     }
 
-    fn plot_flat(&mut self, dx: f64, dy: f64) {
+    fn plot_flat(&mut self) {
         self.svg += &format!(r#"
                 <line
                 x1='{}' y1='{}' x2='{}' y2='{}'
@@ -64,16 +62,7 @@ impl FlatPlotter {
 
         for sd in &self.result.sds {
             let (mut left, mut right) = (sd.left as f64, sd.right as f64);
-            // let (mut left, mut right) = if !sd.reversed {
-            //     (sd.left as f64, sd.right as f64)
-            // } else {
-            //     (sd.left as f64, self.result.strand1.length as f64 - sd.right as f64 - sd.length as f64)
-            //     // (std::cmp::min(a, b) as f64, std::cmp::max(a, b) as f64)
-            // };
 
-            // right = right + 3037642440.0;
-            if !sd.reversed {continue}
-            if right <= 3031042417.0 || left <= 3031042417.0 {continue}
 
             left = (left - 0.0)/self.max_length * self.width;
             right = (right - 0.0)/self.max_length * self.width;
@@ -104,9 +93,6 @@ impl FlatPlotter {
                 thickness,
             );
         }
-        // self.ticks(10000000, 40.0, 10, "#000000");
-        // self.ticks(5000000, 20.0, 8, "#666666");
-        // self.ticks(1000000, 10.0, 0, "#444444");
     }
 
     fn plot(&mut self) -> String {
@@ -131,12 +117,9 @@ impl FlatPlotter {
 }
 
 fn plot_flat(filename: &str, out_filename: &str) {
-    let width = 950.0;
-    let height = 950.0;
-
-    let mut plotter = FlatPlotter::new(filename, width);
+    let mut plotter = FlatPlotter::new(filename);
     plotter.title(10, 10, filename, 20);
-    plotter.plot_flat(0.0, 100.0);
+    plotter.plot_flat();
 
     let mut f = File::create(out_filename).unwrap();
     f.write_all(plotter.plot().as_bytes()).unwrap();

@@ -9,7 +9,8 @@ extern crate clap;
 #[macro_use]
 extern crate log;
 extern crate colored;
-extern crate pbr;
+extern crate indicatif;
+extern crate console;
 
 mod automaton;
 mod utils;
@@ -28,7 +29,7 @@ use std::fs::File;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::ascii::AsciiExt;
-use std::time::SystemTime;
+use std::time::Instant;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
 
@@ -37,7 +38,8 @@ use log::LogLevelFilter;
 use threadpool::ThreadPool;
 use clap::App;
 use divsufsort64::idx;
-use pbr::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
+use console::style;
 
 use structs::{StrandResult, RunResult, SD, Start};
 use logger::Logger;
@@ -68,7 +70,7 @@ fn prepare_data(strand1_file: &str,
         let (map2, strand2) = if strand2_file != strand1_file {
             read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file))
         } else {
-            info!("Using same file for strands 1 & 2\n");
+            trace!("Using same file for strands 1 & 2\n");
             (map1.clone(), strand1.clone())
         };
         (map2, strand2)
@@ -141,10 +143,8 @@ fn prepare_data(strand1_file: &str,
     //
     // Build the suffix array
     //
-    info!("Building suffix array...");
-    let now = SystemTime::now();
+    info!("{} Building suffix array...", style("[1/4]").blue().bold());
     let suffix_array = r_divsufsort(&strand2.data);
-    info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
 
     let shared_suffix_array = Arc::new(suffix_array);
     let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(),
@@ -240,10 +240,10 @@ fn main() {
     };
 
     let verbose = args.is_present("verbose");
-    Logger::init(if args.is_present("verbose") {
+    Logger::init(if verbose {
             LogLevelFilter::Trace
         } else {
-            LogLevelFilter::Off
+            LogLevelFilter::Info
         })
         .unwrap();
 
@@ -261,17 +261,17 @@ fn main() {
         settings.out + ".json"
     };
 
-    info!("1st strand file          {}", &settings.strand1_file);
-    info!("2nd strand file          {}", &settings.strand2_file);
-    info!("K-mers size              {}", settings.kmer_size);
-    info!("Max gap size             {}", settings.gap_size);
-    info!("Output file              {}", &out_file);
-    info!("Reverse 2nd strand       {}", settings.reverse);
-    info!("Translate 2nd strand     {}", settings.translate);
-    info!("Interlaced SD            {}", settings.interlaced);
-    info!("Threads count            {}", settings.threads_count);
+    trace!("1st strand file          {}", &settings.strand1_file);
+    trace!("2nd strand file          {}", &settings.strand2_file);
+    trace!("K-mers size              {}", settings.kmer_size);
+    trace!("Max gap size             {}", settings.gap_size);
+    trace!("Output file              {}", &out_file);
+    trace!("Reverse 2nd strand       {}", settings.reverse);
+    trace!("Translate 2nd strand     {}", settings.translate);
+    trace!("Interlaced SD            {}", settings.interlaced);
+    trace!("Threads count            {}", settings.threads_count);
     if !settings.trim.is_empty() {
-        info!("Trimming                 {} → {}\n",
+        trace!("Trimming                 {} → {}\n",
               settings.trim[0],
               settings.trim[1]);
     }
@@ -290,7 +290,7 @@ fn main() {
                                          None
                                      },
                                      settings.threads_count,
-                                     verbose);
+                                     );
     let mut out = File::create(&out_file).expect(&format!("Unable to create `{}`", &out_file));
     writeln!(&mut out,
              "{}",
@@ -312,11 +312,10 @@ fn search_duplications(strand1_file: &str,
                        trim: Option<(usize, usize)>,
 
                        threads_count: usize,
-
-                       verbose: bool)
+                       )
                        -> RunResult {
 
-    let total = SystemTime::now();
+    let total = Instant::now();
 
     let (strand1, strand2, shared_suffix_array, shared_searcher) =
         prepare_data(strand1_file, strand2_file, reverse, translate, trim);
@@ -367,34 +366,35 @@ fn search_duplications(strand1_file: &str,
             start += CHUNK_SIZE;
         }
 
-        if verbose {
-            let total = strand1.data.len();
-            thread::spawn(move || {
-                let mut pb = ProgressBar::new(100);
-                loop {
-                    thread::sleep(Duration::from_millis(500));
-                    match rx_monitor.try_recv() {
-                        Ok(_) |
-                            Err(TryRecvError::Disconnected) => {
-                                break;
-                            }
-                        Err(TryRecvError::Empty) => {
-                            let mut current = 0;
-                            for x in &progresses {
-                                current += x.load(Ordering::Relaxed);
-                            }
-                            let percent = (current as f64 / total as f64 * 100.0) as u64;
-                            pb.set(percent);
+        let total = strand1.data.len();
+        thread::spawn(move || {
+            let pb = ProgressBar::new(100);
+            pb.set_style(ProgressStyle::default_bar()
+                         .template("{spinner:.green} [{elapsed}] {wide_bar} {pos}% ({eta} remaining)"));
+
+            loop {
+                thread::sleep(Duration::from_millis(100));
+                match rx_monitor.try_recv() {
+                    Ok(_) |
+                    Err(TryRecvError::Disconnected) => {
+                        pb.finish_and_clear();
+                        break;
+                    }
+                    Err(TryRecvError::Empty) => {
+                        let mut current = 0;
+                        for x in &progresses {
+                            current += x.load(Ordering::Relaxed);
                         }
+                        let percent = (current as f64 / total as f64 * 100.0) as u64;
+                        pb.set_position(percent);
                     }
                 }
-            });
-        }
+            }
+        });
     }
     drop(tx);
 
-    info!("Looking for hulls...");
-    let now = SystemTime::now();
+    info!("{} Looking for hulls...", style("[2/4]").blue().bold());
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
@@ -409,28 +409,25 @@ fn search_duplications(strand1_file: &str,
         a
     });
     let _ = tx_monitor.send(());
-    info!("Done in {}s.\n", now.elapsed().unwrap().as_secs());
 
 
-    info!("Re-ordering...");
+    info!("{} Re-ordering...", style("[3/4]").blue().bold());
     result.sort_by(|a, b| if a.left != b.left {
         (a.left).cmp(&b.left)
     } else {
         (a.right).cmp(&b.right)
     });
-    info!("Done.\n");
 
 
-    info!("Reducing overlapping...");
+    info!("{} Reducing overlapping...", style("[4/4]").blue().bold());
     result = reduce_overlap(&result);
-    info!("Done.\n");
 
-    info!("{} & {} ({}/{}) processed in {}s.\n\n",
+    info!("{}",
+          style(format!("{} vs. {} processed in {}.\n\n",
           strand1_file,
           strand2_file,
-          kmer_size,
-          max_gap_size - kmer_size as u32,
-          total.elapsed().unwrap().as_secs());
+                  HumanDuration(total.elapsed()))).green().bold()
+    );
 
     RunResult {
         strand1: StrandResult {

@@ -23,9 +23,11 @@ impl log::Log for Logger {
                          LogLevel::Warn => {
                              format!("{} {}", "⚠".yellow(), record.args().to_string().yellow())
                          }
-                         LogLevel::Info => format!("{} {}", "▷".cyan(), record.args()),
+                         LogLevel::Info => {
+                             format!("{}", record.args())
+                         }
                          LogLevel::Trace => {
-                             format!("{} {}", "✓".green(), record.args().to_string().green())
+                             format!("{} {}", "▷".cyan(), record.args())
                          }
                          LogLevel::Debug => {
                              format!("{} {}", "❖".blue(), record.args().to_string().blue())

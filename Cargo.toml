@@ -15,7 +15,8 @@ log             = "0.3"
 env_logger      = "0.4"
 colored         = "1.3"
 isatty          = "0.1"
-pbr             = {git = "https://github.com/delehef/pb.git"}
+indicatif       = "0.6"
+console         = "0.4"
 
 [dependencies.clap]
 version = "2.19.*"

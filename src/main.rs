@@ -165,7 +165,7 @@ fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
         let record = record.expect(&format!("Unable to read {:?}: not a FASTA file", path::Path::new(filename).file_name().unwrap()));
 
         let name = format!("{} {}",
-                           record.id().unwrap_or(""),
+                           record.id(),
                            record.desc().unwrap_or(""));
         let mut seq = record.seq().to_vec();
         seq = seq.to_ascii_uppercase();

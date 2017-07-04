@@ -6,18 +6,21 @@ use std::env;
 use std::io::prelude::*;
 use std::fs::File;
 use rustc_serialize::json;
+use std::collections::HashMap;
 use std::f64::consts::PI;
 use palette::{Rgb, Hsv, RgbHue, FromColor};
 
-const R: f64 = 400.0;
+const R: f64 = 150.0;
 const CHORD_MIN_WIDTH: f64 = 0.2;
 
 const RING_WIDTH: f64 = 5.0;
-const RING_MARGIN: f64 = 10.0;
+const RING_MARGIN: f64 = 5.0;
 
 const OUT_CEILING: f64 = 100.0;
 
-const TOTAL_WIDTH: f64 = 3.0*(R + 2.0*RING_MARGIN + RING_WIDTH + OUT_CEILING);
+const INTER_RING_SPACING: f64 = 0.002;
+
+const TOTAL_WIDTH: f64 = 2.0*(R + RING_MARGIN + RING_WIDTH + OUT_CEILING);
 
 const CX: f64 = TOTAL_WIDTH/2.0;
 const CY: f64 = TOTAL_WIDTH/2.0;
@@ -29,23 +32,50 @@ use asgart::structs::*;
 struct ChordPlotter {
     result: RunResult,
     length: f64,
-    radius: f64,
     svg: String,
+    centromeres: HashMap<String, (f64, f64)>,
 }
 
 impl ChordPlotter {
-    fn new(json_file: &str, radius: f64) -> ChordPlotter {
+    fn new(json_file: &str) -> ChordPlotter {
         let mut f = File::open(json_file).unwrap();
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
-        let result: RunResult = json::decode(&s).unwrap();
+        let result: RunResult = json::decode(&s).expect("Unable to parse JSON file");
+
+        let mut centromeres = HashMap::new();
+        centromeres.insert("chr1 ".to_owned(), (122026460.0, 125184587.0));
+        centromeres.insert("chr2 ".to_owned(), (92188146.0, 94090557.0));
+        centromeres.insert("chr3 ".to_owned(), (90772459.0, 93655574.0));
+        centromeres.insert("chr4 ".to_owned(), (49708101.0, 51743951.0));
+        centromeres.insert("chr5 ".to_owned(), (46485901.0, 50059807.0));
+        centromeres.insert("chr6 ".to_owned(), (58553889.0, 59829934.0));
+        centromeres.insert("chr7 ".to_owned(), (58169654.0, 60828234.0));
+        centromeres.insert("chr8 ".to_owned(), (44033745.0, 45877265.0));
+        centromeres.insert("chr9 ".to_owned(), (43236168.0, 45518558.0));
+        centromeres.insert("chr10 ".to_owned(), (39686383.0, 41593521.0));
+        centromeres.insert("chr11 ".to_owned(), (51078349.0, 54425074.0));
+        centromeres.insert("chr12 ".to_owned(), (34769408.0, 37185252.0));
+        centromeres.insert("chr13 ".to_owned(), (16000001.0, 18051248.0));
+        centromeres.insert("chr14 ".to_owned(), (16000001.0, 18173523.0));
+        centromeres.insert("chr15 ".to_owned(), (17000001.0, 19725254.0));
+        centromeres.insert("chr16 ".to_owned(), (36311159.0, 38280682.0));
+        centromeres.insert("chr17 ".to_owned(), (22813680.0, 26885980.0));
+        centromeres.insert("chr18 ".to_owned(), (15460900.0, 20861206.0));
+        centromeres.insert("chr19 ".to_owned(), (24498981.0, 27190874.0));
+        centromeres.insert("chr20 ".to_owned(), (26436233.0, 30038348.0));
+        centromeres.insert("chr21 ".to_owned(), (10864561.0, 12915808.0));
+        centromeres.insert("chr22 ".to_owned(), (12954789.0, 15054318.0));
+        centromeres.insert("chrX ".to_owned(), (58605580.0, 62412542.0));
+        centromeres.insert("chrY ".to_owned(), (10316745.0, 10544039.0));
+
 
         ChordPlotter {
             length: result.strand1.length as f64,
             result: result,
 
-            radius: radius,
             svg: String::new(),
+            centromeres: centromeres.clone(),
         }
     }
 
@@ -92,21 +122,48 @@ impl ChordPlotter {
         self.svg += &format!("\n<g transform='translate({}, {})'>", dx, dy);
 
         for chr in &self.result.strand1.map {
-            let t1 = self.angle(chr.position as f64) - 0.005;
-            let t2 = self.angle(chr.position as f64+ chr.length as f64) + 0.005;
-
-            self.svg += &format!("<path d='{}' stroke='#333' fill='none' stroke-width='5' />",
-                                 self.arc(self.radius, t1, t2)
-                                );
-
+            let t1 = self.angle(chr.position as f64) - INTER_RING_SPACING;
+            let t2 = self.angle(chr.position as f64 + chr.length as f64) + INTER_RING_SPACING;
             let tt = t1 + (t2-t1)/2.0;
+
+            // let tc1 = self.angle(chr.position as f64 + self.centromeres[&chr.name].0);
+            // let tc2 = self.angle(chr.position as f64 + self.centromeres[&chr.name].1);
+
             let r = R + RING_WIDTH + RING_MARGIN;
-            let (x, y) = self.cartesian(tt, r + 30.0);
-            self.svg += &format!("<text x='{}' y='{}' font-size='15' fill='#333' transform='rotate({}, {}, {})'>{}</text>", x, y, -tt/(2.0*PI)*360.0, x, y, chr.name);
+
+            // Chromosomes bars
+            // let (xbl, ybl) = self.cartesian(t1, R + RING_WIDTH);
+            // let (xtl, ytl) = self.cartesian(t1, R + RING_WIDTH + 70.0);
+            // let (xbr, ybr) = self.cartesian(t2, R + RING_WIDTH);
+            // let (xtr, ytr) = self.cartesian(t2, R + RING_WIDTH + 70.0);
+            // self.svg += &format!("<polygon points='{},{} {},{} {},{} {},{}' fill='#ccc' stroke-width='0'/>",
+            //                      xbl, ybl,
+            //                      xtl, ytl,
+            //                      xtr, ytr,
+            //                      xbr, ybr
+            // );
+
+            self.svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='5' />",
+                                 self.arc(R + RING_WIDTH, t1, t2)
+            );
+            self.svg += &format!("<path d='{}' stroke='#afafaf' fill='none' stroke-width='5' />",
+                                 self.arc(R + RING_WIDTH, tc1, tc2)
+            );
+            self.svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='1.5' />",
+                                 self.arc(R + RING_WIDTH +58.0, t1, t2)
+            );
+
+
+            // Chromosomes labels
+            let (x, y) = self.cartesian(tt, r + 65.0);
+            self.svg += &format!("<text x='{}' y='{}' font-family='\"Helvetica\"' font-size='8' fill='#333' transform='rotate({}, {}, {})'>{}</text>",
+                                 x, y,
+                                 -tt/(2.0*PI)*360.0 + 90.0, x, y,
+                                 str::replace(&chr.name, "chr", ""));
         }
 
         for sd in &self.result.sds {
-            if (sd.identity > 0.0 && sd.identity < 99.0) || sd.length < 10000 || !sd.reversed {
+            if sd.length < 5000 {
                 continue;
             }
             let (left, right) = (sd.left as i64, sd.right as i64);
@@ -123,15 +180,17 @@ impl ChordPlotter {
             let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
             if width <= CHORD_MIN_WIDTH {width = CHORD_MIN_WIDTH};
 
-            let color = Rgb::from_hsv(Hsv {
-                hue: RgbHue::from_radians(t1 + 1.5 * PI),
-                saturation: 0.9,
-                value: 0.9,
-            });
-            let color = format!("#{:x}{:x}{:x}",
-                                (color.red * 255.0) as i8,
-                                (color.green * 255.0) as i8,
-                                (color.blue * 255.0) as i8);
+            // let color = Rgb::from_hsv(Hsv {
+            //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
+            //     saturation: 0.9,
+            //     value: 0.9,
+            // });
+
+            let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
+            // let color = format!("#{:x}{:x}{:x}",
+            //                     (color.red * 255.0) as u8,
+            //                     (color.green * 255.0) as u8,
+            //                     (color.blue * 255.0) as u8);
 
             let path = if self.inter_sd(sd) {
                 let (x1, y1) = self.cartesian(t1, R);
@@ -175,11 +234,9 @@ impl ChordPlotter {
 }
 
 fn plot_chord(filename: &str, out_filename: &str) {
-    let radius = 400.0;
-
-    let mut plotter = ChordPlotter::new(filename, radius);
-    plotter.title(10, 10, filename, 20);
-    plotter.plot_chord(0.0, 100.0);
+    let mut plotter = ChordPlotter::new(filename);
+    // plotter.title(10, 10, filename, 20);
+    plotter.plot_chord(0.0, 0.0);
 
     let mut f = File::create(out_filename).unwrap();
     f.write_all(plotter.plot().as_bytes()).unwrap();

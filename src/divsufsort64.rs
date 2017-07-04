@@ -24,7 +24,7 @@ pub type uint_least64_t = ::std::os::raw::c_ulong;
 pub type int_fast8_t = ::std::os::raw::c_char;
 pub type int_fast16_t = ::std::os::raw::c_long;
 pub type int_fast32_t = ::std::os::raw::c_long;
-pub type int_fast64_t = ::std::os::raw::c_long;
+
 pub type uint_fast8_t = ::std::os::raw::c_uchar;
 pub type uint_fast16_t = ::std::os::raw::c_ulong;
 pub type uint_fast32_t = ::std::os::raw::c_ulong;

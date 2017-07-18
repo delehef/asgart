@@ -17,6 +17,7 @@ colored         = "1.*"
 isatty          = "0.1"
 indicatif       = "0.6"
 console         = "0.5"
+rayon           = "0.8.2"
 
 [dependencies.clap]
 version = "2.*"

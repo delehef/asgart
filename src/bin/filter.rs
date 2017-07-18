@@ -1,7 +1,9 @@
 extern crate bio;
 extern crate asgart;
 extern crate rustc_serialize;
+extern crate rayon;
 
+use rayon::prelude::*;
 use std::process::Command;
 use asgart::utils;
 use std::path;
@@ -28,7 +30,7 @@ fn old_filter(json_file: &str) {
         read_fasta(&result.strand2.name).unwrap()
     };
 
-    for sd in result.sds {
+    for sd in result.sds.iter() {
         let mut fasta_right = strand2[sd.left .. sd.left + sd.length].to_vec();
         if sd.reversed { fasta_right.reverse(); }
         if sd.translated { fasta_right = utils::translated(&fasta_right); }
@@ -94,7 +96,7 @@ fn read_masks(masks_file: &str) -> Result<Vec<Mask>, io::Error> {
 
 fn find_left_chromosome(result: &RunResult, name: &str) -> Option<Start> {
     for chr in result.strand1.map.iter() {
-        if chr.name == name {
+        if chr.name.trim() == name {
             return Some(chr.clone())
         }
     }
@@ -103,7 +105,7 @@ fn find_left_chromosome(result: &RunResult, name: &str) -> Option<Start> {
 
 fn find_right_chromosome(result: &RunResult, name: &str) -> Option<Start> {
     for chr in result.strand2.map.iter() {
-        if chr.name == name {
+        if chr.name.trim() == name {
             return Some(chr.clone())
         }
     }
@@ -138,10 +140,8 @@ fn filter(json_file: &str, masks_left_file: &str, masks_right_file: &str) -> Run
     }
     println!("Done.");
 
-    let mut i = 0;
-    for sd in result.sds.iter() {
-        i += 1;
-        println!("{}/{}", i, result.sds.len());
+    let mut old_sds = result.sds.clone();
+    result.sds = old_sds.into_par_iter().filter(|sd| {
         let mut keep = true;
         for mask in masks_left.iter() {
             if sd.left >= mask.start && sd.left <= mask.end { keep = false; continue }
@@ -151,10 +151,8 @@ fn filter(json_file: &str, masks_left_file: &str, masks_right_file: &str) -> Run
             if sd.right >= mask.start && sd.right <= mask.end { keep = false; continue }
         }
 
-        if keep { println!("Keeping"); new_sds.push(sd.clone()) }
-    }
-
-   result.sds = new_sds; 
+        keep
+    }).collect();
 
    result
 }

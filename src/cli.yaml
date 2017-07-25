@@ -13,9 +13,9 @@ args:
         short: i
         long: interlaced
         help: Look for interlaced duplications (may drastically impair performances!)
-    - minsize:
-        long: minsize
-        help: minimal size to keep a duplication
+    - minlength:
+        long: min-length
+        help: minimal length (in bp) of the duplications
         takes_value: true
 
     - trim:

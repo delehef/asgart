@@ -12,7 +12,7 @@ subcommands:
                 required: true
             - out:
                 long: out
-                help: Set default file name
+                help: Set output file name
                 takes_value: true
                 number_of_values: 1
             - min_length:
@@ -30,7 +30,7 @@ subcommands:
                 required: true
             - out:
                 long: out
-                help: Set default file name
+                help: Set output file name
                 takes_value: true
                 number_of_values: 1
             - min_length:

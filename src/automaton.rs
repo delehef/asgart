@@ -64,8 +64,8 @@ fn make_duplications(psd: &ProtoSD,
             .iter()
             .filter(|c| **c == b'n' || **c == b'N')
             .count() as f32 > 0.1 * (psd.top - psd.bottom) as f32 {
-            continue;
-        }
+                continue;
+            }
 
         // Ignore overlapping arms
         if ((right_segment.start as i64 - psd.bottom as i64).abs() <=
@@ -96,6 +96,7 @@ pub fn search_duplications(strand1: &[u8],
                            probe_size: usize,
                            max_gap_size: u32,
                            min_duplication_size: usize,
+                           max_cardinality: usize,
                            interlaced: bool,
                            searcher: &Searcher,
                            progress: &AtomicUsize)
@@ -152,28 +153,32 @@ pub fn search_duplications(strand1: &[u8],
 
                     let new_matches: Vec<Segment> =
                         searcher.search(strand2, sa, &strand1[i..i + probe_size])
-                            .into_iter()
-                            .filter(|x| x.start != i)
-                            .collect();
+                        .into_iter()
+                        .filter(|x| x.start != i)
+                        .collect();
 
-                    if segments_to_segments_distance(&new_matches, &current_segments) <=
-                       max_gap_size {
-                        if interlaced {
-                            append_merge_segments(&mut current_segments,
-                                                  &new_matches,
-                                                  max_gap_size,
-                                                  i);
-                        } else {
-                            merge_or_drop_segments(&mut current_segments,
-                                                   &new_matches,
-                                                   max_gap_size);
-                        }
-
-                        SearchState::Grow
-                    } else if current_segments.is_empty() {
-                           SearchState::Start
-                    } else {
+                    if new_matches.len() > max_cardinality {
+                        gap -= 1;
                         SearchState::SparseGrow
+                    } else {
+                        if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
+                            if interlaced {
+                                append_merge_segments(&mut current_segments,
+                                                      &new_matches,
+                                                      max_gap_size,
+                                                      i);
+                            } else {
+                                merge_or_drop_segments(&mut current_segments,
+                                                       &new_matches,
+                                                       max_gap_size);
+                            }
+
+                            SearchState::Grow
+                        } else if current_segments.is_empty() {
+                            SearchState::Start
+                        } else {
+                            SearchState::SparseGrow
+                        }
                     }
                 }
             }
@@ -185,23 +190,23 @@ pub fn search_duplications(strand1: &[u8],
                     SearchState::Proto
                 } else if strand1[i] != b'N' && strand1[i] != b'n' {
                     let new_matches = searcher.search(strand2, sa, &strand1[i..i + probe_size]);
-                    if segments_to_segments_distance(&new_matches, &current_segments) <=
-                       max_gap_size {
-                        if interlaced {
-                            append_merge_segments(&mut current_segments,
-                                                  &new_matches,
-                                                  max_gap_size,
-                                                  i);
+                    if new_matches.len() < max_cardinality
+                        && segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
+                            if interlaced {
+                                append_merge_segments(&mut current_segments,
+                                                      &new_matches,
+                                                      max_gap_size,
+                                                      i);
+                            } else {
+                                merge_or_drop_segments(&mut current_segments,
+                                                       &new_matches,
+                                                       max_gap_size);
+                            }
+                            gap = 0;
+                            SearchState::Grow
                         } else {
-                            merge_or_drop_segments(&mut current_segments,
-                                                   &new_matches,
-                                                   max_gap_size);
+                            SearchState::SparseGrow
                         }
-                        gap = 0;
-                        SearchState::Grow
-                    } else {
-                        SearchState::SparseGrow
-                    }
                 } else {
                     SearchState::SparseGrow
                 }
@@ -247,11 +252,11 @@ fn append_merge_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delta
         let mut added = false;
         for o in _originals.iter_mut() {
             if n.start >= o.start && n.start <= (o.end + delta as usize) &&
-               n.end > (o.end + delta as usize) {
-                o.end = n.end;
-                added = true;
-                continue;
-            }
+                n.end > (o.end + delta as usize) {
+                    o.end = n.end;
+                    added = true;
+                    continue;
+                }
         }
         if !added {
             _originals.push(Segment {
@@ -267,10 +272,10 @@ fn merge_or_drop_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delt
     for n in _news {
         for o in _originals.iter_mut() {
             if n.start >= o.start && n.start <= (o.end + delta as usize) &&
-               n.end > (o.end + delta as usize) {
-                o.end = n.end;
-                continue;
-            }
+                n.end > (o.end + delta as usize) {
+                    o.end = n.end;
+                    continue;
+                }
         }
     }
 }

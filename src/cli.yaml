@@ -16,6 +16,12 @@ args:
     - minlength:
         long: min-length
         help: minimal length (in bp) of the duplications
+        default_value: "1000"
+        takes_value: true
+    - maxcardinality:
+        long: max-cardinality
+        help: maximal cardinality of duplications families
+        default_value: "1000"
         takes_value: true
 
     - trim:

@@ -126,8 +126,8 @@ impl ChordPlotter {
             let t2 = self.angle(chr.position as f64 + chr.length as f64) + INTER_RING_SPACING;
             let tt = t1 + (t2-t1)/2.0;
 
-            // let tc1 = self.angle(chr.position as f64 + self.centromeres[&chr.name].0);
-            // let tc2 = self.angle(chr.position as f64 + self.centromeres[&chr.name].1);
+            let tc1 = self.angle(chr.position as f64 + self.centromeres[&chr.name].0);
+            let tc2 = self.angle(chr.position as f64 + self.centromeres[&chr.name].1);
 
             let r = R + RING_WIDTH + RING_MARGIN;
 

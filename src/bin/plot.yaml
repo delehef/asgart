@@ -33,3 +33,7 @@ subcommands:
                 help: Set default file name
                 takes_value: true
                 number_of_values: 1
+            - min_length:
+                long: min-length
+                help: minimum length for a SD to be plot (default 5000)
+                takes_value: true

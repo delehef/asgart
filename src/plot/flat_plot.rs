@@ -94,7 +94,7 @@ impl FlatPlotter {
         //
         // Ticks
         //
-        for i in (0..self.max_length as i64) {
+        for i in 0..self.max_length as i64 {
             if i % 1000000 == 0 {
                 let height = if i % 10000000 == 0 {
                     self.height + 15.0
@@ -119,30 +119,14 @@ impl FlatPlotter {
             }
         }
 
-        // let min = self.result.sds.iter().map(|ref sd| sd.identity).fold(0./0., f32::min);
-        // let max = self.result.sds.iter().map(|ref sd| sd.identity).fold(0./0., f32::max);
-        // let min = 97.0;
-        // let max = 100.0;
-        // let identity_range = 100.0-min;
-        // println!("Range = {} -- {}", min, max);
-        // let gradient = Gradient::new(vec![
-        //     Rgb::new(1.0, 0.1, 0.1),
-        //     Rgb::new(0.1, 1.0, 1.0)
-        // ]);
-
-        for sd in &self.settings.result.sds {
+        for sd in self.settings.result.sds.iter().filter(|&sd| sd.length >= self.settings.min_length) {
             let (mut left, mut right) = (sd.left as f64, sd.right as f64);
 
 
             left = (left - 0.0)/self.max_length * self.width;
             right = (right - 0.0)/self.max_length * self.width;
 
-            let color2 = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
-            // println!("{:?}", color);
-            // let color2 = format!("#{:x}{:x}{:x}",
-            //                     (color.red * 255.0) as u8,
-            //                     (color.green * 255.0) as u8,
-            //                     (color.blue * 255.0) as u8);
+            let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
 
             let thickness = sd.length as f64/self.max_length*self.width;
             svg += &format!(r#"
@@ -155,8 +139,8 @@ impl FlatPlotter {
                 CHR_WIDTH,
                 right+thickness/2.0,
                 self.height-CHR_WIDTH,
-                color2,
-                color2,
+                color,
+                color,
                 thickness,
             );
         }

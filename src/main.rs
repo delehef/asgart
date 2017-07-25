@@ -204,7 +204,8 @@ fn main() {
         strand2_file: String,
         kmer_size: usize,
         gap_size: u32,
-        min_duplication_size: usize,
+        min_duplication_length: usize,
+        max_cardinality: usize,
 
         reverse: bool,
         translate: bool,
@@ -227,7 +228,8 @@ fn main() {
         strand2_file: args.value_of("strand2").unwrap().to_owned(),
         kmer_size: value_t_or_exit!(args, "probe_size", usize),
         gap_size: value_t_or_exit!(args, "max_gap", u32),
-        min_duplication_size: value_t!(args, "minsize", usize).unwrap_or_else(|_| 1000),
+        min_duplication_length: value_t!(args, "minlength", usize).unwrap(),
+        max_cardinality: value_t!(args, "maxcardinality", usize).unwrap(),
 
         reverse: args.is_present("reverse"),
         translate: args.is_present("translate"),
@@ -269,6 +271,8 @@ fn main() {
     trace!("Reverse 2nd strand       {}", settings.reverse);
     trace!("Translate 2nd strand     {}", settings.translate);
     trace!("Interlaced SD            {}", settings.interlaced);
+    trace!("Min. length              {}", settings.min_duplication_length);
+    trace!("Max. cardinality         {}", settings.max_cardinality);
     trace!("Threads count            {}", settings.threads_count);
     if !settings.trim.is_empty() {
         trace!("Trimming                 {} → {}\n",
@@ -280,7 +284,8 @@ fn main() {
                                      &settings.strand2_file,
                                      settings.kmer_size,
                                      settings.gap_size + settings.kmer_size as u32,
-                                     settings.min_duplication_size,
+                                     settings.min_duplication_length,
+                                     settings.max_cardinality,
                                      settings.reverse,
                                      settings.translate,
                                      settings.interlaced,
@@ -304,7 +309,8 @@ fn search_duplications(strand1_file: &str,
 
                        kmer_size: usize,
                        max_gap_size: u32,
-                       min_duplication_size: usize,
+                       min_duplication_length: usize,
+                       max_cardinality: usize,
 
                        reverse: bool,
                        translate: bool,
@@ -356,7 +362,8 @@ fn search_duplications(strand1_file: &str,
                                                          end,
                                                          kmer_size,
                                                          max_gap_size,
-                                                         min_duplication_size,
+                                                         min_duplication_length,
+                                                         max_cardinality,
                                                          interlaced,
                                                          &searcher,
                                                          &my_progress))

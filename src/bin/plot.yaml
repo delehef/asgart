@@ -1,0 +1,35 @@
+name: plot
+version: "1.0"
+author: Franklin Delehelle <franklin.delehelle@irit.fr>
+about: Generate plots from ASGART results
+args:
+subcommands:
+    - chord:
+        about: Generates a chord plot
+        args:
+            - FILE:
+                help: Sets the input file to use
+                required: true
+            - out:
+                long: out
+                help: Set default file name
+                takes_value: true
+                number_of_values: 1
+            - min_length:
+                long: min-length
+                help: minimum length for a SD to be plot (default 5000)
+                takes_value: true
+                number_of_values: 1
+    - dotplot:
+        about: Generates a matrix plot
+    - flat:
+        about: Generates a side-by-side plot
+        args:
+            - FILE:
+                help: Sets the input file to use
+                required: true
+            - out:
+                long: out
+                help: Set default file name
+                takes_value: true
+                number_of_values: 1

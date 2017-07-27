@@ -125,27 +125,29 @@ impl FlatPlotter {
             let (mut left, mut right) = (sd.left as f64, sd.right as f64);
 
 
-            left = (left - 0.0)/self.max_length * self.width;
-            right = (right - 0.0)/self.max_length * self.width;
+            let left1 = (left)/self.max_length * self.width;
+            let left2 = (left + sd.length as f64)/self.max_length * self.width;
+            let right1 = (right)/self.max_length * self.width;
+            let right2 = (right + sd.length as f64)/self.max_length * self.width;
 
             let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
 
             let thickness = sd.length as f64/self.max_length*self.width;
             svg += &format!(r#"
-                            <line
-                            x1='{}' y1='{}' x2='{}' y2='{}'
-                            fill='{}' fill-opacity='0.3' stroke='{}' stroke-opacity='0.9'
-                            stroke-width='{}'>
+                            <polygon
+                            points='{},{} {},{} {},{} {},{}'
+                            fill='{}' fill-opacity='0.5' stroke='{}' stroke-opacity='0.9'
+                            stroke-width='0'>
+                            >
                             <title>{}</title>
-                            </line>
+                            </polygon>
                             "#,
-                            left - thickness/2.0,
-                            CHR_WIDTH,
-                            right + thickness/2.0,
-                            self.height-CHR_WIDTH,
+                            left1, CHR_WIDTH,
+                            left2, CHR_WIDTH,
+                            right2, self.height - CHR_WIDTH,
+                            right1, self.height - CHR_WIDTH,
                             color,
                             color,
-                            thickness,
                             &format!("{}bp\n{} → {}\n{} → {}",
                                      sd.length.separated_string(),
                                      sd.left.separated_string(),

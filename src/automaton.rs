@@ -212,7 +212,7 @@ pub fn search_duplications(strand1: &[u8],
                 }
             }
             SearchState::Proto => {
-                if i - current_start >= min_duplication_size {
+                if (i - current_start >= min_duplication_size) && (current_segments.len() > 0) {
                     let psd = ProtoSD {
                         bottom: current_start,
                         top: i,

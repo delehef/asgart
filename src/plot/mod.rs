@@ -1,4 +1,5 @@
 extern crate palette;
+extern crate separator;
 
 use ::structs::*;
 

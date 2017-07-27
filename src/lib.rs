@@ -1,4 +1,5 @@
 extern crate rustc_serialize;
+extern crate separator;
 
 pub mod structs;
 pub mod utils;

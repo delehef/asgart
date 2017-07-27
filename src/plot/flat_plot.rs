@@ -1,3 +1,5 @@
+use separator::Separatable;
+
 use std::cmp;
 use std::io::prelude::*;
 use std::fs::File;
@@ -130,27 +132,36 @@ impl FlatPlotter {
 
             let thickness = sd.length as f64/self.max_length*self.width;
             svg += &format!(r#"
-                <line
-                x1='{}' y1='{}' x2='{}' y2='{}'
-                fill='{}' fill-opacity='0.3' stroke='{}' stroke-opacity='0.9'
-                stroke-width='{}'/>
-                "#,
-                left-thickness/2.0,
-                CHR_WIDTH,
-                right+thickness/2.0,
-                self.height-CHR_WIDTH,
-                color,
-                color,
-                thickness,
+                            <line
+                            x1='{}' y1='{}' x2='{}' y2='{}'
+                            fill='{}' fill-opacity='0.3' stroke='{}' stroke-opacity='0.9'
+                            stroke-width='{}'>
+                            <title>{}</title>
+                            </line>
+                            "#,
+                            left - thickness/2.0,
+                            CHR_WIDTH,
+                            right + thickness/2.0,
+                            self.height-CHR_WIDTH,
+                            color,
+                            color,
+                            thickness,
+                            &format!("{}bp\n{} → {}\n{} → {}",
+                                     sd.length.separated_string(),
+                                     sd.left.separated_string(),
+                                     (sd.left + sd.length).separated_string(),
+                                     sd.right.separated_string(),
+                                     (sd.right + sd.length).separated_string()
+                            )
             );
         }
-        format!("<?xml version='1.0' encoding='iso-8859-1' standalone='no' ?> <!DOCTYPE svg \
+        format!("<?xml version='1.0' encoding='UTF-8' standalone='no' ?> <!DOCTYPE svg \
                  PUBLIC '-//W3C//DTD SVG 1.0//EN' \
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
                  width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
                  xmlns:xlink='http://www.w3.org/1999/xlink'>{}</svg>",
-                 self.width,
-                 self.height+30.0,
-                 svg)
+                self.width,
+                self.height+30.0,
+                svg)
     }
 }

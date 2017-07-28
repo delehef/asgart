@@ -3,12 +3,7 @@ use separator::Separatable;
 use std::cmp;
 use std::io::prelude::*;
 use std::fs::File;
-use rustc_serialize::json;
-use std::f64::consts::PI;
-use ::structs::*;
 use ::plot::{Plotter, Settings};
-
-use ::structs::*;
 
 const CHR_WIDTH: f64 = 4.0;
 
@@ -122,17 +117,13 @@ impl FlatPlotter {
         }
 
         for sd in self.settings.result.sds.iter().filter(|&sd| sd.length >= self.settings.min_length) {
-            let (mut left, mut right) = (sd.left as f64, sd.right as f64);
-
-
-            let left1 = (left)/self.max_length * self.width;
-            let left2 = (left + sd.length as f64)/self.max_length * self.width;
-            let right1 = (right)/self.max_length * self.width;
-            let right2 = (right + sd.length as f64)/self.max_length * self.width;
+            let left1 = (sd.left as f64)/self.max_length * self.width;
+            let left2 = (sd.left as f64 + sd.length as f64)/self.max_length * self.width;
+            let right1 = (sd.right as f64)/self.max_length * self.width;
+            let right2 = (sd.right as f64+ sd.length as f64)/self.max_length * self.width;
 
             let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
 
-            let thickness = sd.length as f64/self.max_length*self.width;
             svg += &format!(r#"
                             <polygon
                             points='{},{} {},{} {},{} {},{}'

@@ -179,7 +179,6 @@ impl ChordPlotter {
             let t22 = self.angle(right as f64 + sd.length as f64);
             let mut t2 = t21 + (t22 - t21)/2.0;
 
-            let tt = t1 + (t2-t1)/2.0;
             let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
             if width <= self.settings.thickness {width = self.settings.thickness};
 
@@ -195,7 +194,6 @@ impl ChordPlotter {
             //                     (color.green * 255.0) as u8,
             //                     (color.blue * 255.0) as u8);
 
-            let border = 1.4*R;
             let (x1, y1) = self.cartesian(t1, R);
             let (x2, y2) = self.cartesian(t2, R);
             
@@ -204,11 +202,6 @@ impl ChordPlotter {
 
             while t1 > 2.0*PI {t1 -= 2.0*PI;}
 
-            let (t1, t2) = if t2 < t1 {(t2, t1)} else {(t1, t2)};
-
-            let mut ttt = t2 - t1;
-            
-            let tt = t1 + (t2 - t1)/2.0;
             let cx = CX;
             let cy = CY;
 
@@ -222,11 +215,11 @@ impl ChordPlotter {
 
             let t11 = self.angle(left as f64);
             let t12 = self.angle(left as f64 + sd.length as f64);
-            let mut t1 = t11 + (t12 - t11)/2.0;
+            let t1 = t11 + (t12 - t11)/2.0;
 
             let t21 = self.angle(right as f64);
             let t22 = self.angle(right as f64 + sd.length as f64);
-            let mut t2 = t21 + (t22 - t21)/2.0;
+            let t2 = t21 + (t22 - t21)/2.0;
 
             let tt = t1 + (t2-t1)/2.0;
             let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi

@@ -121,22 +121,32 @@ By default, ASGART will write its result in a JSON file in the folder where it w
   
   - `--reverse`/`-R` look for duplication which second arm is reversed
   
-  - `--translate`/`-T` look for duplication which second arm is translated
+  - `--translate`/`-T` look for duplication which second arm is
+    translated
   
-  - `--min-size SIZE` specifies the minimal length over which a duplication is kept in the final result and not discarded
+  - `--min-size SIZE` specifies the minimal length (in bp) over which
+    a duplication is kept in the final result and not discarded
+    (default: 1000)
+
+  - `--max-cardinality` specifies the maximal count of members in a
+    duplication family (default: 1000)
 
 
 ### Technical
 
   - `-h`, `--help` display an help screen
 
-  - `--out FILENAME` specifies the file in which the results will be written
+  - `--out FILENAME` specifies the file in which the results will be
+    written
   
-  - `--prefix NAME` set a prefix to prepend to the standard out file name.
+  - `--prefix NAME` set a prefix to prepend to the standard out file
+    name.
   
-  - `--threads COUNT` set the numbers of thread to use. Defaults to the number of cores abailable on the CPU.
+  - `--threads COUNT` set the numbers of thread to use. Defaults to
+    the number of cores abailable on the CPU.
   
-  - `--trim START END` run ASGART only on the specified area of the first file.
+  - `--trim START END` run ASGART only on the specified area of the
+    first file.
 
 # Plotting
 
@@ -150,13 +160,15 @@ graphs, or flat graphs.
 
   - `--out FILENAME` set output file name
   
-  - `--min-length` set the minimal length (in bp) for a duplication to be plotted
+  - `--min-length` set the minimal length (in bp) for a duplication to
+    be plotted
 
 ## Chord graphs
 
-A chord graph represent duplications amongst a DNA fragment as arcs linking
-point on a circle figuring a fragment bend over itself. Their width is directly
-proportional to the lenght of the duplications they represent.
+A chord graph represent duplications amongst a DNA fragment as arcs
+linking point on a circle figuring a fragment bend over itself. Their
+width is directly proportional to the lenght of the duplications they
+represent.
 
 // PICTURE HERE
 

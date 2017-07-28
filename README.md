@@ -170,7 +170,7 @@ linking point on a circle figuring a fragment bend over itself. Their
 width is directly proportional to the lenght of the duplications they
 represent.
 
-// PICTURE HERE
+![Chord graph example](screenshots/chord.png)
 
 ## Flat graphs
 
@@ -178,4 +178,4 @@ Flat graphs are made of two superposed horizontal lines, representing the two
 fragments analyzed by ASGART, with lines linking left and right parts of the
 duplications found, their width proportional to the length of the duplication.
 
-// PICTURE HERE
+![Flat graph example](screenshots/flat.png)

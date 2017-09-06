@@ -10,14 +10,14 @@ num_cpus        = "*"
 uuid            = "*"
 threadpool      = "1.*"
 rustc-serialize = "0.3"
-palette         = "0.2.1"
+palette         = "0.2"
 log             = "0.3"
 env_logger      = "0.4"
 colored         = "1.*"
 isatty          = "0.1"
-indicatif       = "0.6"
+indicatif       = "0.7"
 console         = "0.5"
-rayon           = "0.8.2"
+rayon           = "0.8"
 separator = { git = "https://github.com/delehef/rust-separator.git" }
 
 [dependencies.clap]

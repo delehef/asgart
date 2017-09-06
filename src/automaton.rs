@@ -146,7 +146,7 @@ pub fn search_duplications(strand1: &[u8],
                 } else {
                     prune += 1;
                     if prune > 2*(min_duplication_size/probe_size) {
-                        current_segments.retain(|segment| (segment.end - segment.start) > 
+                        current_segments.retain(|segment| (segment.end - segment.start) >
                                                 min_duplication_size);
                         prune = 0;
                     }

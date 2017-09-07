@@ -2,6 +2,8 @@ extern crate rustc_serialize;
 extern crate colored;
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate error_chain;
 extern crate asgart;
 
 
@@ -17,13 +19,9 @@ use asgart::plot::Settings;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
 
-#[macro_use]
-extern crate error_chain;
-
 mod errors {
     error_chain!{}
 }
-
 use errors::*;
 
 fn read_result(file: &str) -> Result<RunResult> {
@@ -120,15 +118,3 @@ fn run() -> Result<()> {
 }
 
 
-fn main() {
-    if let Err(ref e) = run() {
-        println!("{} {}", "Error: ".red(), e);
-        for e in e.iter().skip(1) {
-            println!("{}", e);
-        }
-        if let Some(backtrace) = e.backtrace() {
-            println!("backtrace: {:?}", backtrace);
-        }
-        std::process::exit(1);
-    }
-}

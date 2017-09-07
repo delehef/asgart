@@ -8,6 +8,8 @@ extern crate env_logger;
 extern crate clap;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate error_chain;
 extern crate colored;
 extern crate indicatif;
 extern crate console;
@@ -23,7 +25,6 @@ use std::path;
 use std::thread;
 use std::time::Duration;
 use std::cmp;
-use std::io;
 use std::io::Write;
 use std::fs::File;
 use std::sync::mpsc;
@@ -44,6 +45,11 @@ use console::style;
 use structs::{StrandResult, RunResult, SD, Start};
 use logger::Logger;
 
+mod errors {
+    error_chain!{}
+}
+use errors::*;
+
 struct Strand {
     pub file_name: String,
     pub data: Vec<u8>,
@@ -55,20 +61,14 @@ fn prepare_data(strand1_file: &str,
                 reverse: bool,
                 translate: bool,
                 trim: Option<(usize, usize)>)
-                -> (
-                    std::sync::Arc<Strand>,
-                    std::sync::Arc<Strand>,
-                    std::sync::Arc<std::vec::Vec<i64>>,
-                    std::sync::Arc<searcher::Searcher>,
-                    ) {
+                -> Result<(std::sync::Arc<Strand>, std::sync::Arc<Strand>, std::sync::Arc<std::vec::Vec<i64>>, std::sync::Arc<searcher::Searcher>)> {
     //
     // Read and map the FASTA files to process
     //
-    let (map1, strand1) = read_fasta(strand1_file)
-        .expect(&format!("Unable to read {}", strand1_file));
+    let (map1, strand1) = read_fasta(strand1_file)?;
     let (map2, strand2) = {
         let (map2, strand2) = if strand2_file != strand1_file {
-            read_fasta(strand2_file).expect(&format!("Unable to read {}", strand2_file))
+            read_fasta(strand2_file)?
         } else {
             trace!("Using same file for strands 1 & 2\n");
             (map1.clone(), strand1.clone())
@@ -147,22 +147,20 @@ fn prepare_data(strand1_file: &str,
     let suffix_array = r_divsufsort(&strand2.data);
 
     let shared_suffix_array = Arc::new(suffix_array);
-    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(),
-                                                           &shared_suffix_array.clone(),
-                                                           shift2));
+    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(), &shared_suffix_array.clone(), shift2));
 
-    (Arc::new(strand1), Arc::new(strand2), shared_suffix_array, shared_searcher)
+    Ok((Arc::new(strand1), Arc::new(strand2), shared_suffix_array, shared_searcher))
 }
 
-fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
+fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>)> {
     let mut map = Vec::new();
     let mut r = Vec::new();
 
-    let reader = fasta::Reader::from_file(filename).expect("Unable to read");
+    let reader = fasta::Reader::from_file(filename).chain_err(|| format!("Unable to open `{}`", filename))?;
     let mut counter = 0;
 
     for record in reader.records() {
-        let record = record.expect(&format!("Unable to read {:?}: not a FASTA file", path::Path::new(filename).file_name().unwrap()));
+        let record = record.chain_err(|| format!("Unable to read {:?}: not a FASTA file", path::Path::new(filename).file_name().unwrap()))?;
 
         let name = format!("{} {}",
                            record.id(),
@@ -171,6 +169,7 @@ fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>), io::Error> {
         seq = seq.to_ascii_uppercase();
         for c in &mut seq {
             if !(structs::ALPHABET).contains(c) {
+                warn!("Unknown base `{}` replaced by `N`", std::char::from_u32(*c as u32).unwrap());
                 *c = b'N'
             }
         }
@@ -198,7 +197,7 @@ pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
 }
 
 
-fn main() {
+fn run() -> Result<()> {
     struct Settings {
         strand1_file: String,
         strand2_file: String,
@@ -243,10 +242,10 @@ fn main() {
 
     let verbose = args.is_present("verbose");
     Logger::init(if verbose {
-            LogLevelFilter::Trace
-        } else {
-            LogLevelFilter::Info
-        })
+        LogLevelFilter::Trace
+    } else {
+        LogLevelFilter::Info
+    })
         .unwrap();
 
     let out_file = if settings.out.is_empty() {
@@ -258,7 +257,7 @@ fn main() {
                 settings.gap_size,
                 if settings.reverse {"r"} else {""},
                 if settings.translate {"t"} else {""},
-                )
+        )
     } else {
         settings.out + ".json"
     };
@@ -276,8 +275,8 @@ fn main() {
     trace!("Threads count            {}", settings.threads_count);
     if !settings.trim.is_empty() {
         trace!("Trimming                 {} → {}\n",
-              settings.trim[0],
-              settings.trim[1]);
+               settings.trim[0],
+               settings.trim[1]);
     }
 
     let result = search_duplications(&settings.strand1_file,
@@ -295,11 +294,13 @@ fn main() {
                                          None
                                      },
                                      settings.threads_count,
-                                     );
-    let mut out = File::create(&out_file).expect(&format!("Unable to create `{}`", &out_file));
+    )?;
+    let mut out = File::create(&out_file).chain_err(|| format!("Unable to create `{}`", &out_file))?;
     writeln!(&mut out,
              "{}",
              rustc_serialize::json::as_pretty_json(&result)).expect("Unable to write results");
+
+    Ok(())
 }
 
 #[allow(unknown_lints)]
@@ -318,13 +319,13 @@ fn search_duplications(strand1_file: &str,
                        trim: Option<(usize, usize)>,
 
                        threads_count: usize,
-                       )
-                       -> RunResult {
+)
+                       -> Result<RunResult> {
 
     let total = Instant::now();
 
     let (strand1, strand2, shared_suffix_array, shared_searcher) =
-        prepare_data(strand1_file, strand2_file, reverse, translate, trim);
+        prepare_data(strand1_file, strand2_file, reverse, translate, trim)?;
 
 
     let thread_pool = ThreadPool::new(threads_count);
@@ -350,23 +351,23 @@ fn search_duplications(strand1_file: &str,
 
             thread_pool.execute(move || {
                 let end = start +
-                          if id < num_tasks {
-                    CHUNK_SIZE
-                } else {
-                    chunk_overflow
-                };
+                    if id < num_tasks {
+                        CHUNK_SIZE
+                    } else {
+                        chunk_overflow
+                    };
                 my_tx.send(automaton::search_duplications(&strand1.data,
-                                                         &strand2.data,
-                                                         &suffix_array,
-                                                         start,
-                                                         end,
-                                                         kmer_size,
-                                                         max_gap_size,
-                                                         min_duplication_length,
-                                                         max_cardinality,
-                                                         interlaced,
-                                                         &searcher,
-                                                         &my_progress))
+                                                          &strand2.data,
+                                                          &suffix_array,
+                                                          start,
+                                                          end,
+                                                          kmer_size,
+                                                          max_gap_size,
+                                                          min_duplication_length,
+                                                          max_cardinality,
+                                                          interlaced,
+                                                          &searcher,
+                                                          &my_progress))
                     .unwrap();
             });
 
@@ -431,12 +432,12 @@ fn search_duplications(strand1_file: &str,
 
     info!("{}",
           style(format!("{} vs. {} processed in {}.\n\n",
-          strand1_file,
-          strand2_file,
-                  HumanDuration(total.elapsed()))).green().bold()
+                        strand1_file,
+                        strand2_file,
+                        HumanDuration(total.elapsed()))).green().bold()
     );
 
-    RunResult {
+    Ok(RunResult {
         strand1: StrandResult {
             name: strand1.file_name.to_owned(),
             length: strand1.data.len(),
@@ -452,7 +453,7 @@ fn search_duplications(strand1_file: &str,
         gap: max_gap_size as usize,
 
         sds: result,
-    }
+    })
 }
 
 // Returns true if x ⊂ y
@@ -468,7 +469,7 @@ fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bo
     let yend = ystart + ylen;
 
     (xstart >= ystart && xstart <= yend && xend >= yend) ||
-    (ystart >= xstart && ystart <= xend && yend >= xend)
+        (ystart >= xstart && ystart <= xend && yend >= xend)
 }
 
 fn merge(x: &SD, y: &SD) -> SD {
@@ -485,7 +486,7 @@ fn merge(x: &SD, y: &SD) -> SD {
         (y.right, x.right, x.length, y.length)
     };
     let rsize = (yright - xright) + ((xright + xsize) - yright) +
-                ((yright + ysize) - (xright + xsize));
+        ((yright + ysize) - (xright + xsize));
 
     SD {
         left: xleft,
@@ -504,28 +505,28 @@ fn reduce_overlap(result: &[SD]) -> Vec<SD> {
             for y in news.iter_mut() {
                 // x ⊂ y
                 if subsegment(x.left_part(), y.left_part()) &&
-                   subsegment(x.right_part(), y.right_part()) {
-                    continue 'to_insert;
-                }
+                    subsegment(x.right_part(), y.right_part()) {
+                        continue 'to_insert;
+                    }
 
                 // x ⊃ y
                 if subsegment(y.left_part(), x.left_part()) &&
-                   subsegment(y.right_part(), x.right_part()) {
-                    y.left = x.left;
-                    y.right = x.right;
-                    y.length = x.length;
-                    y.identity = x.identity;
-                    continue 'to_insert;
-                }
+                    subsegment(y.right_part(), x.right_part()) {
+                        y.left = x.left;
+                        y.right = x.right;
+                        y.length = x.length;
+                        y.identity = x.identity;
+                        continue 'to_insert;
+                    }
 
                 if overlap(x.left_part(), y.left_part()) &&
-                   overlap(x.right_part(), y.right_part()) {
-                    let z = merge(x, y);
-                    y.left = z.left;
-                    y.right = z.right;
-                    y.length = z.length;
-                    continue 'to_insert;
-                }
+                    overlap(x.right_part(), y.right_part()) {
+                        let z = merge(x, y);
+                        y.left = z.left;
+                        y.right = z.right;
+                        y.length = z.length;
+                        continue 'to_insert;
+                    }
             }
             news.push(x.clone());
         }
@@ -541,4 +542,17 @@ fn reduce_overlap(result: &[SD]) -> Vec<SD> {
         new_size = news.len();
     }
     news
+}
+
+fn main() {
+    if let Err(ref e) = run() {
+        println!("{} {}", style("Error: ").red(), e);
+        for e in e.iter().skip(1) {
+            println!("{}", e);
+        }
+        if let Some(backtrace) = e.backtrace() {
+            println!("backtrace: {:?}", backtrace);
+        }
+        std::process::exit(1);
+    }
 }

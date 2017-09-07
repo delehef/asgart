@@ -299,6 +299,7 @@ fn run() -> Result<()> {
     writeln!(&mut out,
              "{}",
              rustc_serialize::json::as_pretty_json(&result)).expect("Unable to write results");
+    info!("{}", style(format!("Result written to {}", &out_file)).bold());
 
     Ok(())
 }
@@ -431,7 +432,7 @@ fn search_duplications(strand1_file: &str,
     result = reduce_overlap(&result);
 
     info!("{}",
-          style(format!("{} vs. {} processed in {}.\n\n",
+          style(format!("{} vs. {} processed in {}.",
                         strand1_file,
                         strand2_file,
                         HumanDuration(total.elapsed()))).green().bold()

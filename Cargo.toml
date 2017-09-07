@@ -18,6 +18,7 @@ isatty          = "0.1"
 indicatif       = "0.7"
 console         = "0.5"
 rayon           = "0.8"
+error-chain     = "0.11"
 separator = { git = "https://github.com/delehef/rust-separator.git" }
 
 [dependencies.clap]

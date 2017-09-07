@@ -10,21 +10,33 @@ use std::fs::File;
 use std::path::Path;
 use rustc_serialize::json;
 use clap::{App, AppSettings, ArgMatches};
+use colored::Colorize;
 use asgart::structs::*;
 use asgart::plot::Plotter;
 use asgart::plot::Settings;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
 
+#[macro_use]
+extern crate error_chain;
 
-fn flat(args: &ArgMatches) {
-    let json_file = args.value_of("FILE").unwrap();
-    println!("Flat plotting {}", json_file);
+mod errors {
+    error_chain!{}
+}
 
-    let mut f = File::open(args.value_of("FILE").unwrap()).unwrap();
+use errors::*;
+
+fn read_result(file: &str) -> Result<RunResult> {
+    let mut f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
     let mut s = String::new();
     let _ = f.read_to_string(&mut s);
-    let result: RunResult = json::decode(&s).expect("Unable to parse JSON file");
+    json::decode(&s).chain_err(|| "Failed to parse JSON")
+}
+
+fn flat(args: &ArgMatches) -> Result<()> {
+    let json_file = args.value_of("FILE").unwrap();
+    let result = read_result(json_file)?;
+
 
     let out_file =
         args.value_of("out")
@@ -36,7 +48,7 @@ fn flat(args: &ArgMatches) {
                 Some(f.to_owned())
             }
         }).or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
-    println!("Writing to {}", out_file);
+    println!("Result written to {}", out_file);
     let settings = Settings {
         result: result,
         out_file: out_file,
@@ -51,17 +63,13 @@ fn flat(args: &ArgMatches) {
     };
     let plotter = FlatPlotter::new(settings);
     plotter.plot();
+
+    Ok(())
 }
 
-fn chord(args: &ArgMatches) {
+fn chord(args: &ArgMatches) -> Result<()> {
     let json_file = args.value_of("FILE").unwrap();
-    println!("Chord plotting {}", json_file);
-
-    let mut f = File::open(json_file).expect(&format!("Unable to open {}", json_file));
-    let mut s = String::new();
-    let _ = f.read_to_string(&mut s);
-    let result: RunResult = json::decode(&s).expect("Unable to parse JSON file");
-
+    let result = read_result(json_file)?;
 
     let out_file =
         args.value_of("out")
@@ -73,7 +81,7 @@ fn chord(args: &ArgMatches) {
                 Some(f.to_owned())
             }
         }).or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
-    println!("Writing to {}", out_file);
+    println!("Result written to {}", out_file);
 
     let settings = Settings {
         result: result,
@@ -89,9 +97,11 @@ fn chord(args: &ArgMatches) {
     };
     let plotter = ChordPlotter::new(settings);
     plotter.plot();
+
+    Ok(())
 }
 
-fn main() {
+fn run() -> Result<()> {
     let yaml = load_yaml!("plot.yaml");
     let args = App::from_yaml(yaml)
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -104,8 +114,21 @@ fn main() {
     match args.subcommand_name() {
         Some("chord")   => chord(args.subcommand_matches("chord").unwrap()),
         Some("flat")    => flat(args.subcommand_matches("flat").unwrap()),
-        Some("dotplot") => println!("'git add' was used"),
-        None            => println!("No subcommand was used"),
+        None            => Ok(()),
         _               => unreachable!(),
+    }
+}
+
+
+fn main() {
+    if let Err(ref e) = run() {
+        println!("{} {}", "Error: ".red(), e);
+        for e in e.iter().skip(1) {
+            println!("{}", e);
+        }
+        if let Some(backtrace) = e.backtrace() {
+            println!("backtrace: {:?}", backtrace);
+        }
+        std::process::exit(1);
     }
 }

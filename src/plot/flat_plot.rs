@@ -92,10 +92,10 @@ impl FlatPlotter {
         // Ticks
         //
         for i in 0..self.max_length as i64 {
-            if i % 1000000 == 0 {
-                let height = if i % 10000000 == 0 {
+            if i % 1_000_000 == 0 {
+                let height = if i % 10_000_000 == 0 {
                     self.height + 15.0
-                } else if i % 5000000 == 0 {
+                } else if i % 5_000_000 == 0 {
                     self.height + 10.0
                 } else {
                     self.height + 5.0
@@ -107,11 +107,11 @@ impl FlatPlotter {
                                     x, height
                 );
 
-                if i % 10000000 == 0 {
+                if i % 10_000_000 == 0 {
                     svg += &format!("<text x='{}' y='{}' font-family='Helvetica' font-size='8'>{}Mb</text>",
-                                         x+4.0,
-                                         height,
-                                         i / 1000000);
+                                    x+4.0,
+                                    height,
+                                    i / 1_000_000);
                 }
             }
         }

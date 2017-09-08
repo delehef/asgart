@@ -1,5 +1,4 @@
 extern crate log;
-extern crate colored;
 
 use log::{LogRecord, LogLevel, LogMetadata, SetLoggerError, LogLevelFilter};
 use colored::*;

@@ -1,9 +1,6 @@
-extern crate uuid;
-extern crate bio;
 extern crate num_cpus;
 extern crate threadpool;
 extern crate rustc_serialize;
-extern crate env_logger;
 #[macro_use]
 extern crate clap;
 #[macro_use]
@@ -13,6 +10,7 @@ extern crate error_chain;
 extern crate colored;
 extern crate indicatif;
 extern crate console;
+extern crate bio;
 
 mod automaton;
 mod utils;
@@ -169,7 +167,7 @@ fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>)> {
         seq = seq.to_ascii_uppercase();
         for c in &mut seq {
             if !(structs::ALPHABET).contains(c) {
-                warn!("Unknown base `{}` replaced by `N`", std::char::from_u32(*c as u32).unwrap());
+                warn!("Unknown base `{}` replaced by `N`", std::char::from_u32(u32::from(*c)).unwrap());
                 *c = b'N'
             }
         }
@@ -243,7 +241,7 @@ fn reduce_overlap(result: &[SD]) -> Vec<SD> {
     fn _reduce(result: &[SD]) -> Vec<SD> {
         let mut news: Vec<SD> = Vec::new();
         'to_insert: for x in result.iter() {
-            for y in news.iter_mut() {
+            for y in &mut news {
                 // x ⊂ y
                 if subsegment(x.left_part(), y.left_part()) &&
                     subsegment(x.right_part(), y.right_part()) {
@@ -423,7 +421,7 @@ fn search_duplications(strand1_file: &str,
     let (tx_monitor, rx_monitor) = mpsc::channel();
     let (tx, rx) = mpsc::channel();
     {
-        const CHUNK_SIZE: usize = 50000;
+        const CHUNK_SIZE: usize = 50_000;
 
         let num_tasks = (strand1.data.len() - kmer_size) / CHUNK_SIZE;
         let chunk_overflow = (strand1.data.len() - kmer_size) % CHUNK_SIZE;

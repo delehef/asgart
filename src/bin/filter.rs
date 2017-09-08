@@ -1,4 +1,3 @@
-extern crate bio;
 extern crate asgart;
 extern crate rustc_serialize;
 extern crate rayon;
@@ -40,7 +39,7 @@ fn read_masks(masks_file: &str) -> Result<Vec<Mask>, io::Error> {
 }
 
 fn find_left_chromosome(result: &RunResult, name: &str) -> Option<Start> {
-    for chr in result.strand1.map.iter() {
+    for chr in &result.strand1.map {
         if chr.name.trim() == name {
             return Some(chr.clone())
         }
@@ -49,7 +48,7 @@ fn find_left_chromosome(result: &RunResult, name: &str) -> Option<Start> {
 }
 
 fn find_right_chromosome(result: &RunResult, name: &str) -> Option<Start> {
-    for chr in result.strand2.map.iter() {
+    for chr in &result.strand2.map {
         if chr.name.trim() == name {
             return Some(chr.clone())
         }
@@ -67,7 +66,7 @@ fn filter(json_file: &str, masks_left_file: &str, masks_right_file: &str) -> Run
     let mut masks_right = read_masks(masks_right_file).unwrap();
 
     println!("Precomputing masks...");
-    for mask_left in masks_left.iter_mut() {
+    for mask_left in &mut masks_left {
         let chr = find_left_chromosome(&result, &mask_left.chr).expect(&format!("Unable to find `{}`", &mask_left.chr));
         let start = chr.position + mask_left.start;
         let end = chr.position + mask_left.end;
@@ -75,7 +74,7 @@ fn filter(json_file: &str, masks_left_file: &str, masks_right_file: &str) -> Run
         mask_left.end = end;
     }
 
-    for mask_right in masks_right.iter_mut() {
+    for mask_right in &mut masks_right {
         let chr = find_right_chromosome(&result, &mask_right.chr).expect(&format!("Unable to find `{}`", &mask_right.chr));
         let start = chr.position + mask_right.start;
         let end = chr.position + mask_right.end;
@@ -87,11 +86,11 @@ fn filter(json_file: &str, masks_left_file: &str, masks_right_file: &str) -> Run
     let old_sds = result.sds.clone();
     result.sds = old_sds.into_par_iter().filter(|sd| {
         let mut keep = true;
-        for mask in masks_left.iter() {
+        for mask in &masks_left {
             if sd.left >= mask.start && sd.left <= mask.end { keep = false; continue }
         }
 
-        for mask in masks_right.iter() {
+        for mask in &masks_right {
             if sd.right >= mask.start && sd.right <= mask.end { keep = false; continue }
         }
 

@@ -1,6 +1,3 @@
-extern crate palette;
-extern crate separator;
-
 use ::structs::*;
 
 pub mod chord_plot;

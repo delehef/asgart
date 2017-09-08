@@ -118,3 +118,16 @@ fn run() -> Result<()> {
 }
 
 
+
+fn main() {
+    if let Err(ref e) = run() {
+        println!("{} {}", "Error: ".red(), e);
+        for e in e.iter().skip(1) {
+            println!("{}", e);
+        }
+        if let Some(backtrace) = e.backtrace() {
+            println!("backtrace: {:?}", backtrace);
+        }
+        std::process::exit(1);
+    }
+}

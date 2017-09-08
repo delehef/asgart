@@ -197,6 +197,95 @@ pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
 }
 
 
+// Returns true if x ⊂ y
+fn subsegment((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
+    let xend = xstart + xlen;
+    let yend = ystart + ylen;
+
+    xstart >= ystart && xend <= yend
+}
+
+fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
+    let xend = xstart + xlen;
+    let yend = ystart + ylen;
+
+    (xstart >= ystart && xstart <= yend && xend >= yend) ||
+        (ystart >= xstart && ystart <= xend && yend >= xend)
+}
+
+fn merge(x: &SD, y: &SD) -> SD {
+    let (xleft, yleft, xsize, ysize) = if x.left < y.left {
+        (x.left, y.left, x.length, y.length)
+    } else {
+        (y.left, x.left, x.length, y.length)
+    };
+    let lsize = (yleft - xleft) + ((xleft + xsize) - yleft) + ((yleft + ysize) - (xleft + xsize));
+
+    let (xright, yright, xsize, ysize) = if x.right < y.right {
+        (x.right, y.right, x.length, y.length)
+    } else {
+        (y.right, x.right, x.length, y.length)
+    };
+    let rsize = (yright - xright) + ((xright + xsize) - yright) +
+        ((yright + ysize) - (xright + xsize));
+
+    SD {
+        left: xleft,
+        right: xright,
+        length: cmp::min(lsize, rsize),
+        identity: x.identity,
+        reversed: x.reversed,
+        translated: x.translated,
+    }
+}
+
+fn reduce_overlap(result: &[SD]) -> Vec<SD> {
+    fn _reduce(result: &[SD]) -> Vec<SD> {
+        let mut news: Vec<SD> = Vec::new();
+        'to_insert: for x in result.iter() {
+            for y in news.iter_mut() {
+                // x ⊂ y
+                if subsegment(x.left_part(), y.left_part()) &&
+                    subsegment(x.right_part(), y.right_part()) {
+                        continue 'to_insert;
+                    }
+
+                // x ⊃ y
+                if subsegment(y.left_part(), x.left_part()) &&
+                    subsegment(y.right_part(), x.right_part()) {
+                        y.left = x.left;
+                        y.right = x.right;
+                        y.length = x.length;
+                        y.identity = x.identity;
+                        continue 'to_insert;
+                    }
+
+                if overlap(x.left_part(), y.left_part()) &&
+                    overlap(x.right_part(), y.right_part()) {
+                        let z = merge(x, y);
+                        y.left = z.left;
+                        y.right = z.right;
+                        y.length = z.length;
+                        continue 'to_insert;
+                    }
+            }
+            news.push(x.clone());
+        }
+        news
+    }
+
+    let mut old_size = result.len();
+    let mut news = _reduce(result);
+    let mut new_size = news.len();
+    while new_size < old_size {
+        old_size = news.len();
+        news = _reduce(&news);
+        new_size = news.len();
+    }
+    news
+}
+
+
 fn run() -> Result<()> {
     struct Settings {
         strand1_file: String,
@@ -303,6 +392,7 @@ fn run() -> Result<()> {
 
     Ok(())
 }
+
 
 #[allow(unknown_lints)]
 #[allow(too_many_arguments)]
@@ -457,93 +547,6 @@ fn search_duplications(strand1_file: &str,
     })
 }
 
-// Returns true if x ⊂ y
-fn subsegment((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
-    let xend = xstart + xlen;
-    let yend = ystart + ylen;
-
-    xstart >= ystart && xend <= yend
-}
-
-fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
-    let xend = xstart + xlen;
-    let yend = ystart + ylen;
-
-    (xstart >= ystart && xstart <= yend && xend >= yend) ||
-        (ystart >= xstart && ystart <= xend && yend >= xend)
-}
-
-fn merge(x: &SD, y: &SD) -> SD {
-    let (xleft, yleft, xsize, ysize) = if x.left < y.left {
-        (x.left, y.left, x.length, y.length)
-    } else {
-        (y.left, x.left, x.length, y.length)
-    };
-    let lsize = (yleft - xleft) + ((xleft + xsize) - yleft) + ((yleft + ysize) - (xleft + xsize));
-
-    let (xright, yright, xsize, ysize) = if x.right < y.right {
-        (x.right, y.right, x.length, y.length)
-    } else {
-        (y.right, x.right, x.length, y.length)
-    };
-    let rsize = (yright - xright) + ((xright + xsize) - yright) +
-        ((yright + ysize) - (xright + xsize));
-
-    SD {
-        left: xleft,
-        right: xright,
-        length: cmp::min(lsize, rsize),
-        identity: x.identity,
-        reversed: x.reversed,
-        translated: x.translated,
-    }
-}
-
-fn reduce_overlap(result: &[SD]) -> Vec<SD> {
-    fn _reduce(result: &[SD]) -> Vec<SD> {
-        let mut news: Vec<SD> = Vec::new();
-        'to_insert: for x in result.iter() {
-            for y in news.iter_mut() {
-                // x ⊂ y
-                if subsegment(x.left_part(), y.left_part()) &&
-                    subsegment(x.right_part(), y.right_part()) {
-                        continue 'to_insert;
-                    }
-
-                // x ⊃ y
-                if subsegment(y.left_part(), x.left_part()) &&
-                    subsegment(y.right_part(), x.right_part()) {
-                        y.left = x.left;
-                        y.right = x.right;
-                        y.length = x.length;
-                        y.identity = x.identity;
-                        continue 'to_insert;
-                    }
-
-                if overlap(x.left_part(), y.left_part()) &&
-                    overlap(x.right_part(), y.right_part()) {
-                        let z = merge(x, y);
-                        y.left = z.left;
-                        y.right = z.right;
-                        y.length = z.length;
-                        continue 'to_insert;
-                    }
-            }
-            news.push(x.clone());
-        }
-        news
-    }
-
-    let mut old_size = result.len();
-    let mut news = _reduce(result);
-    let mut new_size = news.len();
-    while new_size < old_size {
-        old_size = news.len();
-        news = _reduce(&news);
-        new_size = news.len();
-    }
-    news
-}
 
 fn main() {
     if let Err(ref e) = run() {

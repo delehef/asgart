@@ -99,8 +99,9 @@ impl Searcher {
         };
 
         let mut rr = Vec::with_capacity(count as usize);
-        for i in 0..count {
-            let start = sa[(out + i) as usize] as usize;
+
+        for start in sa.iter().skip(out as usize).take(count as usize) {
+            let start = *start as usize;
             rr.push(Segment {
                 tag: 0,
                 start: self.offset + start,

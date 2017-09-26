@@ -48,6 +48,14 @@ mod errors {
 }
 use errors::*;
 
+
+type PreparedData = (
+    std::sync::Arc<Strand>,                 // First strand
+    std::sync::Arc<Strand>,                 // Second strand
+    std::sync::Arc<std::vec::Vec<i64>>,   // Suffix array
+    std::sync::Arc<searcher::Searcher>    // Searcher for the suffix array
+);
+
 struct Strand {
     pub file_name: String,
     pub data: Vec<u8>,
@@ -59,7 +67,7 @@ fn prepare_data(strand1_file: &str,
                 reverse: bool,
                 translate: bool,
                 trim: Option<(usize, usize)>)
-                -> Result<(std::sync::Arc<Strand>, std::sync::Arc<Strand>, std::sync::Arc<std::vec::Vec<i64>>, std::sync::Arc<searcher::Searcher>)> {
+                -> Result<PreparedData> {
     //
     // Read and map the FASTA files to process
     //
@@ -145,7 +153,9 @@ fn prepare_data(strand1_file: &str,
     let suffix_array = r_divsufsort(&strand2.data);
 
     let shared_suffix_array = Arc::new(suffix_array);
-    let shared_searcher = Arc::new(searcher::Searcher::new(&strand2.data.clone(), &shared_suffix_array.clone(), shift2));
+    let shared_searcher = Arc::new(
+        searcher::Searcher::new(&strand2.data.clone(), &Arc::clone(&shared_suffix_array), shift2)
+    );
 
     Ok((Arc::new(strand1), Arc::new(strand2), shared_suffix_array, shared_searcher))
 }
@@ -432,11 +442,11 @@ fn search_duplications(strand1_file: &str,
         for id in 0..num_tasks + 1 {
             progresses.push(Arc::new(AtomicUsize::new(0)));
             let my_tx = tx.clone();
-            let suffix_array = shared_suffix_array.clone();
-            let strand1 = strand1.clone();
-            let strand2 = strand2.clone();
-            let searcher = shared_searcher.clone();
-            let my_progress = progresses[id].clone();
+            let suffix_array = Arc::clone(&shared_suffix_array);
+            let strand1 = Arc::clone(&strand1);
+            let strand2 = Arc::clone(&strand2);
+            let searcher = Arc::clone(&shared_searcher);
+            let my_progress = Arc::clone(&progresses[id]);
 
             thread_pool.execute(move || {
                 let end = start +

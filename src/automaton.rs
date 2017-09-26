@@ -40,7 +40,7 @@ pub struct ProtoSD {
 
 fn make_right_arms(p: &ProtoSD, max_hole_size: u32) -> Vec<Segment> {
     let matches = p.matches.clone();
-    merge_segments_with_delta(&matches, max_hole_size as u64)
+    merge_segments_with_delta(&matches, u64::from(max_hole_size))
 }
 
 
@@ -212,7 +212,7 @@ pub fn search_duplications(strand1: &[u8],
                 }
             }
             SearchState::Proto => {
-                if (i - current_start >= min_duplication_size) && (current_segments.len() > 0) {
+                if (i - current_start >= min_duplication_size) && !current_segments.is_empty() {
                     let psd = ProtoSD {
                         bottom: current_start,
                         top: i,
@@ -281,7 +281,7 @@ fn merge_or_drop_segments(_originals: &mut Vec<Segment>, _news: &[Segment], delt
 }
 
 fn segments_to_segments_distance(segments: &[Segment], others: &[Segment]) -> u32 {
-    let mut distance = 4000000000;
+    let mut distance = 4_000_000_000;
     for other in others {
         for segment in segments {
             if other.start >= segment.start && other.start <= segment.end {

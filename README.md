@@ -13,7 +13,7 @@ Asgart is distributed under the GPLv3 license. Please see the LICENSE file.
 
 ## Linux
 
-Static binaries for Linux are available for [x86]() and [x86-64]() platforms.
+Static binaries for Linux are available for [x86]() and [x86-64](https://github.com/delehef/asgart/releases/download/v1.0/asgart_linux-x86-64.tar.gz) platforms.
 
 ## MacOS
 
@@ -27,13 +27,21 @@ Binaries for Windows are available [here]().
 
 To build ASGART from sources, you need CMake, a C compiler and the [Rust compiler](https://www.rust-lang.org/en-US/install.html).
 
-Once these requirements are satisfied, you can build ASGART by running:
+Once these requirement are installed, clone the repository
+
+```
+git clone https://github.com/delehef/asgart.git
+git submodule init
+git submodule update
+```
+
+You can then build ASGART by running the Rust building tool
 
 ```
 cargo build --release
 ```
 
-Once the build finished, you'll find the binary in `target/release/asgart`.
+Once the build is finished, you'll find the binary in `target/release/`.
 
 
 # Usage
@@ -71,43 +79,43 @@ By default, ASGART will write its result in a JSON file in the folder where it w
 
 ```json
 {
-	"strand1": {
-		"name": first strand filename,
-		"length": FATA file length,
-		"map": [
-			{
-				"name": FASTA fragment name,
-				"position": offset in the FASTA file,
-				"length": FASTA fragment length
-			}
-		]
-	},
+        "strand1": {
+                "name": first strand filename,
+                "length": FATA file length,
+                "map": [
+                        {
+                                "name": FASTA fragment name,
+                                "position": offset in the FASTA file,
+                                "length": FASTA fragment length
+                        }
+                ]
+        },
 
-	"strand2": {
-		"name": second strand filename,
-		"length": FATA file length,
-		"map": [
-			{
-				"name": FASTA fragment name,
-				"position": offset in the FASTA file,
-				"length": FASTA fragment length
-			}
-		]
-	},
+        "strand2": {
+                "name": second strand filename,
+                "length": FATA file length,
+                "map": [
+                        {
+                                "name": FASTA fragment name,
+                                "position": offset in the FASTA file,
+                                "length": FASTA fragment length
+                        }
+                ]
+        },
 
-	"kmer": probing kmer's size,
-	"gap": maximum gap inbetween duplication arms,
+        "kmer": probing kmer's size,
+        "gap": maximum gap inbetween duplication arms,
 
-	"sds": [
-		{
-			"left": position of the left arm in the first file,
-			"right": position of the right arm in the second file,
-			"length": length of the duplication (bp),
-			"reversed": true if the duplication is reversed, false else,
-			"translated": true if the duplication is translated, false else
-		},
-		...
-	]
+        "sds": [
+                {
+                        "left": position of the left arm in the first file,
+                        "right": position of the right arm in the second file,
+                        "length": length of the duplication (bp),
+                        "reversed": true if the duplication is reversed, false else,
+                        "translated": true if the duplication is translated, false else
+                },
+                ...
+        ]
 }
 ```
 
@@ -118,12 +126,12 @@ By default, ASGART will write its result in a JSON file in the folder where it w
 ### Functional
 
   - `--verbose`/`-v` display mnore information and a progress bar
-  
+
   - `--reverse`/`-R` look for duplication which second arm is reversed
-  
+
   - `--translate`/`-T` look for duplication which second arm is
     translated
-  
+
   - `--min-size SIZE` specifies the minimal length (in bp) over which
     a duplication is kept in the final result and not discarded
     (default: 1000)
@@ -138,13 +146,13 @@ By default, ASGART will write its result in a JSON file in the folder where it w
 
   - `--out FILENAME` specifies the file in which the results will be
     written
-  
+
   - `--prefix NAME` set a prefix to prepend to the standard out file
     name.
-  
+
   - `--threads COUNT` set the numbers of thread to use. Defaults to
     the number of cores abailable on the CPU.
-  
+
   - `--trim START END` run ASGART only on the specified area of the
     first file.
 
@@ -159,7 +167,7 @@ graphs, or flat graphs.
   - `-h`, `--help` display an help screen
 
   - `--out FILENAME` set output file name
-  
+
   - `--min-length` set the minimal length (in bp) for a duplication to
     be plotted
 

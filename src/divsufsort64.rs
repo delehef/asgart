@@ -49,7 +49,7 @@ impl ::std::default::Default for imaxdiv_t {
 pub type sauchar_t = uint8_t;
 pub type saint_t = int32_t;
 pub type saidx64_t = int64_t;
-#[link(name = "divsufsort64", kind = "dylib")]
+#[link(name = "divsufsort64", kind = "static")]
 extern "C" {
     pub fn divsufsort64(T: *const sauchar_t, SA: *mut saidx64_t, n: saidx64_t) -> saint_t;
     pub fn divsufsort64_version() -> *const ::std::os::raw::c_char;

@@ -1,6 +1,6 @@
 [package]
 name = "asgart"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Franklin Delehelle <franklin.delehelle@irit.fr>"]
 license = "GPLv3"
 
@@ -26,7 +26,7 @@ version = "2.*"
 features = [ "yaml", "suggestions", "color" ]
 
 [profile.release]
-debug = true
+debug = false
 
 [build-dependencies]
 cmake = "0.1"

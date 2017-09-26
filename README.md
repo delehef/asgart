@@ -17,7 +17,7 @@ Static binaries for Linux are available for [i686](https://github.com/delehef/as
 
 ## MacOS
 
-Binaries for macOS are available [here]().
+Binaries for macOS are available [here](https://github.com/delehef/asgart/releases/download/v1/asgart_macos.tar.gz).
 
 ## Windows
 

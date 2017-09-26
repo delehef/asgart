@@ -31,6 +31,7 @@ Once these requirement are installed, clone the repository
 
 ```
 git clone https://github.com/delehef/asgart.git
+cd asgart
 git submodule init
 git submodule update
 ```

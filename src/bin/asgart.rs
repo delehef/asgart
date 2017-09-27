@@ -1,30 +1,23 @@
-extern crate num_cpus;
+#[macro_use] pub extern crate clap;
+#[macro_use] extern crate log;
 extern crate threadpool;
-extern crate rustc_serialize;
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate error_chain;
-extern crate colored;
 extern crate indicatif;
 extern crate console;
+extern crate num_cpus;
 extern crate bio;
+extern crate asgart;
 
-mod automaton;
-mod utils;
-mod divsufsort64;
-mod structs;
-mod searcher;
-mod logger;
+use threadpool::ThreadPool;
+use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
+use console::style;
+use bio::io::fasta;
+use clap::App;
+use log::LogLevelFilter;
 
 use std::path;
 use std::thread;
 use std::time::Duration;
 use std::cmp;
-use std::io::Write;
-use std::fs::File;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::ascii::AsciiExt;
@@ -32,28 +25,23 @@ use std::time::Instant;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
 
-use bio::io::fasta;
-use log::LogLevelFilter;
-use threadpool::ThreadPool;
-use clap::App;
-use divsufsort64::idx;
-use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
-use console::style;
+use asgart::structs::{ALPHABET, StrandResult, RunResult, SD, Start};
+use asgart::logger::Logger;
+use asgart::errors::*;
+use asgart::exporters::Exporter;
+use asgart::exporters;
+use asgart::automaton;
+use asgart::searcher;
+use asgart::utils;
+use asgart::divsufsort64;
 
-use structs::{StrandResult, RunResult, SD, Start};
-use logger::Logger;
-
-mod errors {
-    error_chain!{}
-}
-use errors::*;
 
 
 type PreparedData = (
-    std::sync::Arc<Strand>,                 // First strand
-    std::sync::Arc<Strand>,                 // Second strand
-    std::sync::Arc<std::vec::Vec<i64>>,   // Suffix array
-    std::sync::Arc<searcher::Searcher>    // Searcher for the suffix array
+    std::sync::Arc<Strand>,                // First strand
+    std::sync::Arc<Strand>,                // Second strand
+    std::sync::Arc<std::vec::Vec<i64>>,    // Suffix array
+    std::sync::Arc<searcher::Searcher>     // Searcher for the suffix array
 );
 
 struct Strand {
@@ -176,7 +164,7 @@ fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>)> {
         let mut seq = record.seq().to_vec();
         seq = seq.to_ascii_uppercase();
         for c in &mut seq {
-            if !(structs::ALPHABET).contains(c) {
+            if !(ALPHABET).contains(c) {
                 warn!("Unknown base `{}` replaced by `N`", std::char::from_u32(u32::from(*c)).unwrap());
                 *c = b'N'
             }
@@ -195,7 +183,7 @@ fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>)> {
     Ok((map, r))
 }
 
-pub fn r_divsufsort(dna: &[u8]) -> Vec<idx> {
+pub fn r_divsufsort(dna: &[u8]) -> Vec<divsufsort64::idx> {
     let mut sa = Vec::with_capacity(dna.len());
     sa.resize(dna.len(), 0);
     unsafe {
@@ -313,7 +301,7 @@ fn run() -> Result<()> {
         threads_count: usize,
     }
 
-    let yaml = load_yaml!("cli.yaml");
+    let yaml = load_yaml!("asgart.yaml");
     let args = App::from_yaml(yaml)
         .version(crate_version!())
         .author(crate_authors!())
@@ -392,12 +380,10 @@ fn run() -> Result<()> {
                                      },
                                      settings.threads_count,
     )?;
-    let mut out = File::create(&out_file).chain_err(|| format!("Unable to create `{}`", &out_file))?;
-    writeln!(&mut out,
-             "{}",
-             rustc_serialize::json::as_pretty_json(&result)).expect("Unable to write results");
-    info!("{}", style(format!("Result written to {}", &out_file)).bold());
 
+    let exporter = exporters::JSONExporter;
+    let out_file_name = exporter.save(&result, &out_file)?;
+    info!("{}", style(format!("Result written to {}", &out_file_name)).bold());
     Ok(())
 }
 

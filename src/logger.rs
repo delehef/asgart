@@ -1,7 +1,8 @@
+extern crate colored;
 extern crate log;
 
-use log::{LogRecord, LogLevel, LogMetadata, SetLoggerError, LogLevelFilter};
-use colored::*;
+use self::log::{LogRecord, LogLevel, LogMetadata, SetLoggerError, LogLevelFilter};
+use self::colored::*;
 
 pub struct Logger {
     level: LogLevelFilter,

@@ -2,8 +2,6 @@ extern crate rustc_serialize;
 extern crate colored;
 #[macro_use]
 extern crate clap;
-#[macro_use]
-extern crate error_chain;
 extern crate asgart;
 
 
@@ -18,11 +16,7 @@ use asgart::plot::Plotter;
 use asgart::plot::Settings;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
-
-mod errors {
-    error_chain!{}
-}
-use errors::*;
+use asgart::errors::*;
 
 fn read_result(file: &str) -> Result<RunResult> {
     let mut f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;

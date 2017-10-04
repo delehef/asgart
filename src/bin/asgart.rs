@@ -298,6 +298,7 @@ fn run() -> Result<()> {
 
         prefix: String,
         out: String,
+        out_format: String,
         threads_count: usize,
     }
 
@@ -320,8 +321,9 @@ fn run() -> Result<()> {
         interlaced: args.is_present("interlaced"),
         trim: values_t!(args, "trim", usize).unwrap_or_else(|_| Vec::new()),
 
-        prefix: args.value_of("prefix").unwrap_or("").to_owned(),
+        prefix: args.value_of("prefix").unwrap().to_owned(),
         out: args.value_of("out").unwrap_or("").to_owned(),
+        out_format: args.value_of("out_format").unwrap().to_owned(),
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
     };
 
@@ -334,7 +336,7 @@ fn run() -> Result<()> {
         .unwrap();
 
     let out_file = if settings.out.is_empty() {
-        format!("{}{}_vs_{}_{}_{}{}{}.json",
+        format!("{}{}_vs_{}_{}_{}{}{}",
                 &settings.prefix,
                 path::Path::new(&settings.strand1_file).file_name().unwrap().to_str().unwrap(),
                 path::Path::new(&settings.strand2_file).file_name().unwrap().to_str().unwrap(),
@@ -344,7 +346,7 @@ fn run() -> Result<()> {
                 if settings.translate {"t"} else {""},
         )
     } else {
-        settings.out + ".json"
+        settings.out
     };
 
     trace!("1st strand file          {}", &settings.strand1_file);
@@ -381,7 +383,12 @@ fn run() -> Result<()> {
                                      settings.threads_count,
     )?;
 
-    let exporter = exporters::JSONExporter;
+    let exporter = match &settings.out_format[..] {
+        "json" => { Box::new(exporters::JSONExporter) as Box<Exporter> }
+        "gff2" => { Box::new(exporters::GFF2Exporter) as Box<Exporter> }
+        "gff3" => { Box::new(exporters::GFF3Exporter) as Box<Exporter> }
+        _      => { Box::new(exporters::JSONExporter) as Box<Exporter> }
+    };
     let out_file_name = exporter.save(&result, &out_file)?;
     info!("{}", style(format!("Result written to {}", &out_file_name)).bold());
     Ok(())

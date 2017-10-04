@@ -26,7 +26,7 @@ args:
 
     - trim:
         long: trim
-        help: Trim the first strand
+        help: trim the first strand
         takes_value: true
         number_of_values: 2
         value_names:
@@ -35,19 +35,31 @@ args:
 
     - threads:
         long: threads
-        help: Number of threads used, number of cores if 0
+        help: number of threads used, number of cores if 0
         takes_value: true
         number_of_values: 1
     - prefix:
         long: prefix
-        help: Prefix of the output file
+        help: set a prefix to the default output file name
         takes_value: true
         number_of_values: 1
+        default_value: ""
     - out:
         long: out
-        help: Override default file name
+        help: set the output file name
         takes_value: true
         number_of_values: 1
+    - out_format:
+        long: format
+        help: set the output file format ()
+        takes_value: true
+        number_of_values: 1
+        default_value: "json"
+        possible_values:
+          - json
+          - gff2
+          - gff3
+
 
     - strand1:
         help: First strand, FASTA format

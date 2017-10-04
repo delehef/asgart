@@ -1,13 +1,25 @@
 # ASGART: a large duplications finder
 
-Asgart (A Segmental duplications Gathering and Refinement Tool) is a tool
-designed to search for large duplications amongst one or two DNA strands.
+`asgart` (A Segmental duplications Gathering and Refinement Tool) is a multiplatform (GNU/Linux, macOS, Windows) tool designed to search for large duplications amongst one or two DNA strands.
+
 
 ## Licensing
 
 Asgart is distributed under the GPLv3 license. Please see the LICENSE file.
 
-# Main features
+# Why should I use ASGART?
+
+![A map of the Human genome's long segmental duplications](screenshots/chord.png)
+
+You should use ASGART if
+
+- you want to find segmental duplications, either direct, reversed and/or translate in a DNA sequence;
+
+- you want to find highly similar parts inbetween sequences up to the genome scale;
+
+- you want to map highly similar sequences amongst genomes;
+
+- you need an easy way to visualize the results.
 
 # Installation
 
@@ -77,7 +89,7 @@ As input, ASGART takes FASTA files containing the sequences within which to look
 
 By default, ASGART will write its result in a JSON file in the folder where it was launched, following the following structure:
 
-```json
+```
 {
         "strand1": {
                 "name": first strand filename,
@@ -120,6 +132,9 @@ By default, ASGART will write its result in a JSON file in the folder where it w
 ```
 
 ### GFF
+
+ASGART can also write its results in GFF2 or GFF3 files by using the `--format` option. For instance, use `--format gff3` to
+save the results in a GFF3 file.
 
 ## Options
 

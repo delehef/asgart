@@ -14,6 +14,20 @@ pub struct Settings {
     pub color2: String,
 
     pub min_length: usize,
+
+    pub gene_tracks: Vec<Gene>,
+}
+
+#[derive(Debug, Clone)]
+pub enum GenePosition {
+    Relative { chr: String, position: usize },
+    Absolute { position: usize }
+}
+
+#[derive(Debug, Clone)]
+pub struct Gene {
+    pub name: String,
+    pub positions: Vec<GenePosition>,
 }
 
 pub trait Plotter {

@@ -1,10 +1,12 @@
+extern crate rand;
+
+use self::rand::Rng;
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
 use std::collections::HashMap;
 use std::f64::consts::PI;
-use ::structs::*;
-use ::plot::{Plotter, Settings};
+use ::plot::*;
 
 const R: f64 = 200.0;
 
@@ -132,40 +134,31 @@ impl ChordPlotter {
             let t2 = self.angle(chr.position as f64 + chr.length as f64) + INTER_RING_SPACING;
             let tt = t1 + (t2-t1)/2.0;
 
-            // let tc1 = self.angle(chr.position as f64 + self.centromeres[&chr.name].0);
-            // let tc2 = self.angle(chr.position as f64 + self.centromeres[&chr.name].1);
 
-            let r = R + RING_WIDTH + RING_MARGIN;
-
-            // Chromosomes bars
-            // let (xbl, ybl) = self.cartesian(t1, R + RING_WIDTH);
-            // let (xtl, ytl) = self.cartesian(t1, R + RING_WIDTH + 70.0);
-            // let (xbr, ybr) = self.cartesian(t2, R + RING_WIDTH);
-            // let (xtr, ytr) = self.cartesian(t2, R + RING_WIDTH + 70.0);
-            // self.svg += &format!("<polygon points='{},{} {},{} {},{} {},{}' fill='#ccc' stroke-width='0'/>",
-            //                      xbl, ybl,
-            //                      xtl, ytl,
-            //                      xtr, ytr,
-            //                      xbr, ybr
-            // );
-
+            // Main chromosome bar
             svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='5' />\n",
-                                 self.arc(R + RING_WIDTH, t1, t2)
-            );
-            // svg += &format!("<path d='{}' stroke='#afafaf' fill='none' stroke-width='5' />\n",
-            //                      self.arc(R + RING_WIDTH, tc1, tc2)
-            // );
+                            self.arc(R + RING_WIDTH, t1, t2));
+            // Secondary chromosome bar
             svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='1.5' />\n",
-                                 self.arc(R + RING_WIDTH + OUT_CEILING * 0.7, t1, t2)
-            );
+                            self.arc(R + RING_WIDTH + OUT_CEILING * 0.7, t1, t2));
+
+
+            if false { // Plot centromeres ?
+                // Start/end angles of centromeres
+                let tc1 = self.angle(chr.position as f64 + self.centromeres[&chr.name].0);
+                let tc2 = self.angle(chr.position as f64 + self.centromeres[&chr.name].1);
+                svg += &format!("<path d='{}' stroke='#afafaf' fill='none' stroke-width='5' />\n",
+                                self.arc(R + RING_WIDTH, tc1, tc2));
+            }
 
 
             // Chromosomes labels
+            let r = R + RING_WIDTH + RING_MARGIN;
             let (x, y) = self.cartesian(tt, r + 65.0);
             svg += &format!("<text x='{}' y='{}' font-family='\"Helvetica\"' font-size='8' fill='#333' transform='rotate({}, {}, {})'>\n{}\n</text>\n",
-                                 x, y,
-                                 -tt/(2.0*PI)*360.0 + 90.0, x, y,
-                                 str::replace(&chr.name, "chr", ""));
+                            x, y,
+                            -tt/(2.0*PI)*360.0 + 90.0, x, y,
+                            str::replace(&chr.name, "chr", ""));
         }
 
         for sd in self.settings.result.sds.iter().filter(|&sd| self.inter_sd(sd) && sd.length >= self.settings.min_length) {
@@ -182,24 +175,30 @@ impl ChordPlotter {
             let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
             if width <= self.settings.thickness {width = self.settings.thickness};
 
-            // let color = Rgb::from_hsv(Hsv {
-            //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
-            //     saturation: 0.9,
-            //     value: 0.9,
-            // });
+            let color = if true {
+                // Direction-based color
+                if sd.reversed {"#00b2ae"} else {"#ff5b00"}
+            } else {
+                // Position-based color
+                // let color = Rgb::from_hsv(Hsv {
+                //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
+                //     saturation: 0.9,
+                //     value: 0.9,
+                // });
+                // format!("#{:x}{:x}{:x}",
+                //         (color.red * 255.0) as u8,
+                //         (color.green * 255.0) as u8,
+                //         (color.blue * 255.0) as u8);
+                "#000000"
+            };
 
-            let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
-            // let color = format!("#{:x}{:x}{:x}",
-            //                     (color.red * 255.0) as u8,
-            //                     (color.green * 255.0) as u8,
-            //                     (color.blue * 255.0) as u8);
+
 
             let (x1, y1) = self.cartesian(t1, R);
             let (x2, y2) = self.cartesian(t2, R);
-            
+
             while t2 < 0.0 {t2 += 2.0*PI;}
             while t2 > 2.0*PI {t2 -= 2.0*PI;}
-
             while t1 > 2.0*PI {t1 -= 2.0*PI;}
 
             let cx = CX;
@@ -225,11 +224,22 @@ impl ChordPlotter {
             let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
             if width <= self.settings.thickness {width = self.settings.thickness};
 
-            // let color = Rgb::from_hsv(Hsv {
-            //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
-            //     saturation: 0.9,
-            //     value: 0.9,
-            // });
+            let color = if true {
+                // Direction-based color
+                if sd.reversed {"#00b2ae"} else {"#ff5b00"}
+            } else {
+                // Position-based color
+                // let color = Rgb::from_hsv(Hsv {
+                //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
+                //     saturation: 0.9,
+                //     value: 0.9,
+                // });
+                // format!("#{:x}{:x}{:x}",
+                //         (color.red * 255.0) as u8,
+                //         (color.green * 255.0) as u8,
+                //         (color.blue * 255.0) as u8);
+                "#000000"
+            };
 
             let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
             let rin = R + RING_WIDTH + RING_MARGIN;
@@ -242,11 +252,37 @@ impl ChordPlotter {
                             path, color, width);
         }
 
+        for gene in self.settings.gene_tracks.iter() {
+            let color = format!("#{:2X}{:2X}{:2X}", rand::random::<i8>(), rand::random::<i8>(), rand::random::<i8>());
+            for position in gene.positions.iter() {
+                let x = match position {
+                    &GenePosition::Relative { ref chr, position} => {
+                        let chr = self.settings.result.strand1.find_chr(&chr);
+                        chr.position + position
+                    }
+                    &GenePosition::Absolute { position }         => { position }
+                };
+                let t1 = self.angle(x as f64) - 0.02;
+                let t2 = self.angle(x as f64) + 0.02;
+                let t0 = t1 + (t2 - t1)/2.0;
+
+                let (x0, y0) = self.cartesian(t0, R);
+                let (x1, y1) = self.cartesian(t1, R - 5.0);
+                let (x2, y2) = self.cartesian(t2, R - 5.0);
+                svg += &format!("<polygon points='{},{} {},{} {},{}' style='fill:{};'/>\n",
+                                x0, y0,
+                                x1, y1,
+                                x2, y2,
+                                color
+                );
+            }
+        }
+
         svg += "</g>";
         let title = format!("{} (>{}Kbp)",
-            Path::new(&self.settings.out_file).file_stem().unwrap().to_str().unwrap().to_owned(),
-            self.settings.min_length/1000
-            );
+                            Path::new(&self.settings.out_file).file_stem().unwrap().to_str().unwrap().to_owned(),
+                            self.settings.min_length/1000
+        );
 
         svg += &(self.title(10, 10, &title, 20));
         format!("<?xml version='1.0' encoding='iso-8859-1' standalone='no' ?> <!DOCTYPE svg \

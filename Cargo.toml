@@ -9,6 +9,7 @@ bio             = "*"
 num_cpus        = "*"
 uuid            = "*"
 threadpool      = "1.*"
+rand            = "0.3"
 rustc-serialize = "0.3"
 palette         = "0.2"
 log             = "0.3"
@@ -19,7 +20,8 @@ indicatif       = "0.7"
 console         = "0.5"
 rayon           = "0.8"
 error-chain     = "0.11"
-separator = { git = "https://github.com/delehef/rust-separator.git" }
+regex           = "0.2"
+separator       = { git = "https://github.com/delehef/rust-separator.git" }
 
 [dependencies.clap]
 version = "2.*"

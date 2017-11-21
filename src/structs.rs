@@ -14,6 +14,16 @@ pub struct StrandResult {
     pub map: Vec<Start>,
 }
 
+impl StrandResult {
+    pub fn has_chr(&self, name: &str) -> bool {
+        self.map.iter().any(|chr| chr.name == name)
+    }
+
+    pub fn find_chr(&self, name: &str) -> &Start {
+        self.map.iter().find(|chr| chr.name == name).unwrap()
+    }
+}
+
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct RunResult {

@@ -15,7 +15,7 @@ pub struct Settings {
 
     pub min_length: usize,
 
-    pub gene_tracks: Vec<Gene>,
+    pub gene_tracks: Vec<Vec<Gene>>,
 }
 
 #[derive(Debug, Clone)]

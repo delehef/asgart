@@ -151,7 +151,7 @@ fn chord(args: &ArgMatches) -> Result<()> {
         color2: "#ddf983".to_owned(),
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
-        gene_tracks: genes_tracks.unwrap().into_iter().fold(Vec::new(), |mut ax, v| { ax.extend(v); ax }),
+        gene_tracks: genes_tracks.unwrap(),
     };
     let plotter = ChordPlotter::new(settings);
     plotter.plot();

@@ -252,29 +252,31 @@ impl ChordPlotter {
                             path, color, width);
         }
 
-        for gene in self.settings.gene_tracks.iter() {
+        for genes_family in self.settings.gene_tracks.iter() {
             let color = format!("#{:2X}{:2X}{:2X}", rand::random::<i8>(), rand::random::<i8>(), rand::random::<i8>());
-            for position in gene.positions.iter() {
-                let x = match position {
-                    &GenePosition::Relative { ref chr, position} => {
-                        let chr = self.settings.result.strand1.find_chr(&chr);
-                        chr.position + position
-                    }
-                    &GenePosition::Absolute { position }         => { position }
-                };
-                let t1 = self.angle(x as f64) - 0.02;
-                let t2 = self.angle(x as f64) + 0.02;
-                let t0 = t1 + (t2 - t1)/2.0;
+            for gene in genes_family.iter() {
+                for position in gene.positions.iter() {
+                    let x = match position {
+                        &GenePosition::Relative { ref chr, position} => {
+                            let chr = self.settings.result.strand1.find_chr(&chr);
+                            chr.position + position
+                        }
+                        &GenePosition::Absolute { position }         => { position }
+                    };
+                    let t1 = self.angle(x as f64) - 0.02;
+                    let t2 = self.angle(x as f64) + 0.02;
+                    let t0 = t1 + (t2 - t1)/2.0;
 
-                let (x0, y0) = self.cartesian(t0, R);
-                let (x1, y1) = self.cartesian(t1, R - 5.0);
-                let (x2, y2) = self.cartesian(t2, R - 5.0);
-                svg += &format!("<polygon points='{},{} {},{} {},{}' style='fill:{};'/>\n",
-                                x0, y0,
-                                x1, y1,
-                                x2, y2,
-                                color
-                );
+                    let (x0, y0) = self.cartesian(t0, R);
+                    let (x1, y1) = self.cartesian(t1, R - 5.0);
+                    let (x2, y2) = self.cartesian(t2, R - 5.0);
+                    svg += &format!("<polygon points='{},{} {},{} {},{}' style='fill:{};'/>\n",
+                                    x0, y0,
+                                    x1, y1,
+                                    x2, y2,
+                                    color
+                    );
+                }
             }
         }
 

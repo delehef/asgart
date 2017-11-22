@@ -23,44 +23,14 @@ const CY: f64 = TOTAL_WIDTH/2.0;
 pub struct EyePlotter {
     settings: Settings,
     length: f64,
-    centromeres: HashMap<String, (f64, f64)>,
 }
 
 impl Plotter for EyePlotter {
     fn new(settings: Settings) -> EyePlotter {
-        let mut centromeres = HashMap::new();
-        centromeres.insert("chr1 ".to_owned(), (122026460.0, 125184587.0));
-        centromeres.insert("chr2 ".to_owned(), (92188146.0, 94090557.0));
-        centromeres.insert("chr3 ".to_owned(), (90772459.0, 93655574.0));
-        centromeres.insert("chr4 ".to_owned(), (49708101.0, 51743951.0));
-        centromeres.insert("chr5 ".to_owned(), (46485901.0, 50059807.0));
-        centromeres.insert("chr6 ".to_owned(), (58553889.0, 59829934.0));
-        centromeres.insert("chr7 ".to_owned(), (58169654.0, 60828234.0));
-        centromeres.insert("chr8 ".to_owned(), (44033745.0, 45877265.0));
-        centromeres.insert("chr9 ".to_owned(), (43236168.0, 45518558.0));
-        centromeres.insert("chr10 ".to_owned(), (39686383.0, 41593521.0));
-        centromeres.insert("chr11 ".to_owned(), (51078349.0, 54425074.0));
-        centromeres.insert("chr12 ".to_owned(), (34769408.0, 37185252.0));
-        centromeres.insert("chr13 ".to_owned(), (16000001.0, 18051248.0));
-        centromeres.insert("chr14 ".to_owned(), (16000001.0, 18173523.0));
-        centromeres.insert("chr15 ".to_owned(), (17000001.0, 19725254.0));
-        centromeres.insert("chr16 ".to_owned(), (36311159.0, 38280682.0));
-        centromeres.insert("chr17 ".to_owned(), (22813680.0, 26885980.0));
-        centromeres.insert("chr18 ".to_owned(), (15460900.0, 20861206.0));
-        centromeres.insert("chr19 ".to_owned(), (24498981.0, 27190874.0));
-        centromeres.insert("chr20 ".to_owned(), (26436233.0, 30038348.0));
-        centromeres.insert("chr21 ".to_owned(), (10864561.0, 12915808.0));
-        centromeres.insert("chr22 ".to_owned(), (12954789.0, 15054318.0));
-        centromeres.insert("chrX ".to_owned(), (58605580.0, 62412542.0));
-        centromeres.insert("chrY ".to_owned(), (10316745.0, 10544039.0));
-
-
         let length = settings.result.strand1.length as f64;
         EyePlotter {
             settings: settings,
             length: length,
-
-            centromeres: centromeres.clone(),
         }
     }
 
@@ -71,15 +41,6 @@ impl Plotter for EyePlotter {
 }
 
 impl EyePlotter {
-    fn title(self, x: i32, y: i32, text: &str, font_size: i32) -> String {
-        format!("<text x='{}' y='{}' font-family='Helvetica' \
-                          font-size='{}'>{}</text>",
-                          x,
-                          y + font_size,
-                          font_size,
-                          text)
-    }
-
     fn angle(&self, x: f64) -> f64 {
          PI/2.0 - x / self.length * 2.0 * PI
     }
@@ -202,7 +163,7 @@ impl EyePlotter {
             let border = 1.4*R;
             let (x1, y1) = self.cartesian(t1, R);
             let (x2, y2) = self.cartesian(t2, R);
-            
+
             while t2 < 0.0 {t2 += 2.0*PI;}
             while t2 > 2.0*PI {t2 -= 2.0*PI;}
 
@@ -212,7 +173,7 @@ impl EyePlotter {
 
             let mut ttt = t2 - t1;
             // if ttt > PI { ttt = 2.0*PI - ttt; }
-            
+
             let f = border * (if ttt < PI/1.0{
                 1.0
             } else {
@@ -275,12 +236,6 @@ impl EyePlotter {
 
         svg += &format!("<circle cx='{}' cy='{}' r='{}' fill='url(#rgrad)' filter='url(#blurMe)'/>", CX, CY, TOTAL_WIDTH/2.0);
         svg += "</g>";
-        let title = format!("{} (>{}Kbp)",
-            Path::new(&self.settings.out_file).file_stem().unwrap().to_str().unwrap().to_owned(),
-            self.settings.min_length/1000
-            );
-
-        svg += &(self.title(10, 10, &title, 20));
         format!("<?xml version='1.0' encoding='iso-8859-1' standalone='no' ?> <!DOCTYPE svg \
                  PUBLIC '-//W3C//DTD SVG 1.0//EN' \
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
@@ -294,7 +249,7 @@ impl EyePlotter {
                         <stop offset='0%' style='stop-color:rgb(255,255,255); stop-opacity=0.1' /> \
                         <stop offset='100%' style='stop-color:rgb(0,0,255); stop-opacity=0.1' /> \
                     </radialGradient> \
-                    
+
 
     <radialGradient id='rgrad' cx='50%' cy='50%' r='75%' > \
     <stop offset='0%' style='stop-color:#001a44;stop-opacity:0' />\
@@ -302,7 +257,7 @@ impl EyePlotter {
 <stop offset='60%' style='stop-color:#001a44;stop-opacity:0.7' /> \
 <stop offset='100%' style='stop-color:#001a44;stop-opacity:0.7' /> \
 </radialGradient> \
-    
+
 
     <mask id='fade' maskContentUnits='objectBoundingBox'> \
       <rect width='1' height='1' fill='url(#fadeGrad)'/> \
@@ -310,8 +265,8 @@ impl EyePlotter {
 
                  </defs> \
                  </svg>",
-                TOTAL_WIDTH,
-                TOTAL_WIDTH,
+                1.2*TOTAL_WIDTH,
+                1.2*TOTAL_WIDTH,
                 svg
         )
     }

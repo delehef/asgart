@@ -2,6 +2,7 @@ use ::structs::*;
 
 pub mod chord_plot;
 pub mod flat_plot;
+pub mod eye_plot;
 
 pub struct Settings {
     pub result: RunResult,

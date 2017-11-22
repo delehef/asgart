@@ -209,6 +209,10 @@ fn chord(args: &ArgMatches) -> Result<()> {
 
 
 
+fn eye(args: &ArgMatches) -> Result<()> {
+    let json_file = args.value_of("FILE").unwrap();
+    let result = read_result(json_file)?;
+
     let out_file =
         args.value_of("out")
         .and_then(|f| {
@@ -255,6 +259,7 @@ fn run() -> Result<()> {
     match args.subcommand_name() {
         Some("chord")   => chord(args.subcommand_matches("chord").unwrap()),
         Some("flat")    => flat(args.subcommand_matches("flat").unwrap()),
+        Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
         None            => Ok(()),
         _               => unreachable!(),
     }

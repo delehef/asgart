@@ -4,6 +4,22 @@ author: Franklin Delehelle <franklin.delehelle@irit.fr>
 about: Generate plots from ASGART results
 args:
 subcommands:
+    - eye:
+        about: Generates a chord plot
+        args:
+            - FILE:
+                help: Sets the input file to use
+                required: true
+            - out:
+                long: out
+                help: Set output file name
+                takes_value: true
+                number_of_values: 1
+            - min_length:
+                long: min-length
+                help: minimum length for a SD to be plot (default 5000)
+                takes_value: true
+                number_of_values: 1
     - chord:
         about: Generates a chord plot
         args:
@@ -13,6 +29,11 @@ subcommands:
             - out:
                 long: out
                 help: Set output file name
+                takes_value: true
+                number_of_values: 1
+            - min_identity:
+                long: min-identity
+                help: minimum identity rate for a SD to be plot (default 90.0)
                 takes_value: true
                 number_of_values: 1
             - min_length:

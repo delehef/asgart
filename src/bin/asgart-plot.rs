@@ -147,6 +147,7 @@ fn flat(args: &ArgMatches) -> Result<()> {
         color2: "#ddf983".to_owned(),
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
+        min_identity: 90.0, // TODO XXX
         gene_tracks: Vec::new(),
     };
     let plotter = FlatPlotter::new(settings);
@@ -197,7 +198,8 @@ fn chord(args: &ArgMatches) -> Result<()> {
         color2: "#ddf983".to_owned(),
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
-        gene_tracks: genes_tracks.unwrap(),
+        min_identity: if args.is_present("min_identity") { value_t!(args, "min_identity", f32).unwrap_or_else(|e| e.exit()) } else { 90.0 },
+        gene_tracks: genes_tracks,
     };
     let plotter = ChordPlotter::new(settings);
     plotter.plot();
@@ -230,6 +232,7 @@ fn chord(args: &ArgMatches) -> Result<()> {
         color2: "#ddf983".to_owned(),
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
+        min_identity: 90.0, // TODO
         gene_tracks: Vec::new(),
     };
     println!("Plotting EYE");

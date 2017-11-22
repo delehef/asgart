@@ -31,6 +31,41 @@ fn read_result(file: &str) -> Result<RunResult> {
     json::decode(&s).chain_err(|| "Failed to parse JSON")
 }
 
+fn filter_sds_genes(result: &mut RunResult, genes_families: &[Vec<Gene>], threshold: usize) {
+    fn _overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
+        let xend = xstart + xlen;
+        let yend = ystart + ylen;
+
+        (xstart >= ystart && xstart <= yend) ||
+            (ystart >= xstart && ystart <= xend)
+    }
+
+    let mut r = Vec::new();
+    for sd in result.sds.iter() {
+        for family in genes_families {
+            for gene in family {
+                for position in gene.positions.iter() {
+                    let (start, length) = match position {
+                        &GenePosition::Relative { ref chr, start, length} => {
+                            let chr = result.strand1.find_chr(&chr);
+                            (chr.position + start, length)
+                        }
+                        &GenePosition::Absolute { start, length }         => { (start, length) }
+                    };
+                    if _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
+                        || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
+                    {
+                        r.push(sd.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    result.sds = r.clone();
+}
+
+
 fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
     let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
     let f = BufReader::new(f);
@@ -43,14 +78,15 @@ fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
         .filter(|l| !l.is_empty())
         .enumerate() {
             let v: Vec<&str> = line.split(";").collect();
-            if v.len() != 2 { bail!("{}:L{} `{}`: incorrect format, expecting two members, found {}", file, i+1, line, v.len()); }
+            if v.len() != 3 { bail!("{}:L{} `{}`: incorrect format, expecting two members, found {}", file, i+1, line, v.len()); }
             let name = v[0].to_owned();
+
             let position = if re.is_match(v[1]) {
                 let chr = re.captures(v[1]).unwrap().get(1).unwrap().as_str();
                 let position = re.captures(v[1]).unwrap().get(2).unwrap().as_str().to_owned().parse::<usize>().unwrap();
                 // XXX Incorrect for non-endogene runs
                 if !r.strand1.has_chr(chr) {
-                    bail!("Unable to find `{}`. Available: {}",
+                    bail!("Unable to find '{}'. Available: {}",
                           chr,
                           r.strand1.map.iter().fold(String::new(), |mut s, chr| { s.push_str(&format!("'{}' ", chr.name)); s })
                     );
@@ -60,10 +96,14 @@ fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
                 }
                 GenePosition::Relative {
                     chr: chr.to_owned(),
-                    position: position,
+                    start: position,
+                    length: v[2].parse::<usize>().unwrap()
                 }
             } else {
-                GenePosition::Absolute {position: v[1].parse::<usize>().unwrap()}
+                GenePosition::Absolute {
+                    start: v[1].parse::<usize>().unwrap(),
+                    length: v[2].parse::<usize>().unwrap(),
+                }
             };
             d.entry(name).or_insert(Vec::new()).push(position);
         }
@@ -117,7 +157,7 @@ fn flat(args: &ArgMatches) -> Result<()> {
 
 fn chord(args: &ArgMatches) -> Result<()> {
     let json_file = args.value_of("FILE").unwrap();
-    let result = read_result(json_file)?;
+    let mut result = read_result(json_file)?;
     let genes_tracks: Result<Vec<_>> = match args.values_of("genes") {
         Some(x) => { x
                      .map(|gene_track| read_gene_file(&result, gene_track))
@@ -126,6 +166,12 @@ fn chord(args: &ArgMatches) -> Result<()> {
         None    => Ok(Vec::new())
     };
     if let Err(e) = genes_tracks {return Err(e);}
+    let genes_tracks = genes_tracks.unwrap();
+
+    if args.is_present("filter_genes") {
+        let threshold = value_t!(args, "filter_genes", usize).unwrap_or_else(|_| 1_000_000);
+        filter_sds_genes(&mut result, &genes_tracks, threshold);
+    }
 
     let out_file = args
         .value_of("out")

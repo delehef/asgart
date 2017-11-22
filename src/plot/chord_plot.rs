@@ -161,56 +161,62 @@ impl ChordPlotter {
                             str::replace(&chr.name, "chr", ""));
         }
 
-        for sd in self.settings.result.sds.iter().filter(|&sd| self.inter_sd(sd) && sd.length >= self.settings.min_length) {
-            let (left, right) = (sd.left as i64, sd.right as i64);
+        for sd in self.settings.result.sds
+            .iter()
+            .filter(|&sd| sd.identity >= self.settings.min_identity)
+            .filter(|&sd| self.inter_sd(sd) && sd.length >= self.settings.min_length) {
+                let (left, right) = (sd.left as i64, sd.right as i64);
 
-            let t11 = self.angle(left as f64);
-            let t12 = self.angle(left as f64 + sd.length as f64);
-            let mut t1 = t11 + (t12 - t11)/2.0;
+                let t11 = self.angle(left as f64);
+                let t12 = self.angle(left as f64 + sd.length as f64);
+                let mut t1 = t11 + (t12 - t11)/2.0;
 
-            let t21 = self.angle(right as f64);
-            let t22 = self.angle(right as f64 + sd.length as f64);
-            let mut t2 = t21 + (t22 - t21)/2.0;
+                let t21 = self.angle(right as f64);
+                let t22 = self.angle(right as f64 + sd.length as f64);
+                let mut t2 = t21 + (t22 - t21)/2.0;
 
-            let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
-            if width <= self.settings.thickness {width = self.settings.thickness};
+                let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
+                if width <= self.settings.thickness {width = self.settings.thickness};
 
-            let color = if true {
-                // Direction-based color
-                if sd.reversed {"#00b2ae"} else {"#ff5b00"}
-            } else {
-                // Position-based color
-                // let color = Rgb::from_hsv(Hsv {
-                //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
-                //     saturation: 0.9,
-                //     value: 0.9,
-                // });
-                // format!("#{:x}{:x}{:x}",
-                //         (color.red * 255.0) as u8,
-                //         (color.green * 255.0) as u8,
-                //         (color.blue * 255.0) as u8);
-                "#000000"
-            };
+                let color = if true {
+                    // Direction-based color
+                    if sd.reversed {"#00b2ae"} else {"#ff5b00"}
+                } else {
+                    // Position-based color
+                    // let color = Rgb::from_hsv(Hsv {
+                    //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
+                    //     saturation: 0.9,
+                    //     value: 0.9,
+                    // });
+                    // format!("#{:x}{:x}{:x}",
+                    //         (color.red * 255.0) as u8,
+                    //         (color.green * 255.0) as u8,
+                    //         (color.blue * 255.0) as u8);
+                    "#000000"
+                };
 
 
 
-            let (x1, y1) = self.cartesian(t1, R);
-            let (x2, y2) = self.cartesian(t2, R);
+                let (x1, y1) = self.cartesian(t1, R);
+                let (x2, y2) = self.cartesian(t2, R);
 
-            while t2 < 0.0 {t2 += 2.0*PI;}
-            while t2 > 2.0*PI {t2 -= 2.0*PI;}
-            while t1 > 2.0*PI {t1 -= 2.0*PI;}
+                while t2 < 0.0 {t2 += 2.0*PI;}
+                while t2 > 2.0*PI {t2 -= 2.0*PI;}
+                while t1 > 2.0*PI {t1 -= 2.0*PI;}
 
-            let cx = CX;
-            let cy = CY;
+                let cx = CX;
+                let cy = CY;
 
-            let path = format!("M {},{} Q {},{} {} {}", x1, y1, cx, cy, x2, y2);
-            svg += &format!("<path d='{}' fill='none' stroke='{}' stroke-opacity='0.5' stroke-width='{}'/>\n",
-                            path, color, width);
-        }
+                let path = format!("M {},{} Q {},{} {} {}", x1, y1, cx, cy, x2, y2);
+                svg += &format!("<path d='{}' fill='none' stroke='{}' stroke-opacity='0.5' stroke-width='{}'/>\n",
+                                path, color, width);
+            }
 
-        for sd in self.settings.result.sds.iter().filter(|&sd| self.intra_sd(sd) && sd.length >= self.settings.min_length) {
-            let (left, right) = (sd.left as i64, sd.right as i64);
+        for sd in self.settings.result.sds
+            .iter()
+            .filter(|&sd| sd.identity >= self.settings.min_identity)
+            .filter(|&sd| self.intra_sd(sd) && sd.length >= self.settings.min_length) {
+                let (left, right) = (sd.left as i64, sd.right as i64);
 
             let t11 = self.angle(left as f64);
             let t12 = self.angle(left as f64 + sd.length as f64);
@@ -256,26 +262,32 @@ impl ChordPlotter {
             let color = format!("#{:2X}{:2X}{:2X}", rand::random::<i8>(), rand::random::<i8>(), rand::random::<i8>());
             for gene in genes_family.iter() {
                 for position in gene.positions.iter() {
-                    let x = match position {
-                        &GenePosition::Relative { ref chr, position} => {
+                    let (start, end) = match position {
+                        &GenePosition::Relative { ref chr, start, length} => {
                             let chr = self.settings.result.strand1.find_chr(&chr);
-                            chr.position + position
+                            (chr.position + start, chr.position + start + length)
                         }
-                        &GenePosition::Absolute { position }         => { position }
+                        &GenePosition::Absolute { start, length }         => { (start, length) }
                     };
-                    let t1 = self.angle(x as f64) - 0.02;
-                    let t2 = self.angle(x as f64) + 0.02;
+                    let t1 = self.angle(start as f64);
+                    let t2 = self.angle(end as f64);
                     let t0 = t1 + (t2 - t1)/2.0;
 
-                    let (x0, y0) = self.cartesian(t0, R);
-                    let (x1, y1) = self.cartesian(t1, R - 5.0);
-                    let (x2, y2) = self.cartesian(t2, R - 5.0);
-                    svg += &format!("<polygon points='{},{} {},{} {},{}' style='fill:{};'/>\n",
+                    let (x0, y0) = self.cartesian(t0 - 0.02, R - 5.0);
+                    let (x1, y1) = self.cartesian(t1, R);
+                    let (x2, y2) = self.cartesian(t2, R);
+                    let (x3, y3) = self.cartesian(t0 + 0.02, R - 5.0);
+                    let font_size = 6.0;
+                    svg += &format!("<polygon points='{},{} {},{} {},{} {},{}' style='fill:{};'/>\n",
                                     x0, y0,
                                     x1, y1,
                                     x2, y2,
+                                    x3, y3,
                                     color
                     );
+                    svg += &format!("<text x='{}' y='{}' font-family='Helvetica' font-size='{}'>{}</text>",
+                                    x3, y3 + font_size,
+                                    font_size, gene.name);
                 }
             }
         }

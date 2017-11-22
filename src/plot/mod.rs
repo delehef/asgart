@@ -14,14 +14,15 @@ pub struct Settings {
     pub color2: String,
 
     pub min_length: usize,
+    pub min_identity: f32,
 
     pub gene_tracks: Vec<Vec<Gene>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum GenePosition {
-    Relative { chr: String, position: usize },
-    Absolute { position: usize }
+    Relative { chr: String, start: usize, length: usize },
+    Absolute { start: usize, length: usize }
 }
 
 #[derive(Debug, Clone)]

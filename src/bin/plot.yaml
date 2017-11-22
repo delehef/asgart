@@ -25,6 +25,11 @@ subcommands:
                 help: additional gene tracks to plot
                 multiple: true
                 takes_value: true
+            - filter_genes:
+                long: filter-genes
+                help: don't plot SD far away from genes
+                takes_value: true
+
 
     - dotplot:
         about: Generates a matrix plot

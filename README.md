@@ -31,10 +31,6 @@ Static binaries for Linux are available for [i686](https://github.com/delehef/as
 
 Binaries for macOS are available [here](https://github.com/delehef/asgart/releases/download/v1/asgart_macos.tar.gz).
 
-## Windows
-
-Binaries for Windows are available [here]().
-
 ## From sources
 
 To build ASGART from sources, you need CMake, a C compiler and the [Rust compiler](https://www.rust-lang.org/en-US/install.html).

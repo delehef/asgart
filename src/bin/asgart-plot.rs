@@ -147,7 +147,10 @@ fn flat(args: &ArgMatches) -> Result<()> {
         color2: "#ddf983".to_owned(),
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
-        min_identity: 90.0, // TODO XXX
+        min_identity: 00.0, // TODO XXX
+        plot_if_reversed: args.is_present("reversed"),
+        plot_if_translated: args.is_present("translated"),
+
         gene_tracks: Vec::new(),
     };
     let plotter = FlatPlotter::new(settings);
@@ -199,6 +202,9 @@ fn chord(args: &ArgMatches) -> Result<()> {
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
         min_identity: if args.is_present("min_identity") { value_t!(args, "min_identity", f32).unwrap_or_else(|e| e.exit()) } else { 90.0 },
+        plot_if_reversed: args.is_present("reversed"),
+        plot_if_translated: args.is_present("translated"),
+
         gene_tracks: genes_tracks,
     };
     let plotter = ChordPlotter::new(settings);
@@ -237,6 +243,9 @@ fn eye(args: &ArgMatches) -> Result<()> {
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
         min_identity: 90.0, // TODO
+        plot_if_reversed: args.is_present("reversed"),
+        plot_if_translated: args.is_present("translated"),
+
         gene_tracks: Vec::new(),
     };
     println!("Plotting EYE");

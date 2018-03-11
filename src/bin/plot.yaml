@@ -69,3 +69,9 @@ subcommands:
                 long: min-length
                 help: minimum length for a SD to be plot (default 5000)
                 takes_value: true
+            - reversed:
+                short: r
+                help: restrict plot to reversed duplications
+            - translated:
+                short: t
+                help: restrict plot to translated duplications

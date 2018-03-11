@@ -164,6 +164,9 @@ impl ChordPlotter {
         for sd in self.settings.result.sds
             .iter()
             .filter(|&sd| sd.identity >= self.settings.min_identity)
+            .filter(|&sd|
+                    sd.reversed == self.settings.plot_if_reversed
+                    && sd.translated == self.settings.plot_if_translated)
             .filter(|&sd| self.inter_sd(sd) && sd.length >= self.settings.min_length) {
                 let (left, right) = (sd.left as i64, sd.right as i64);
 
@@ -215,6 +218,9 @@ impl ChordPlotter {
         for sd in self.settings.result.sds
             .iter()
             .filter(|&sd| sd.identity >= self.settings.min_identity)
+            .filter(|&sd|
+                    sd.reversed == self.settings.plot_if_reversed
+                    && sd.translated == self.settings.plot_if_translated)
             .filter(|&sd| self.intra_sd(sd) && sd.length >= self.settings.min_length) {
                 let (left, right) = (sd.left as i64, sd.right as i64);
 

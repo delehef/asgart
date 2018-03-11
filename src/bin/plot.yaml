@@ -48,7 +48,7 @@ subcommands:
                 takes_value: true
             - filter_genes:
                 long: filter-genes
-                help: don't plot SD far away from genes
+                help: do not plot SD far away from genes
                 takes_value: true
 
 

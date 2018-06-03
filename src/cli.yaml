@@ -1,54 +1,6 @@
 name: asgart
 about: A Segmental duplications Gathering and Refinment Tool
 args:
-    - reverse:
-        short: R
-        long: reverse
-        help: Reverse the second strand
-    - translate:
-        short: T
-        long: translate
-        help: Translate the second strand
-    - interlaced:
-        short: i
-        long: interlaced
-        help: Look for interlaced duplications (may drastically impair performances!)
-    - minlength:
-        long: min-length
-        help: minimal length (in bp) of the duplications
-        default_value: "1000"
-        takes_value: true
-    - maxcardinality:
-        long: max-cardinality
-        help: maximal cardinality of duplications families
-        default_value: "1000"
-        takes_value: true
-
-    - trim:
-        long: trim
-        help: Trim the first strand
-        takes_value: true
-        number_of_values: 2
-        value_names:
-            - start
-            - end
-
-    - threads:
-        long: threads
-        help: Number of threads used, number of cores if 0
-        takes_value: true
-        number_of_values: 1
-    - prefix:
-        long: prefix
-        help: Prefix of the output file
-        takes_value: true
-        number_of_values: 1
-    - out:
-        long: out
-        help: Override default file name
-        takes_value: true
-        number_of_values: 1
-
     - strand1:
         help: First strand, FASTA format
         required: true
@@ -65,6 +17,55 @@ args:
         help: Maximum length of a gap
         required: true
         index: 4
+
+    - reverse:
+        short: R
+        long: reverse
+        help: Reverse the second strand
+    - translate:
+        short: T
+        long: translate
+        help: Translate the second strand
+    - trim:
+        long: trim
+        help: Trim the first strand
+        takes_value: true
+        number_of_values: 2
+        value_names:
+            - start
+            - end
+
+    - interlaced:
+        short: i
+        long: interlaced
+        help: Look for interlaced duplications (may drastically impair performances!)
+    - maxcardinality:
+        long: max-cardinality
+        help: maximal cardinality of duplications families
+        default_value: "1000"
+        takes_value: true
+
+    - minlength:
+        long: min-length
+        help: minimal length (in bp) of the duplications
+        default_value: "1000"
+        takes_value: true
+    - threads:
+        long: threads
+        help: Number of threads used, number of cores if 0
+        takes_value: true
+        number_of_values: 1
+    - prefix:
+        long: prefix
+        help: Prefix of the output file
+        takes_value: true
+        number_of_values: 1
+    - out:
+        long: out
+        help: Override default file name
+        takes_value: true
+        number_of_values: 1
+
 
     - verbose:
         short: v

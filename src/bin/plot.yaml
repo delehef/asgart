@@ -48,7 +48,7 @@ subcommands:
                 takes_value: true
             - filter_genes:
                 long: filter-genes
-                help: don't plot SD far away from genes
+                help: don't plot SD farther away than <filter-genes> bp from genes (default 100000)
                 takes_value: true
 
 

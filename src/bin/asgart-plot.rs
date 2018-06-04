@@ -170,7 +170,7 @@ fn chord(args: &ArgMatches) -> Result<()> {
     let genes_tracks = genes_tracks.unwrap();
 
     if args.is_present("filter_genes") {
-        let threshold = value_t!(args, "filter_genes", usize).unwrap_or_else(|_| 1_000_000);
+        let threshold = value_t!(args, "filter_genes", usize).unwrap_or_else(|_| 100_000);
         filter_sds_genes(&mut result, &genes_tracks, threshold);
     }
 

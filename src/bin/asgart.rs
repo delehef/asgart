@@ -20,7 +20,6 @@ use std::time::Duration;
 use std::cmp;
 use std::sync::mpsc;
 use std::sync::Arc;
-use std::ascii::AsciiExt;
 use std::time::Instant;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
@@ -498,7 +497,7 @@ fn search_duplications(strand1_file: &str,
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
-                left: if !reverse {sd.left} else {strand1.data.len() - sd.left - sd.length},
+                left: if !reverse {sd.left} else {strand1.data.len() - sd.left - sd.length - 1},
                 right: sd.right,
                 length: sd.length,
                 identity: sd.identity,

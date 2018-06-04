@@ -44,22 +44,22 @@ impl FlatPlotter {
                 x1='{}' y1='{}' x2='{}' y2='{}'
                 stroke='#ccc' stroke-width='{}'/>
                 "#,
-                             0,
-                             CHR_WIDTH/2.0,
-                             self.settings.result.strand1.length as f64/self.max_length*self.width,
-                             CHR_WIDTH/2.0,
-                             CHR_WIDTH
+                        0,
+                        CHR_WIDTH/2.0,
+                        self.settings.result.strand1.length as f64/self.max_length*self.width,
+                        CHR_WIDTH/2.0,
+                        CHR_WIDTH
         );
         svg += &format!(r#"
                 <line
                 x1='{}' y1='{}' x2='{}' y2='{}'
                 stroke='#ccc' stroke-width='{}'/>
                 "#,
-                             0,
-                             self.height-CHR_WIDTH/2.0,
-                             self.settings.result.strand2.length as f64/self.max_length*self.width,
-                             self.height-CHR_WIDTH/2.0,
-                             CHR_WIDTH
+                        0,
+                        self.height-CHR_WIDTH/2.0,
+                        self.settings.result.strand2.length as f64/self.max_length*self.width,
+                        self.height-CHR_WIDTH/2.0,
+                        CHR_WIDTH
         );
         let centromere_start = 10316945.0;
         let centromere_end = 10544039.0;
@@ -68,22 +68,22 @@ impl FlatPlotter {
                 x1='{}' y1='{}' x2='{}' y2='{}'
                 stroke='#afafaf' stroke-width='{}'/>
                 "#,
-                             centromere_start as f64/self.max_length*self.width,
-                             CHR_WIDTH/2.0,
-                             centromere_end as f64/self.max_length*self.width,
-                             CHR_WIDTH/2.0,
-                             CHR_WIDTH
+                        centromere_start as f64/self.max_length*self.width,
+                        CHR_WIDTH/2.0,
+                        centromere_end as f64/self.max_length*self.width,
+                        CHR_WIDTH/2.0,
+                        CHR_WIDTH
         );
         svg += &format!(r#"
                 <line
                 x1='{}' y1='{}' x2='{}' y2='{}'
                 stroke='#afafaf' stroke-width='{}'/>
                 "#,
-                             centromere_start as f64/self.max_length*self.width,
-                             self.height-CHR_WIDTH/2.0,
-                             centromere_end as f64/self.max_length*self.width,
-                             self.height-CHR_WIDTH/2.0,
-                             CHR_WIDTH
+                        centromere_start as f64/self.max_length*self.width,
+                        self.height-CHR_WIDTH/2.0,
+                        centromere_end as f64/self.max_length*self.width,
+                        self.height-CHR_WIDTH/2.0,
+                        CHR_WIDTH
         );
 
 
@@ -103,8 +103,8 @@ impl FlatPlotter {
                 let x = i as f64/self.max_length*self.width;
 
                 svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#898989' stroke-width='1'/>",
-                                    x, self.height,
-                                    x, height
+                                x, self.height,
+                                x, height
                 );
 
                 if i % 10_000_000 == 0 {
@@ -116,15 +116,20 @@ impl FlatPlotter {
             }
         }
 
-        for sd in self.settings.result.sds.iter().filter(|&sd| sd.length >= self.settings.min_length) {
-            let left1 = (sd.left as f64)/self.max_length * self.width;
-            let left2 = (sd.left as f64 + sd.length as f64)/self.max_length * self.width;
-            let right1 = (sd.right as f64)/self.max_length * self.width;
-            let right2 = (sd.right as f64+ sd.length as f64)/self.max_length * self.width;
+        for sd in self.settings.result.sds
+            .iter()
+            .filter(|&sd|
+                    sd.reversed == self.settings.plot_if_reversed
+                    && sd.translated == self.settings.plot_if_translated)
+            .filter(|&sd| sd.length >= self.settings.min_length) {
+                let left1 = (sd.left as f64)/self.max_length * self.width;
+                let left2 = (sd.left as f64 + sd.length as f64)/self.max_length * self.width;
+                let right1 = (sd.right as f64)/self.max_length * self.width;
+                let right2 = (sd.right as f64+ sd.length as f64)/self.max_length * self.width;
 
-            let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
+                let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
 
-            svg += &format!(r#"
+                svg += &format!(r#"
                             <polygon
                             points='{},{} {},{} {},{} {},{}'
                             fill='{}' fill-opacity='0.5' stroke='{}' stroke-opacity='0.9'
@@ -133,21 +138,21 @@ impl FlatPlotter {
                             <title>{}</title>
                             </polygon>
                             "#,
-                            left1, CHR_WIDTH,
-                            left2, CHR_WIDTH,
-                            right2, self.height - CHR_WIDTH,
-                            right1, self.height - CHR_WIDTH,
-                            color,
-                            color,
-                            &format!("{}bp\n{} → {}\n{} → {}",
-                                     sd.length.separated_string(),
-                                     sd.left.separated_string(),
-                                     (sd.left + sd.length).separated_string(),
-                                     sd.right.separated_string(),
-                                     (sd.right + sd.length).separated_string()
-                            )
-            );
-        }
+                                left1, CHR_WIDTH,
+                                left2, CHR_WIDTH,
+                                right2, self.height - CHR_WIDTH,
+                                right1, self.height - CHR_WIDTH,
+                                color,
+                                color,
+                                &format!("{}bp\n{} → {}\n{} → {}",
+                                         sd.length.separated_string(),
+                                         sd.left.separated_string(),
+                                         (sd.left + sd.length).separated_string(),
+                                         sd.right.separated_string(),
+                                         (sd.right + sd.length).separated_string()
+                                )
+                );
+            }
         format!("<?xml version='1.0' encoding='UTF-8' standalone='no' ?> <!DOCTYPE svg \
                  PUBLIC '-//W3C//DTD SVG 1.0//EN' \
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \

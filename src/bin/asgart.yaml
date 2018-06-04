@@ -1,6 +1,23 @@
 name: asgart
 about: A Segmental duplications Gathering and Refinment Tool
 args:
+    - strand1:
+        help: First strand, FASTA format
+        required: true
+        index: 1
+    - strand2:
+        help: Second strand, FASTA format
+        required: true
+        index: 2
+    - probe_size:
+        help: Length of the probing k-mers
+        required: true
+        index: 3
+    - max_gap:
+        help: Maximum length of a gap
+        required: true
+        index: 4
+
     - reverse:
         short: R
         long: reverse
@@ -9,30 +26,30 @@ args:
         short: T
         long: translate
         help: Translate the second strand
-    - interlaced:
-        short: i
-        long: interlaced
-        help: Look for interlaced duplications (may drastically impair performances!)
-    - minlength:
-        long: min-length
-        help: minimal length (in bp) of the duplications
-        default_value: "1000"
-        takes_value: true
-    - maxcardinality:
-        long: max-cardinality
-        help: maximal cardinality of duplications families
-        default_value: "1000"
-        takes_value: true
-
     - trim:
         long: trim
-        help: trim the first strand
+        help: Trim the first strand
         takes_value: true
         number_of_values: 2
         value_names:
             - start
             - end
 
+    - interlaced:
+        short: i
+        long: interlaced
+        help: Look for interlaced duplications (may drastically impair performances!)
+    - maxcardinality:
+        long: max-cardinality
+        help: maximal cardinality of duplications families
+        default_value: "1000"
+        takes_value: true
+
+    - minlength:
+        long: min-length
+        help: minimal length (in bp) of the duplications
+        default_value: "1000"
+        takes_value: true
     - threads:
         long: threads
         help: number of threads used, number of cores if 0
@@ -61,22 +78,6 @@ args:
           - gff3
 
 
-    - strand1:
-        help: First strand, FASTA format
-        required: true
-        index: 1
-    - strand2:
-        help: Second strand, FASTA format
-        required: true
-        index: 2
-    - probe_size:
-        help: Length of the probing k-mers
-        required: true
-        index: 3
-    - max_gap:
-        help: Maximum length of a gap
-        required: true
-        index: 4
 
     - verbose:
         short: v

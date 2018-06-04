@@ -16,6 +16,8 @@ pub struct Settings {
 
     pub min_length: usize,
     pub min_identity: f32,
+    pub plot_if_reversed: bool,
+    pub plot_if_translated: bool,
 
     pub gene_tracks: Vec<Vec<Gene>>,
 }

@@ -1,7 +1,5 @@
 use std::io::prelude::*;
 use std::fs::File;
-use std::path::Path;
-use std::collections::HashMap;
 use std::f64::consts::PI;
 use ::structs::*;
 use ::plot::{Plotter, Settings};
@@ -144,7 +142,6 @@ impl EyePlotter {
             let t22 = self.angle(right as f64 + sd.length as f64);
             let mut t2 = t21 + (t22 - t21)/2.0;
 
-            let tt = t1 + (t2-t1)/2.0;
             let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
             if width <= self.settings.thickness {width = self.settings.thickness};
 
@@ -172,7 +169,6 @@ impl EyePlotter {
             let (t1, t2) = if t2 < t1 {(t2, t1)} else {(t1, t2)};
 
             let mut ttt = t2 - t1;
-            // if ttt > PI { ttt = 2.0*PI - ttt; }
 
             let f = border * (if ttt < PI/1.0{
                 1.0

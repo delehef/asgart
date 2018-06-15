@@ -41,16 +41,16 @@ fn filter_sds_genes(result: &mut RunResult, genes_families: &[Vec<Gene>], thresh
     }
 
     let mut r = Vec::new();
-    for sd in result.sds.iter() {
+    for sd in &result.sds{
         for family in genes_families {
             for gene in family {
-                for position in gene.positions.iter() {
-                    let (start, length) = match position {
-                        &GenePosition::Relative { ref chr, start, length} => {
+                for position in &gene.positions{
+                    let (start, length) = match *position {
+                        GenePosition::Relative { ref chr, start, length} => {
                             let chr = result.strand1.find_chr(&chr);
                             (chr.position + start, length)
                         }
-                        &GenePosition::Absolute { start, length }         => { (start, length) }
+                        GenePosition::Absolute { start, length }         => { (start, length) }
                     };
                     if _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
                         || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
@@ -77,7 +77,7 @@ fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
         .map(|l| l.unwrap())
         .filter(|l| !l.is_empty())
         .enumerate() {
-            let v: Vec<&str> = line.split(";").collect();
+            let v: Vec<&str> = line.split(';').collect();
             if v.len() != 3 { bail!("{}:L{} `{}`: incorrect format, expecting two members, found {}", file, i+1, line, v.len()); }
             let name = v[0].to_owned();
 
@@ -105,11 +105,11 @@ fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
                     length: v[2].parse::<usize>().unwrap(),
                 }
             };
-            d.entry(name).or_insert(Vec::new()).push(position);
+            d.entry(name).or_insert_with(Vec::new).push(position);
         }
 
     let mut genes = Vec::new();
-    for (name, positions) in d.iter() {
+    for (name, positions) in &d {
         genes.push(Gene{
             name: name.to_owned(),
             positions: positions.clone(),

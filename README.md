@@ -186,6 +186,29 @@ graphs, or flat graphs.
 
   - `--min-length` set the minimal length (in bp) for a duplication to
     be plotted
+  - `--features FILE` add an additional track containing features to plot alongside the duplications.
+
+  - `--filter-features DISTANCE` don't plot duplications that are farther away then `DISTANCE` bp from the features in the track.
+
+### Feature file format
+
+The feature file format contains a list of lines with three values separated by semi-colons.
+
+1. The label of the feature.
+2. the start of the feaure. It may either be a single integer representing its absolute coordinate, or be of the form `NAME+OFFSET`, defining a start position at `OFFSET` from the start of `NAME` chromosomes (from the input FASTA file).
+3. The lenght of the feaure in base pairs.
+
+Comment lines starts with a `#`.
+
+#### Example
+
+```
+# This is a comment line
+# This is a feature named MYH14, 122358bp long, and starting at the 50,188,186th base of the chromosome 19
+MYH14;19+50188186;122358
+# This is a feature named Foo, starting on the 123,456,789th base of the input FASTA file and 1250bp long
+Foo;123456789;1250
+```
 
 ## Chord graphs
 

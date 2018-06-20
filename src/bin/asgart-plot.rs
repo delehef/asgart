@@ -76,6 +76,7 @@ fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
         lines()
         .map(|l| l.unwrap())
         .filter(|l| !l.is_empty())
+        .filter(|l| !l.starts_with('#'))
         .enumerate() {
             let v: Vec<&str> = line.split(';').collect();
             if v.len() != 3 { bail!("{}:L{} `{}`: incorrect format, expecting two members, found {}", file, i+1, line, v.len()); }

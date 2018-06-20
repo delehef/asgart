@@ -9,7 +9,7 @@ Asgart is distributed under the GPLv3 license. Please see the LICENSE file.
 
 # Why should I use ASGART?
 
-![A map of the Human genome's long segmental duplications](screenshots/chord.png)
+![A map of the Human genome long segmental duplications](screenshots/chord.png)
 
 You should use ASGART if
 
@@ -33,7 +33,7 @@ Binaries for macOS are available [here](https://github.com/delehef/asgart/releas
 
 ## Windows
 
-Binaries for Windows are available [here]().
+Binaries for Windows are not yet available.
 
 ## From sources
 
@@ -61,13 +61,13 @@ Once the build is finished, you'll find the binary in `target/release/`.
 
 ## Simple usage
 
-First, let's take a look at a simple example:
+First, let us take a look at a simple example:
 
 ```
 asgart seq.fasta seq.fasta 20 100
 ```
 
-This command will look for duplications in the `seq.fasta` file then
+This command will look for duplications in the `seq.fasta` file, then
 write them in a JSON file in the folder where it was launched. ASGART
 will probe using 20-mers, and guarantee that no duplication will
 include gaps longer than 100bp in their arm-to-arm pairwise alignment.
@@ -116,7 +116,7 @@ By default, ASGART will write its result in a JSON file in the folder where it w
                 ]
         },
 
-        "kmer": probing kmer's size,
+        "kmer": probing kmer size,
         "gap": maximum gap inbetween duplication arms,
 
         "sds": [
@@ -145,32 +145,25 @@ save the results in a GFF3 file.
 
   - `--reverse`/`-R` look for duplication which second arm is reversed
 
-  - `--translate`/`-T` look for duplication which second arm is
-    translated
+  - `--translate`/`-T` look for duplication which second arm is translated
 
-  - `--min-size SIZE` specifies the minimal length (in bp) over which
-    a duplication is kept in the final result and not discarded
-    (default: 1000)
+  - `--max-cardinality` specifies the maximal count of members in a duplication family (default: 1000)
 
-  - `--max-cardinality` specifies the maximal count of members in a
-    duplication family (default: 1000)
-
+  - `--min-length SIZE` specifies the minimal length (in bp) over which a duplication is kept in the final result and not discarded (default: 1000)
 
 ### Technical
 
   - `-h`, `--help` display an help screen
 
-  - `--out FILENAME` specifies the file in which the results will be
-    written
+  - `--out FILENAME` specifies the file in which the results will be written
 
-  - `--prefix NAME` set a prefix to prepend to the standard out file
-    name.
+  - `--prefix NAME` defines a prefix to prepend to the standard out file name
 
-  - `--threads COUNT` set the numbers of thread to use. Defaults to
-    the number of cores abailable on the CPU.
+  - `--format OUT_FORMAT` sets the output format. Default is `json`, but can be set to gff2 or gff3
 
-  - `--trim START END` run ASGART only on the specified area of the
-    first file.
+  - `--threads COUNT` set the numbers of thread to use. Defaults to the number of cores abailable on the CPU
+
+  - `--trim START END` run ASGART only on the specified area of the first file
 
 # Plotting
 
@@ -184,8 +177,10 @@ graphs, or flat graphs.
 
   - `--out FILENAME` set output file name
 
-  - `--min-length` set the minimal length (in bp) for a duplication to
-    be plotted
+  - `--min-length` set the minimal length (in bp) for a duplication to be plotted (default: 5000)
+
+  - `--min-identity` set the minimal identity rate (in %) for a duplication to be plotted (default: 90.0). If set to 0, does not filter.
+
   - `--features FILE` add an additional track containing features to plot alongside the duplications.
 
   - `--filter-features DISTANCE` don't plot duplications that are farther away then `DISTANCE` bp from the features in the track.
@@ -212,17 +207,12 @@ Foo;123456789;1250
 
 ## Chord graphs
 
-A chord graph represent duplications amongst a DNA fragment as arcs
-linking point on a circle figuring a fragment bend over itself. Their
-width is directly proportional to the lenght of the duplications they
-represent.
+A chord graph represents duplications amongst a DNA fragment as arcs linking point on a circle figuring a fragment bend over itself. Their width is directly proportional to the lenght of the duplications they represent.
 
 ![Chord graph example](screenshots/chord.png)
 
 ## Flat graphs
 
-Flat graphs are made of two superposed horizontal lines, representing the two
-fragments analyzed by ASGART, with lines linking left and right parts of the
-duplications found, their width proportional to the length of the duplication.
+Flat graphs are made of two superposed horizontal lines, representing the two fragments analyzed by ASGART, with lines linking left and right parts of the duplications found, their width proportional to the length of the duplication.
 
 ![Flat graph example](screenshots/flat.png)

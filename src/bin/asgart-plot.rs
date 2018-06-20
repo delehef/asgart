@@ -202,7 +202,7 @@ fn chord(args: &ArgMatches) -> Result<()> {
         color2: "#ddf983".to_owned(),
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
-        min_identity: if args.is_present("min_identity") { value_t!(args, "min_identity", f32).unwrap_or_else(|e| e.exit()) } else { 90.0 },
+        min_identity: if args.is_present("min_identity") { value_t!(args, "min_identity", f32).unwrap_or_else(|e| e.exit()) } else { 0.0 },
         plot_if_reversed: args.is_present("reversed"),
         plot_if_translated: args.is_present("translated"),
 
@@ -243,13 +243,12 @@ fn eye(args: &ArgMatches) -> Result<()> {
         color2: "#ddf983".to_owned(),
 
         min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
-        min_identity: 90.0, // TODO
+        min_identity: 0.0, // TODO
         plot_if_reversed: args.is_present("reversed"),
         plot_if_translated: args.is_present("translated"),
 
         gene_tracks: Vec::new(),
     };
-    println!("Plotting EYE");
     let plotter = EyePlotter::new(settings);
     plotter.plot();
 
@@ -269,7 +268,7 @@ fn run() -> Result<()> {
     match args.subcommand_name() {
         Some("chord")   => chord(args.subcommand_matches("chord").unwrap()),
         Some("flat")    => flat(args.subcommand_matches("flat").unwrap()),
-        Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
+        // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
         None            => Ok(()),
         _               => unreachable!(),
     }

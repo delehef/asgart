@@ -14,13 +14,13 @@ use std::io::BufReader;
 use std::fs::File;
 use std::path::Path;
 use rustc_serialize::json;
-use clap::{App, AppSettings, ArgMatches};
+use clap::{App, AppSettings};
 use colored::Colorize;
 use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
-use asgart::plot::eye_plot::EyePlotter;
+// use asgart::plot::eye_plot::EyePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
 
@@ -31,7 +31,7 @@ fn read_result(file: &str) -> Result<RunResult> {
     json::decode(&s).chain_err(|| "Failed to parse JSON")
 }
 
-fn filter_sds_genes(result: &mut RunResult, genes_families: &[Vec<Gene>], threshold: usize) {
+fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {
     fn _overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
         let xend = xstart + xlen;
         let yend = ystart + ylen;
@@ -42,15 +42,15 @@ fn filter_sds_genes(result: &mut RunResult, genes_families: &[Vec<Gene>], thresh
 
     let mut r = Vec::new();
     for sd in &result.sds{
-        for family in genes_families {
-            for gene in family {
-                for position in &gene.positions{
+        for family in features_families {
+            for feature in family {
+                for position in &feature.positions{
                     let (start, length) = match *position {
-                        GenePosition::Relative { ref chr, start, length} => {
+                        FeaturePosition::Relative { ref chr, start, length} => {
                             let chr = result.strand1.find_chr(&chr);
                             (chr.position + start, length)
                         }
-                        GenePosition::Absolute { start, length }         => { (start, length) }
+                        FeaturePosition::Absolute { start, length }         => { (start, length) }
                     };
                     if _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
                         || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
@@ -65,8 +65,7 @@ fn filter_sds_genes(result: &mut RunResult, genes_families: &[Vec<Gene>], thresh
     result.sds = r.clone();
 }
 
-
-fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
+fn read_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
     let f = BufReader::new(f);
     let mut d = HashMap::new();
@@ -85,7 +84,7 @@ fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
             let position = if re.is_match(v[1]) {
                 let chr = re.captures(v[1]).unwrap().get(1).unwrap().as_str();
                 let position = re.captures(v[1]).unwrap().get(2).unwrap().as_str().to_owned().parse::<usize>().unwrap();
-                // XXX Incorrect for non-endogene runs
+                // XXX Incorrect for non-endofeature runs
                 if !r.strand1.has_chr(chr) {
                     bail!("Unable to find '{}'. Available: {}",
                           chr,
@@ -95,13 +94,13 @@ fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
                 if r.strand1.find_chr(chr).length < position {
                     bail!("{} greater than {}'s length ({})", position, chr, r.strand1.find_chr(chr).length);
                 }
-                GenePosition::Relative {
+                FeaturePosition::Relative {
                     chr: chr.to_owned(),
                     start: position,
                     length: v[2].parse::<usize>().unwrap()
                 }
             } else {
-                GenePosition::Absolute {
+                FeaturePosition::Absolute {
                     start: v[1].parse::<usize>().unwrap(),
                     length: v[2].parse::<usize>().unwrap(),
                 }
@@ -109,172 +108,88 @@ fn read_gene_file(r: &RunResult, file: &str) -> Result<Vec<Gene>> {
             d.entry(name).or_insert_with(Vec::new).push(position);
         }
 
-    let mut genes = Vec::new();
+    let mut features = Vec::new();
     for (name, positions) in &d {
-        genes.push(Gene{
+        features.push(Feature{
             name: name.to_owned(),
             positions: positions.clone(),
         })
     }
 
-    Ok(genes)
-}
-
-fn flat(args: &ArgMatches) -> Result<()> {
-    let json_file = args.value_of("FILE").unwrap();
-    let result = read_result(json_file)?;
-
-
-    let out_file =
-        args.value_of("out")
-        .and_then(|f| {
-            let path = Path::new(f);
-            if path.is_dir() {
-                Some(path.join("out.svg").to_str().unwrap().to_owned())
-            } else {
-                Some(f.to_owned())
-            }
-        }).or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
-
-    println!("Result written to {}", out_file);
-    let settings = Settings {
-        result: result,
-        out_file: out_file,
-
-        size: 200.0,
-
-        thickness: 1.0,
-        color1: "#ddf983".to_owned(),
-        color2: "#ddf983".to_owned(),
-
-        min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
-        min_identity: 00.0, // TODO XXX
-        plot_if_reversed: args.is_present("reversed"),
-        plot_if_translated: args.is_present("translated"),
-
-        gene_tracks: Vec::new(),
-    };
-    let plotter = FlatPlotter::new(settings);
-    plotter.plot();
-
-    Ok(())
-}
-
-fn chord(args: &ArgMatches) -> Result<()> {
-    let json_file = args.value_of("FILE").unwrap();
-    let mut result = read_result(json_file)?;
-    let genes_tracks: Result<Vec<_>> = match args.values_of("genes") {
-        Some(x) => { x
-                     .map(|gene_track| read_gene_file(&result, gene_track))
-                     .collect()
-        }
-        None    => Ok(Vec::new())
-    };
-    if let Err(e) = genes_tracks {return Err(e);}
-    let genes_tracks = genes_tracks.unwrap();
-
-    if args.is_present("filter_genes") {
-        let threshold = value_t!(args, "filter_genes", usize).unwrap_or_else(|_| 100_000);
-        filter_sds_genes(&mut result, &genes_tracks, threshold);
-    }
-
-    let out_file = args
-        .value_of("out")
-        .and_then(|f| {
-            let path = Path::new(f);
-            if path.is_dir() {
-                Some(path.join("out.svg").to_str().unwrap().to_owned())
-            } else {
-                Some(f.to_owned())
-            }
-        })
-        .or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
-
-
-    let settings = Settings {
-        result: result,
-        out_file: out_file,
-
-        size: 200.0,
-
-        thickness: 0.5,
-        color1: "#ddf983".to_owned(),
-        color2: "#ddf983".to_owned(),
-
-        min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
-        min_identity: if args.is_present("min_identity") { value_t!(args, "min_identity", f32).unwrap_or_else(|e| e.exit()) } else { 0.0 },
-        plot_if_reversed: args.is_present("reversed"),
-        plot_if_translated: args.is_present("translated"),
-
-        gene_tracks: genes_tracks,
-    };
-    let plotter = ChordPlotter::new(settings);
-    plotter.plot();
-
-    Ok(())
-}
-
-
-
-fn eye(args: &ArgMatches) -> Result<()> {
-    let json_file = args.value_of("FILE").unwrap();
-    let result = read_result(json_file)?;
-
-    let out_file =
-        args.value_of("out")
-        .and_then(|f| {
-            let path = Path::new(f);
-            if path.is_dir() {
-                Some(path.join("out.svg").to_str().unwrap().to_owned())
-            } else {
-                Some(f.to_owned())
-            }
-        }).or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
-    println!("Result written to {}", out_file);
-
-    let settings = Settings {
-        result: result,
-        out_file: out_file,
-
-        size: 200.0,
-
-        thickness: 0.5,
-        color1: "#ddf983".to_owned(),
-        color2: "#ddf983".to_owned(),
-
-        min_length: if args.is_present("min_length") { value_t!(args, "min_length", usize).unwrap_or_else(|e| e.exit()) } else { 5000 },
-        min_identity: 0.0, // TODO
-        plot_if_reversed: args.is_present("reversed"),
-        plot_if_translated: args.is_present("translated"),
-
-        gene_tracks: Vec::new(),
-    };
-    let plotter = EyePlotter::new(settings);
-    plotter.plot();
-
-    Ok(())
+    Ok(features)
 }
 
 fn run() -> Result<()> {
     let yaml = load_yaml!("plot.yaml");
     let args = App::from_yaml(yaml)
-        .setting(AppSettings::SubcommandRequiredElseHelp)
         .setting(AppSettings::ColoredHelp)
         .setting(AppSettings::ColorAuto)
         .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::UnifiedHelpMessage)
         .get_matches();
 
-    match args.subcommand_name() {
-        Some("chord")   => chord(args.subcommand_matches("chord").unwrap()),
-        Some("flat")    => flat(args.subcommand_matches("flat").unwrap()),
-        // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
-        None            => Ok(()),
-        _               => unreachable!(),
+    let json_file = args.value_of("FILE").unwrap();
+    let mut result = read_result(json_file)?;
+    let out_file =
+        args.value_of("out")
+        .and_then(|f| {
+            let path = Path::new(f);
+            if path.is_dir() {
+                Some(path.join("out.svg").to_str().unwrap().to_owned())
+            } else {
+                Some(f.to_owned())
+            }
+        }).or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
+
+    let features_tracks: Result<Vec<_>> = match args.values_of("features") {
+        Some(x) => { x
+                    .map(|feature_track| read_feature_file(&result, feature_track))
+                    .collect()
+        }
+        None    => Ok(Vec::new())
+    };
+    if let Err(e) = features_tracks {return Err(e);}
+    let features_tracks = features_tracks.unwrap();
+
+    if args.is_present("filter_features") {
+        filter_sds_in_features(&mut result, &features_tracks, value_t!(args, "filter_features", usize).unwrap());
     }
+
+    let settings = Settings {
+        out_file:              out_file,
+
+        min_length:            value_t!(args, "min_length", usize).unwrap(),
+        min_identity:          value_t!(args, "min_identity", f32).unwrap(),
+        filter_direct:         args.is_present("no-direct"),
+        filter_non_translated: args.is_present("no-untranslated"),
+        filter_reversed:       args.is_present("no-reversed"),
+        filter_translated:     args.is_present("no-translated"),
+
+        size:                  200.0,
+        thickness:             1.0,
+        color1:                "#ff5b00".to_owned(),
+        color2:                "#00b2ae".to_owned(),
+
+        feature_tracks: features_tracks,
+    };
+    result.sds = result.sds
+        .into_iter()
+        .filter(|sd| !(settings.filter_direct && !sd.reversed))
+        .filter(|sd| !(settings.filter_reversed && sd.reversed))
+        .filter(|sd| !(settings.filter_non_translated && !sd.translated))
+        .filter(|sd| !(settings.filter_translated && sd.translated))
+        .filter(|sd| sd.length >= settings.min_length)
+        .filter(|sd| sd.identity >= settings.min_identity)
+        .collect();
+
+    match args.value_of("PLOT-TYPE") {
+        Some("chord")   => ChordPlotter::new(settings, result).plot(),
+        Some("flat")    => FlatPlotter::new(settings, result).plot(),
+        // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
+        _               => unreachable!(),
+    };
+    Ok(())
 }
-
-
 
 fn main() {
     if let Err(ref e) = run() {

@@ -5,7 +5,6 @@ pub mod flat_plot;
 pub mod eye_plot;
 
 pub struct Settings {
-    pub result: RunResult,
     pub out_file: String,
 
     pub size: f64,
@@ -16,25 +15,27 @@ pub struct Settings {
 
     pub min_length: usize,
     pub min_identity: f32,
-    pub plot_if_reversed: bool,
-    pub plot_if_translated: bool,
+    pub filter_direct: bool,
+    pub filter_reversed: bool,
+    pub filter_translated: bool,
+    pub filter_non_translated: bool,
 
-    pub gene_tracks: Vec<Vec<Gene>>,
+    pub feature_tracks: Vec<Vec<Feature>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum GenePosition {
+pub enum FeaturePosition {
     Relative { chr: String, start: usize, length: usize },
     Absolute { start: usize, length: usize }
 }
 
 #[derive(Debug, Clone)]
-pub struct Gene {
+pub struct Feature {
     pub name: String,
-    pub positions: Vec<GenePosition>,
+    pub positions: Vec<FeaturePosition>,
 }
 
 pub trait Plotter {
-    fn new(settings: Settings) -> Self;
+    fn new(settings: Settings, result: RunResult) -> Self;
     fn plot(self);
 }

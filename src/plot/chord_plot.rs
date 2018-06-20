@@ -1,6 +1,5 @@
 extern crate rand;
 
-use self::rand::Rng;
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
@@ -23,13 +22,15 @@ const CY: f64 = TOTAL_WIDTH/2.0;
 
 
 pub struct ChordPlotter {
+    result: RunResult,
     settings: Settings,
+
     length: f64,
     centromeres: HashMap<String, (f64, f64)>,
 }
 
 impl Plotter for ChordPlotter {
-    fn new(settings: Settings) -> ChordPlotter {
+    fn new(settings: Settings, result: RunResult) -> ChordPlotter {
         let mut _centromeres = HashMap::new();
         _centromeres.insert("chr1 ".to_owned(), (122_026_460.0, 125184587.0));
         _centromeres.insert("chr2 ".to_owned(), (92_188_146.0, 94090557.0));
@@ -57,11 +58,12 @@ impl Plotter for ChordPlotter {
         _centromeres.insert("chrY ".to_owned(), (10_316_745.0, 10544039.0));
 
 
-        let length = settings.result.strand1.length as f64;
+        let length = result.strand1.length as f64;
         ChordPlotter {
+            result: result,
             settings: settings,
-            length: length,
 
+            length: length,
             centromeres: _centromeres,
         }
     }
@@ -100,7 +102,7 @@ impl ChordPlotter {
     }
 
     fn chr_left(&self, sd: &SD) -> isize {
-        for (i, chr) in self.settings.result.strand1.map.iter().enumerate() {
+        for (i, chr) in self.result.strand1.map.iter().enumerate() {
             if sd.left >= chr.position && sd.left <= chr.position + chr.length {
                 return i as isize
             }
@@ -109,7 +111,7 @@ impl ChordPlotter {
     }
 
     fn chr_right(&self, sd: &SD) -> isize {
-        for (i, chr) in self.settings.result.strand2.map.iter().enumerate() {
+        for (i, chr) in self.result.strand2.map.iter().enumerate() {
             if sd.right >= chr.position && sd.right <= chr.position + chr.length {
                 return i as isize
             }
@@ -129,7 +131,7 @@ impl ChordPlotter {
         let mut svg = String::new();
         svg += &format!("\n<g transform='translate({}, {})' >\n", 0, 0);
 
-        for chr in &self.settings.result.strand1.map {
+        for chr in &self.result.strand1.map {
             let t1 = self.angle(chr.position as f64) - INTER_RING_SPACING;
             let t2 = self.angle(chr.position as f64 + chr.length as f64) + INTER_RING_SPACING;
             let tt = t1 + (t2-t1)/2.0;
@@ -161,12 +163,11 @@ impl ChordPlotter {
                             str::replace(&chr.name, "chr", ""));
         }
 
-        for sd in self.settings.result.sds
+        for sd in self.result.sds
             .iter()
             .filter(|&sd| sd.identity >= self.settings.min_identity)
-            .filter(|&sd|
-                    sd.reversed == self.settings.plot_if_reversed
-                    && sd.translated == self.settings.plot_if_translated)
+            .filter(|&sd| !(self.settings.filter_reversed && sd.reversed))
+            .filter(|&sd| !(self.settings.filter_translated && sd.translated))
             .filter(|&sd| self.inter_sd(sd) && sd.length >= self.settings.min_length) {
                 let (left, right) = (sd.left as i64, sd.right as i64);
 
@@ -183,7 +184,7 @@ impl ChordPlotter {
 
                 let color = if true {
                     // Direction-based color
-                    if sd.reversed {"#00b2ae"} else {"#ff5b00"}
+                    if sd.reversed { &self.settings.color2 } else { &self.settings.color1 }
                 } else {
                     // Position-based color
                     // let color = Rgb::from_hsv(Hsv {
@@ -215,12 +216,11 @@ impl ChordPlotter {
                                 path, color, width);
             }
 
-        for sd in self.settings.result.sds
+        for sd in self.result.sds
             .iter()
             .filter(|&sd| sd.identity >= self.settings.min_identity)
-            .filter(|&sd|
-                    sd.reversed == self.settings.plot_if_reversed
-                    && sd.translated == self.settings.plot_if_translated)
+            .filter(|&sd| !(self.settings.filter_reversed && sd.reversed))
+            .filter(|&sd| !(self.settings.filter_translated && sd.translated))
             .filter(|&sd| self.intra_sd(sd) && sd.length >= self.settings.min_length) {
                 let (left, right) = (sd.left as i64, sd.right as i64);
 
@@ -238,7 +238,7 @@ impl ChordPlotter {
 
                 let color = if true {
                     // Direction-based color
-                    if sd.reversed {"#00b2ae"} else {"#ff5b00"}
+                    if sd.reversed { &self.settings.color2 } else { &self.settings.color1 }
                 } else {
                     // Position-based color
                     // let color = Rgb::from_hsv(Hsv {
@@ -262,16 +262,16 @@ impl ChordPlotter {
                                 path, color, width);
             }
 
-        for genes_family in &self.settings.gene_tracks {
+        for features_family in &self.settings.feature_tracks {
             let color = format!("#{:2X}{:2X}{:2X}", rand::random::<i8>(), rand::random::<i8>(), rand::random::<i8>());
-            for gene in genes_family.iter() {
-                for position in &gene.positions {
+            for feature in features_family.iter() {
+                for position in &feature.positions {
                     let (start, end) = match *position {
-                        GenePosition::Relative { ref chr, start, length} => {
-                            let chr = self.settings.result.strand1.find_chr(&chr);
+                        FeaturePosition::Relative { ref chr, start, length} => {
+                            let chr = self.result.strand1.find_chr(&chr);
                             (chr.position + start, chr.position + start + length)
                         }
-                        GenePosition::Absolute { start, length }         => { (start, length) }
+                        FeaturePosition::Absolute { start, length }         => { (start, length) }
                     };
                     let t1 = self.angle(start as f64);
                     let t2 = self.angle(end as f64);
@@ -291,7 +291,7 @@ impl ChordPlotter {
                     );
                     svg += &format!("<text x='{}' y='{}' font-family='Helvetica' font-size='{}'>{}</text>",
                                     x3, y3 + font_size,
-                                    font_size, gene.name);
+                                    font_size, feature.name);
                 }
             }
         }

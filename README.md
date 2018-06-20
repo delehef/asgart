@@ -177,9 +177,17 @@ graphs, or flat graphs.
 
   - `--out FILENAME` set output file name
 
-  - `--min-length` set the minimal length (in bp) for a duplication to be plotted (default: 5000)
+  - `--min-length` set the minimal length (in bp) for a duplication to be plotted (default: 5000bp)
 
-  - `--min-identity` set the minimal identity rate (in %) for a duplication to be plotted (default: 90.0). If set to 0, does not filter.
+  - `--min-identity` set the minimal identity rate (in %) for a duplication to be plotted (default: 0%).
+
+  - `--no-direct` do not plot direct duplications
+
+  - `--no-reversed` do not plot reversed duplications
+
+  - `--no-untranslated` do not plot non-translated duplications
+
+  - `--no-translated` do not plot translated duplications
 
   - `--features FILE` add an additional track containing features to plot alongside the duplications.
 
@@ -191,7 +199,7 @@ The feature file format contains a list of lines with three values separated by 
 
 1. The label of the feature.
 2. the start of the feaure. It may either be a single integer representing its absolute coordinate, or be of the form `NAME+OFFSET`, defining a start position at `OFFSET` from the start of `NAME` chromosomes (from the input FASTA file).
-3. The lenght of the feaure in base pairs.
+3. The length of the feaure in base pairs.
 
 Comment lines starts with a `#`.
 
@@ -207,12 +215,20 @@ Foo;123456789;1250
 
 ## Chord graphs
 
-A chord graph represents duplications amongst a DNA fragment as arcs linking point on a circle figuring a fragment bend over itself. Their width is directly proportional to the lenght of the duplications they represent.
+A chord graph represents duplications amongst a DNA fragment as arcs linking point on a circle figuring a fragment bend over itself. Their width is directly proportional to the length of the duplications they represent.
+
+### Example
+
+`asgart-plot human_genome.json chord --out=flat.svg --min-length 20000`
 
 ![Chord graph example](screenshots/chord.png)
 
 ## Flat graphs
 
 Flat graphs are made of two superposed horizontal lines, representing the two fragments analyzed by ASGART, with lines linking left and right parts of the duplications found, their width proportional to the length of the duplication.
+
+### Example
+
+`asgart-plot human_Y.json flat --out=flat.svg --no-direct --no-untranslated --min-length 2000`
 
 ![Flat graph example](screenshots/flat.png)

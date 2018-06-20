@@ -3,24 +3,29 @@ use separator::Separatable;
 use std::cmp;
 use std::io::prelude::*;
 use std::fs::File;
+use ::structs::*;
 use ::plot::{Plotter, Settings};
 
 const CHR_WIDTH: f64 = 4.0;
 
 pub struct FlatPlotter {
+    result: RunResult,
     settings: Settings,
+
     max_length: f64,
     width: f64,
     height: f64,
 }
 
 impl Plotter for FlatPlotter {
-    fn new(settings: Settings) -> FlatPlotter {
-        let length1 = settings.result.strand1.length as i64;
-        let length2 = settings.result.strand2.length as i64;
+    fn new(settings: Settings, result: RunResult) -> FlatPlotter {
+        let length1 = result.strand1.length as i64;
+        let length2 = result.strand2.length as i64;
 
         FlatPlotter {
+            result: result,
             settings: settings,
+
             max_length: cmp::max(length1, length2) as f64,
             width: 1500.0,
             height: 230.0,
@@ -46,7 +51,7 @@ impl FlatPlotter {
                 "#,
                         0,
                         CHR_WIDTH/2.0,
-                        self.settings.result.strand1.length as f64/self.max_length*self.width,
+                        self.result.strand1.length as f64/self.max_length*self.width,
                         CHR_WIDTH/2.0,
                         CHR_WIDTH
         );
@@ -57,7 +62,7 @@ impl FlatPlotter {
                 "#,
                         0,
                         self.height-CHR_WIDTH/2.0,
-                        self.settings.result.strand2.length as f64/self.max_length*self.width,
+                        self.result.strand2.length as f64/self.max_length*self.width,
                         self.height-CHR_WIDTH/2.0,
                         CHR_WIDTH
         );
@@ -116,18 +121,18 @@ impl FlatPlotter {
             }
         }
 
-        for sd in self.settings.result.sds
+        println!("Min length = {}", self.settings.min_length);
+        for sd in self.result.sds
             .iter()
-            .filter(|&sd|
-                    sd.reversed == self.settings.plot_if_reversed
-                    && sd.translated == self.settings.plot_if_translated)
+            .filter(|&sd| !(self.settings.filter_reversed && sd.reversed))
+            .filter(|&sd| !(self.settings.filter_translated && sd.translated))
             .filter(|&sd| sd.length >= self.settings.min_length) {
                 let left1 = (sd.left as f64)/self.max_length * self.width;
                 let left2 = (sd.left as f64 + sd.length as f64)/self.max_length * self.width;
                 let right1 = (sd.right as f64)/self.max_length * self.width;
                 let right2 = (sd.right as f64+ sd.length as f64)/self.max_length * self.width;
 
-                let color = if sd.reversed {"#00b2ae"} else {"#ff5b00"};
+                let color = if sd.reversed { &self.settings.color2 } else { &self.settings.color1 };
 
                 svg += &format!(r#"
                             <polygon

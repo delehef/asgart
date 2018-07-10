@@ -158,7 +158,7 @@ pub fn search_duplications(strand1: &[u8],
                         .collect();
 
                     if new_matches.len() > max_cardinality {
-                        gap -= 1;
+                        if gap > 0 { gap -= 1 };
                         SearchState::SparseGrow
                     } else {
                         if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {

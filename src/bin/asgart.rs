@@ -12,7 +12,7 @@ use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
 use console::style;
 use bio::io::fasta;
 use clap::App;
-use log::LogLevelFilter;
+use log::LevelFilter;
 
 use std::path;
 use std::thread;
@@ -328,9 +328,9 @@ fn run() -> Result<()> {
 
     let verbose = args.is_present("verbose");
     Logger::init(if verbose {
-        LogLevelFilter::Trace
+        LevelFilter::Trace
     } else {
-        LogLevelFilter::Info
+        LevelFilter::Info
     })
         .unwrap();
 

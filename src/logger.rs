@@ -1,47 +1,45 @@
 extern crate colored;
 extern crate log;
 
-use self::log::{LogRecord, LogLevel, LogMetadata, SetLoggerError, LogLevelFilter};
+use self::log::{Record, Level, Metadata, SetLoggerError, LevelFilter};
 use self::colored::*;
 
 pub struct Logger {
-    level: LogLevelFilter,
+    level: LevelFilter,
 }
 
 impl log::Log for Logger {
-    fn enabled(&self, metadata: &LogMetadata) -> bool {
-        metadata.level() <= LogLevel::Trace
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        metadata.level() >= Level::Trace
     }
 
-    fn log(&self, record: &LogRecord) {
-        if record.level() <= self.level {
-            println!("{}",
-                     match record.level() {
-                         LogLevel::Error => {
-                             format!("{} {}", "✖".red(), record.args().to_string().red().bold())
-                         }
-                         LogLevel::Warn => {
-                             format!("{} {}", "⚠".yellow(), record.args().to_string().yellow())
-                         }
-                         LogLevel::Info => {
-                             format!("{}", record.args())
-                         }
-                         LogLevel::Trace => {
-                             format!("{} {}", "▷".cyan(), record.args())
-                         }
-                         LogLevel::Debug => {
-                             format!("{} {}", "❖".blue(), record.args().to_string().blue())
-                         }
-                     });
-        }
+    fn log(&self, record: &Record) {
+        println!("{}",
+                 match record.level() {
+                     Level::Error => {
+                         format!("{} {}", "✖".red(), record.args().to_string().red().bold())
+                     }
+                     Level::Warn => {
+                         format!("{} {}", "⚠".yellow(), record.args().to_string().yellow())
+                     }
+                     Level::Info => {
+                         format!("{}", record.args())
+                     }
+                     Level::Trace => {
+                         format!("{} {}", "▷".cyan(), record.args())
+                     }
+                     Level::Debug => {
+                         format!("{} {}", "❖".blue(), record.args().to_string().blue())
+                     }
+                 });
     }
+
+    fn flush(&self) {}
 }
 
 impl Logger {
-    pub fn init(level: LogLevelFilter) -> Result<(), SetLoggerError> {
-        log::set_logger(|max_log_level| {
-            max_log_level.set(level);
-            Box::new(Logger { level: level })
-        })
+    pub fn init(level: LevelFilter) -> Result<(), SetLoggerError> {
+        log::set_boxed_logger(Box::new(Logger{level: level}))
+            .map(|()| log::set_max_level(level))
     }
 }

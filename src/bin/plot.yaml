@@ -9,7 +9,7 @@ args:
         required: true
     - PLOT-TYPE:
         help: Type of plot to generate
-        possible_values: ["flat", "chord"]
+        possible_values: ["flat", "chord", "genome"]
         index: 2
         required: true
     - out:

@@ -24,16 +24,11 @@ impl StrandResult {
     }
 
     pub fn find_chr_by_pos(&self, pos: usize) -> &Start {
-        self.map.iter().find(|chr| pos> chr.start &&  pos < chr.start + chr.length).unwrap()
+        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length).unwrap()
     }
 
     pub fn find_chr_index(&self, pos: usize) -> Option<usize> {
-        for (i, chr) in self.map.iter() {
-            if pos > chr.start && pos < chr.start + chr.length {
-                return Ok(i);
-            }
-        }
-        None
+        self.map.iter().position(|ref chr| pos> chr.position &&  pos < chr.position + chr.length)
     }
 }
 
@@ -67,9 +62,5 @@ impl SD {
 
     pub fn right_part(&self) -> (usize, usize) {
         (self.right, self.length)
-    }
-
-    pub fn chr_index() {
-
     }
 }

@@ -20,7 +20,7 @@ use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
-// use asgart::plot::eye_plot::EyePlotter;
+use asgart::plot::chr_plot::GenomePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
 
@@ -167,8 +167,8 @@ fn run() -> Result<()> {
 
         size:                  200.0,
         thickness:             1.0,
-        color1:                "#ff5b00".to_owned(),
-        color2:                "#00b2ae".to_owned(),
+        color1:                "#ff5b0088".to_owned(),
+        color2:                "#00b2ae88".to_owned(),
 
         feature_tracks: features_tracks,
     };
@@ -185,6 +185,7 @@ fn run() -> Result<()> {
     match args.value_of("PLOT-TYPE") {
         Some("chord")   => ChordPlotter::new(settings, result).plot(),
         Some("flat")    => FlatPlotter::new(settings, result).plot(),
+        Some("genome")  => GenomePlotter::new(settings, result).plot(),
         // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
         _               => unreachable!(),
     };

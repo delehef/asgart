@@ -1,5 +1,7 @@
 use ::structs::*;
-use ::plot::{Plotter, Settings}
+use std::fs::File;
+use std::io::Write;
+use ::plot::{Plotter, Settings};
 
 pub struct GenomePlotter {
     result: RunResult,
@@ -15,49 +17,131 @@ impl Plotter for GenomePlotter {
     }
 
     fn plot(self) {
-        let mut f = File::create(&self.setings.out_file).unwrap();
+        let mut f = File::create(&self.settings.out_file).unwrap();
         f.write_all(self.plot().as_bytes()).expect("Unable to write result to file");
     }
 }
 
-impl GenomPlotter {
+impl GenomePlotter {
     fn plot(self) -> String {
         let mut svg = String::new();
 
         // 100 px/chromosome
-        let width = 100 * self.result.map.length();
-        // 500px + 50px top + 100px bot
-        let height = 650;
-        let factor = 1.0/ * 500.0;
+        let chr_spacing = 100.0;
+        let chr_width = 40.0;
+        let height_factor = 800.0;
+        let factor = 1.0/self.result.strand1.map.iter().map(|chr| chr.length).max().unwrap() as f32 * height_factor;
+        let threshold = 0.1;
+
+        let width = chr_spacing as usize * (self.result.strand1.map.len() + 1);
+        // height_factor + 50px top + 100px bot
+        let height = height_factor + 50.0 + 100.0;
 
 
         // 1. Draw the chromosomes
-        for (i, chr) in self.result.map.iter().enumerate() {
-            svg += &format!(r#"<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#ccc' stroke-width='20'/>"#,
-                            50 + i*100,
+        for (i, chr) in self.result.strand1.map.iter().enumerate() {
+            // Chromosome bar
+            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#ccc' stroke-width='{}'/>\n",
+                            chr_spacing + i as f32 * chr_spacing,
                             50,
-                            50 + i*100,
-                            factor*chr.length
-            )
+                            chr_spacing + i as f32 * chr_spacing,
+                            50.0 + factor*chr.length as f32,
+                            chr_width,
+            );
+
+            // Central delimiter
+            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#111' stroke-width='{}' stroke-dasharray='5,5'/>\n",
+                            chr_spacing + i as f32 * chr_spacing,
+                            50,
+                            chr_spacing + i as f32 * chr_spacing,
+                            50.0 + factor*chr.length as f32,
+                            1,
+            );
+            // Side delimiters
+            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#222' stroke-width='{}' stroke-dasharray='1,2'/>\n",
+                            chr_spacing + i as f32 * chr_spacing - chr_width/4.0,
+                            50,
+                            chr_spacing + i as f32 * chr_spacing - chr_width/4.0,
+                            50.0 + factor*chr.length as f32,
+                            0.5,
+            );
+            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#222' stroke-width='{}' stroke-dasharray='1,2'/>\n",
+                            chr_spacing + i as f32 * chr_spacing + chr_width/4.0,
+                            50,
+                            chr_spacing + i as f32 * chr_spacing + chr_width/4.0,
+                            50.0 + factor*chr.length as f32,
+                            0.5,
+            );
+
+
+            // Label
+            svg += &format!("<text x='{}' y='{}' style='font-size: 11;'>{}</text>\n",
+                            chr_spacing + i as f32 * chr_spacing - 10.0,
+                            20 + (i%2) * 10,
+                            if chr.name.len() > 7 { &chr.name[0..7] } else { &chr.name },
+            );
         }
 
         // 2. Draw the SDs
-        for &sd in self.result.sds {
-            let (chr_left, chr_right) = sd.chr_index();
-            let x = if inter { |x| { 45 + 100*x }} else { |x| { 55 + 100*x } }
-            // left arm
-            svg += &format!(r#"<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='10'"#,
-                            x(chr_left),
-                            50,
-                            x(chr_left),
-                            factor * sd.left/chr_left
+        for sd in &self.result.sds {
+            let chr_left = self.result.strand1.find_chr_index(sd.left).unwrap();
+            let chr_right = self.result.strand2.find_chr_index(sd.right).unwrap();
+            let color = if sd.reversed { &self.settings.color2 } else  { &self.settings.color1 };
+            let x: Box<Fn(usize) -> f32> = match (chr_left == chr_right, sd.reversed) {
+                (true, false) => {
+                    Box::new(|x| chr_spacing - 3.0*chr_width/8.0 + chr_spacing*x as f32)
+                }
+                (true, true) => {
+                    Box::new(|x| chr_spacing - 1.0*chr_width/8.0 + chr_spacing*x as f32)
+                }
+                (false, false) => {
+                    Box::new(|x| chr_spacing + 1.0*chr_width/8.0 + chr_spacing*x as f32)
+                }
+                (false, true) => {
+                    Box::new(|x| chr_spacing + 3.0*chr_width/8.0 + chr_spacing*x as f32)
+                }
+            };
 
+            // left arm
+            let left = sd.left - self.result.strand1.find_chr_by_pos(sd.left).position;
+            let start = factor * left as f32;
+            let mut end = factor * (left + sd.length) as f32;
+            if start - end < threshold { end += threshold };
+            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
+                            x(chr_left),
+                            50.0 + start,
+                            x(chr_left),
+                            50.0 + end,
+                            color,
+                            chr_width/4.0,
             );
+
             // right arm
+            let right = sd.right - self.result.strand2.find_chr_by_pos(sd.right).position;
+            let start = factor * right as f32;
+            let mut end = factor * (right + sd.length) as f32;
+            if start - end < threshold { end += threshold };
+            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
+                            x(chr_right),
+                            50.0 + start,
+                            x(chr_right),
+                            50.0 + end,
+                            color,
+                            chr_width/4.0,
+            );
         }
 
-        // 3. Label eveyrthing
+        // 3. Label everything
 
         // 4. Done!
+        format!(
+            r#"
+<!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.0//EN' 'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'>
+<svg version='1.0' width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>
+{}
+</svg>"#,
+            width,
+            height,
+            svg)
     }
 }

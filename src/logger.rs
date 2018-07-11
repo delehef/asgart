@@ -5,7 +5,6 @@ use self::log::{Record, Level, Metadata, SetLoggerError, LevelFilter};
 use self::colored::*;
 
 pub struct Logger {
-    level: LevelFilter,
 }
 
 impl log::Log for Logger {
@@ -39,7 +38,6 @@ impl log::Log for Logger {
 
 impl Logger {
     pub fn init(level: LevelFilter) -> Result<(), SetLoggerError> {
-        log::set_boxed_logger(Box::new(Logger{level: level}))
-            .map(|()| log::set_max_level(level))
+        log::set_boxed_logger(Box::new(Logger{})).map(|()| log::set_max_level(level))
     }
 }

@@ -1,4 +1,4 @@
-extern crate rustc_serialize;
+extern crate serde_json;
 extern crate colored;
 #[macro_use]
 extern crate clap;
@@ -7,13 +7,11 @@ extern crate error_chain;
 extern crate regex;
 extern crate rand;
 
-use error_chain::*;
 use regex::Regex;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
 use std::path::Path;
-use rustc_serialize::json;
 use clap::{App, AppSettings};
 use colored::Colorize;
 use asgart::structs::*;
@@ -28,7 +26,7 @@ fn read_result(file: &str) -> Result<RunResult> {
     let mut f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
     let mut s = String::new();
     let _ = f.read_to_string(&mut s);
-    json::decode(&s).chain_err(|| "Failed to parse JSON")
+    serde_json::from_str(&s).chain_err(|| "Failed to parse JSON")
 }
 
 fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {

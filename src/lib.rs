@@ -1,7 +1,9 @@
-extern crate rustc_serialize;
+#[macro_use] extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
 extern crate separator;
-
 #[macro_use] extern crate error_chain;
+
 pub mod structs;
 pub mod logger;
 pub mod utils;

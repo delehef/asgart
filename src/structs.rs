@@ -1,6 +1,6 @@
 pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
 
-#[derive(RustcEncodable, RustcDecodable, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct RunSettings {
     pub probe_size: usize,
     pub max_gap_size: u32,
@@ -11,18 +11,20 @@ pub struct RunSettings {
     pub translate: bool,
     pub interlaced: bool,
     pub skip_masked: bool,
+    #[serde(skip_serializing)]
     pub start: usize,
+    #[serde(skip_serializing)]
     pub end: usize,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Start {
     pub name: String,
     pub position: usize,
     pub length: usize,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Serialize, Deserialize)]
 pub struct StrandResult {
     pub name: String,
     pub length: usize,
@@ -48,7 +50,7 @@ impl StrandResult {
 }
 
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Serialize, Deserialize)]
 pub struct RunResult {
     pub strand1: StrandResult,
     pub strand2: StrandResult,
@@ -57,7 +59,7 @@ pub struct RunResult {
 }
 
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SD {
     pub left: usize,
     pub right: usize,

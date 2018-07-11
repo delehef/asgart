@@ -151,6 +151,8 @@ save the results in a GFF3 file.
 
   - `--min-length SIZE` specifies the minimal length (in bp) over which a duplication is kept in the final result and not discarded (default: 1000)
 
+  - `--skip-masked`/`-S` skip soft-masked zones, _i.e._ lowercased parts of the input files.
+
 ### Technical
 
   - `-h`, `--help` display an help screen

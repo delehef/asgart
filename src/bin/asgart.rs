@@ -289,6 +289,7 @@ fn run() -> Result<()> {
         gap_size: u32,
         min_duplication_length: usize,
         max_cardinality: usize,
+        skip_masked: bool,
 
         reverse: bool,
         translate: bool,
@@ -314,6 +315,7 @@ fn run() -> Result<()> {
         gap_size: value_t_or_exit!(args, "max_gap", u32),
         min_duplication_length: value_t!(args, "minlength", usize).unwrap(),
         max_cardinality: value_t!(args, "maxcardinality", usize).unwrap(),
+        skip_masked: args.is_present("skipmasked"),
 
         reverse: args.is_present("reverse"),
         translate: args.is_present("translate"),
@@ -356,6 +358,7 @@ fn run() -> Result<()> {
     trace!("Reverse 2nd strand       {}", settings.reverse);
     trace!("Translate 2nd strand     {}", settings.translate);
     trace!("Interlaced SD            {}", settings.interlaced);
+    trace!("Skipping soft-masked     {}", settings.skip_masked);
     trace!("Min. length              {}", settings.min_duplication_length);
     trace!("Max. cardinality         {}", settings.max_cardinality);
     trace!("Threads count            {}", settings.threads_count);
@@ -374,6 +377,7 @@ fn run() -> Result<()> {
                                      settings.reverse,
                                      settings.translate,
                                      settings.interlaced,
+                                     settings.skip_masked,
                                      if !settings.trim.is_empty() {
                                          Some((settings.trim[0], settings.trim[1]))
                                      } else {
@@ -407,6 +411,7 @@ fn search_duplications(strand1_file: &str,
                        reverse: bool,
                        translate: bool,
                        interlaced: bool,
+                       skip_masked: bool,
                        trim: Option<(usize, usize)>,
 
                        threads_count: usize,
@@ -457,6 +462,7 @@ fn search_duplications(strand1_file: &str,
                                                           min_duplication_length,
                                                           max_cardinality,
                                                           interlaced,
+                                                          skip_masked,
                                                           &searcher,
                                                           &my_progress))
                     .unwrap();

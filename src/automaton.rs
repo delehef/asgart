@@ -91,6 +91,7 @@ fn make_duplications(psd: &ProtoSD,
 pub fn search_duplications(strand1: &[u8],
                            strand2: &[u8],
                            sa: &[idx],
+
                            start: usize,
                            end: usize,
                            probe_size: usize,
@@ -98,6 +99,8 @@ pub fn search_duplications(strand1: &[u8],
                            min_duplication_size: usize,
                            max_cardinality: usize,
                            interlaced: bool,
+                           skip_masked: bool,
+
                            searcher: &Searcher,
                            progress: &AtomicUsize)
                            -> Vec<SD> {
@@ -120,10 +123,12 @@ pub fn search_duplications(strand1: &[u8],
                 prune = 0;
                 current_start = i;
                 progress.store(cmp::min(i - start, end - start), Ordering::Relaxed);
-                state = if strand1[i] == b'N' || strand1[i] == b'n' {
-                    i += 1;
-                    SearchState::Start
-                } else {
+                state = if
+                    (strand1[i] == b'N' || strand1[i] == b'n')
+                    || (skip_masked && (strand1[i] as char).is_lowercase()) {
+                        i += 1;
+                        SearchState::Start
+                    } else {
                     current_segments = searcher.search(strand2, sa, &strand1[i..i + probe_size])
                         .into_iter()
                         .filter(|x| x.start != i)

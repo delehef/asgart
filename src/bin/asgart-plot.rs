@@ -7,6 +7,7 @@ extern crate error_chain;
 extern crate regex;
 extern crate rand;
 
+use error_chain::*;
 use regex::Regex;
 use std::io::prelude::*;
 use std::io::BufReader;

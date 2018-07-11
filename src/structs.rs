@@ -1,5 +1,20 @@
 pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
 
+#[derive(RustcEncodable, RustcDecodable, Clone, Copy)]
+pub struct RunSettings {
+    pub probe_size: usize,
+    pub max_gap_size: u32,
+    pub min_duplication_length: usize,
+    pub max_cardinality: usize,
+
+    pub reverse: bool,
+    pub translate: bool,
+    pub interlaced: bool,
+    pub skip_masked: bool,
+    pub start: usize,
+    pub end: usize,
+}
+
 #[derive(RustcEncodable, RustcDecodable, Clone)]
 pub struct Start {
     pub name: String,
@@ -37,10 +52,7 @@ impl StrandResult {
 pub struct RunResult {
     pub strand1: StrandResult,
     pub strand2: StrandResult,
-
-    pub kmer: usize,
-    pub gap: usize,
-
+    pub settings: RunSettings,
     pub sds: Vec<SD>,
 }
 

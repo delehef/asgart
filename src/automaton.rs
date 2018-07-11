@@ -2,7 +2,7 @@ use std::cmp;
 use std::fmt;
 
 use super::divsufsort64::*;
-use super::structs::SD;
+use super::structs::{RunSettings, SD};
 use super::searcher::Searcher;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -86,28 +86,19 @@ fn make_duplications(psd: &ProtoSD,
     r
 }
 
-#[allow(unknown_lints)]
-#[allow(too_many_arguments)]
 pub fn search_duplications(strand1: &[u8],
                            strand2: &[u8],
                            sa: &[idx],
 
-                           start: usize,
-                           end: usize,
-                           probe_size: usize,
-                           max_gap_size: u32,
-                           min_duplication_size: usize,
-                           max_cardinality: usize,
-                           interlaced: bool,
-                           skip_masked: bool,
-
                            searcher: &Searcher,
-                           progress: &AtomicUsize)
-                           -> Vec<SD> {
+                           progress: &AtomicUsize,
+
+                           settings: RunSettings
+) -> Vec<SD> {
     let mut r = Vec::new();
 
     let mut prune = 0;
-    let mut i = start;
+    let mut i = settings.start;
     let mut gap = 0;
     let mut current_start = 0;
     let mut current_segments = Vec::new();
@@ -116,66 +107,67 @@ pub fn search_duplications(strand1: &[u8],
     loop {
         match state {
             SearchState::Start => {
-                if i + probe_size >= end - 1 {
+                if i + settings.probe_size >= settings.end - 1 {
                     break;
                 }
                 gap = 0;
                 prune = 0;
                 current_start = i;
-                progress.store(cmp::min(i - start, end - start), Ordering::Relaxed);
+                progress.store(cmp::min(i - settings.start, settings.end - settings.start), Ordering::Relaxed);
                 state = if
                     (strand1[i] == b'N' || strand1[i] == b'n')
-                    || (skip_masked && (strand1[i] as char).is_lowercase()) {
+                    || (settings.skip_masked && (strand1[i] as char).is_lowercase()) {
                         i += 1;
                         SearchState::Start
                     } else {
-                    current_segments = searcher.search(strand2, sa, &strand1[i..i + probe_size])
-                        .into_iter()
-                        .filter(|x| x.start != i)
-                        .collect();
-                    if current_segments.is_empty() {
-                        i += 1;
-                        SearchState::Start
-                    } else {
-                        SearchState::Grow
-                    }
+                        current_segments = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
+                            .into_iter()
+                            .filter(|x| x.start != i)
+                            .collect();
+                        if current_segments.is_empty() {
+                            i += 1;
+                            SearchState::Start
+                        } else {
+                            SearchState::Grow
+                        }
                 }
             }
             SearchState::Grow => {
-                i += probe_size;
-                progress.store(cmp::min(i - start, end - start), Ordering::Relaxed);
+                i += settings.probe_size;
+                progress.store(cmp::min(i - settings.start, settings.end - settings.start), Ordering::Relaxed);
                 state = if strand1[i] == b'N' || strand1[i] == b'n' {
                     SearchState::SparseGrow
-                } else if i + probe_size > strand1.len() - 1 {
+                } else if i + settings.probe_size > strand1.len() - 1 {
                     SearchState::Proto
                 } else {
                     prune += 1;
-                    if prune > 2*(min_duplication_size/probe_size) {
-                        current_segments.retain(|segment| (segment.end - segment.start) >
-                                                min_duplication_size);
+                    if prune > 2*(settings.min_duplication_length/settings.probe_size) {
+                        current_segments.retain(|segment|
+                                                (segment.end - segment.start) > settings.min_duplication_length
+                        );
                         prune = 0;
                     }
 
                     let new_matches: Vec<Segment> =
-                        searcher.search(strand2, sa, &strand1[i..i + probe_size])
+                        searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
                         .into_iter()
                         .filter(|x| x.start != i)
                         .collect();
 
-                    if new_matches.len() > max_cardinality {
+                    if new_matches.len() > settings.max_cardinality {
                         if gap > 0 { gap -= 1 };
                         SearchState::SparseGrow
                     } else {
-                        if segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                            if interlaced {
+                        if segments_to_segments_distance(&new_matches, &current_segments) <= settings.max_gap_size {
+                            if settings.interlaced {
                                 append_merge_segments(&mut current_segments,
                                                       &new_matches,
-                                                      max_gap_size,
+                                                      settings.max_gap_size,
                                                       i);
                             } else {
                                 merge_or_drop_segments(&mut current_segments,
                                                        &new_matches,
-                                                       max_gap_size);
+                                                       settings.max_gap_size);
                             }
 
                             SearchState::Grow
@@ -190,22 +182,22 @@ pub fn search_duplications(strand1: &[u8],
             SearchState::SparseGrow => {
                 i += 1;
                 gap += 1;
-                progress.store(cmp::min(i - start, end - start), Ordering::Relaxed);
-                state = if (gap > max_gap_size) || (i >= strand1.len() - probe_size) {
+                progress.store(cmp::min(i - settings.start, settings.end - settings.start), Ordering::Relaxed);
+                state = if (gap > settings.max_gap_size) || (i >= strand1.len() - settings.probe_size) {
                     SearchState::Proto
                 } else if strand1[i] != b'N' && strand1[i] != b'n' {
-                    let new_matches = searcher.search(strand2, sa, &strand1[i..i + probe_size]);
-                    if new_matches.len() < max_cardinality
-                        && segments_to_segments_distance(&new_matches, &current_segments) <= max_gap_size {
-                            if interlaced {
+                    let new_matches = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size]);
+                    if new_matches.len() < settings.max_cardinality
+                        && segments_to_segments_distance(&new_matches, &current_segments) <= settings.max_gap_size {
+                            if settings.interlaced {
                                 append_merge_segments(&mut current_segments,
                                                       &new_matches,
-                                                      max_gap_size,
+                                                      settings.max_gap_size,
                                                       i);
                             } else {
                                 merge_or_drop_segments(&mut current_segments,
                                                        &new_matches,
-                                                       max_gap_size);
+                                                       settings.max_gap_size);
                             }
                             gap = 0;
                             SearchState::Grow
@@ -217,18 +209,18 @@ pub fn search_duplications(strand1: &[u8],
                 }
             }
             SearchState::Proto => {
-                if (i - current_start >= min_duplication_size) && !current_segments.is_empty() {
+                if (i - current_start >= settings.min_duplication_length) && !current_segments.is_empty() {
                     let psd = ProtoSD {
                         bottom: current_start,
                         top: i,
                         matches: current_segments.clone(),
                     };
                     let mut result =
-                        make_duplications(&psd, strand1, max_gap_size, min_duplication_size);
+                        make_duplications(&psd, strand1, settings.max_gap_size, settings.min_duplication_length);
                     r.append(&mut result);
                 }
                 state = SearchState::Start;
-                progress.store(cmp::min(i - start, end - start), Ordering::Relaxed);
+                progress.store(cmp::min(i - settings.start, settings.end - settings.start), Ordering::Relaxed);
             }
         }
     }

@@ -24,7 +24,7 @@ use std::time::Instant;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
 
-use asgart::structs::{ALPHABET, StrandResult, RunResult, SD, Start};
+use asgart::structs::{ALPHABET, RunSettings, StrandResult, RunResult, SD, Start};
 use asgart::logger::Logger;
 use asgart::errors::*;
 use asgart::exporters::Exporter;
@@ -82,8 +82,7 @@ fn prepare_data(strand1_file: &str,
         stop = strand1.len() - 1;
     }
     if stop <= shift {
-        error!("ERROR: {} greater than {}", shift, stop);
-        panic!();
+        return Err(format!("{} greater than {}", shift, stop).into());
     }
     let size = stop - shift;
     let strand1 = strand1[shift..stop].to_vec();
@@ -93,7 +92,6 @@ fn prepare_data(strand1_file: &str,
     // Invert strands 1 & 2 to ensure efficient processing
     //
     let (mut strand1, mut strand2, _, shift2) = if strand2.len() < size {
-
         (
             Strand {
                 file_name: strand1_file.to_owned(),
@@ -125,12 +123,8 @@ fn prepare_data(strand1_file: &str,
         )
     };
 
-    if translate {
-        strand1.data = utils::translated(&*strand1.data);
-    }
-    if reverse {
-        strand1.data.reverse();
-    }
+    if translate { strand1.data = utils::translated(&*strand1.data); }
+    if reverse { strand1.data.reverse(); }
     strand2.data.push(b'$');
 
     //
@@ -368,22 +362,28 @@ fn run() -> Result<()> {
                settings.trim[1]);
     }
 
-    let result = search_duplications(&settings.strand1_file,
-                                     &settings.strand2_file,
-                                     settings.kmer_size,
-                                     settings.gap_size + settings.kmer_size as u32,
-                                     settings.min_duplication_length,
-                                     settings.max_cardinality,
-                                     settings.reverse,
-                                     settings.translate,
-                                     settings.interlaced,
-                                     settings.skip_masked,
-                                     if !settings.trim.is_empty() {
-                                         Some((settings.trim[0], settings.trim[1]))
-                                     } else {
-                                         None
-                                     },
-                                     settings.threads_count,
+
+    let result = search_duplications(
+        &settings.strand1_file,
+        &settings.strand2_file,
+        if !settings.trim.is_empty() {
+            Some((settings.trim[0], settings.trim[1]))
+        } else {
+            None
+        },
+        RunSettings {
+            probe_size:             settings.kmer_size,
+            max_gap_size:           settings.gap_size + settings.kmer_size as u32,
+            min_duplication_length: settings.min_duplication_length,
+            max_cardinality:        settings.max_cardinality,
+            reverse:                settings.reverse,
+            translate:              settings.translate,
+            interlaced:             settings.interlaced,
+            skip_masked:            settings.skip_masked,
+            start:                  0,
+            end:                    0
+        },
+        settings.threads_count,
     )?;
 
     let exporter = match &settings.out_format[..] {
@@ -398,40 +398,34 @@ fn run() -> Result<()> {
 }
 
 
-#[allow(unknown_lints)]
-#[allow(too_many_arguments)]
-fn search_duplications(strand1_file: &str,
-                       strand2_file: &str,
+fn search_duplications(
+    strand1_file: &str,
+    strand2_file: &str,
+    trim: Option<(usize, usize)>,
 
-                       kmer_size: usize,
-                       max_gap_size: u32,
-                       min_duplication_length: usize,
-                       max_cardinality: usize,
+    settings: RunSettings,
 
-                       reverse: bool,
-                       translate: bool,
-                       interlaced: bool,
-                       skip_masked: bool,
-                       trim: Option<(usize, usize)>,
-
-                       threads_count: usize,
-)
-                       -> Result<RunResult> {
+    threads_count: usize) -> Result<RunResult> {
 
     let total = Instant::now();
 
     let (strand1, strand2, shared_suffix_array, shared_searcher) =
-        prepare_data(strand1_file, strand2_file, reverse, translate, trim)?;
+        prepare_data(
+            strand1_file,
+            strand2_file,
+            settings.reverse,
+            settings.translate,
+            trim)?;
 
 
     let thread_pool = ThreadPool::new(threads_count);
     let (tx_monitor, rx_monitor) = mpsc::channel();
     let (tx, rx) = mpsc::channel();
     {
-        const CHUNK_SIZE: usize = 50_000;
+        const CHUNK_SIZE: usize = 100_000;
 
-        let num_tasks = (strand1.data.len() - kmer_size) / CHUNK_SIZE;
-        let chunk_overflow = (strand1.data.len() - kmer_size) % CHUNK_SIZE;
+        let num_tasks = (strand1.data.len() - settings.probe_size) / CHUNK_SIZE;
+        let chunk_overflow = (strand1.data.len() - settings.probe_size) % CHUNK_SIZE;
 
         let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(num_tasks);
 
@@ -446,26 +440,15 @@ fn search_duplications(strand1_file: &str,
             let my_progress = Arc::clone(&progresses[id]);
 
             thread_pool.execute(move || {
-                let end = start +
-                    if id < num_tasks {
-                        CHUNK_SIZE
-                    } else {
-                        chunk_overflow
-                    };
-                my_tx.send(automaton::search_duplications(&strand1.data,
-                                                          &strand2.data,
-                                                          &suffix_array,
-                                                          start,
-                                                          end,
-                                                          kmer_size,
-                                                          max_gap_size,
-                                                          min_duplication_length,
-                                                          max_cardinality,
-                                                          interlaced,
-                                                          skip_masked,
-                                                          &searcher,
-                                                          &my_progress))
-                    .unwrap();
+                let end = start + if id < num_tasks { CHUNK_SIZE } else { chunk_overflow };
+                my_tx.send(automaton::search_duplications(
+                    &strand1.data,
+                    &strand2.data,
+                    &suffix_array,
+                    &searcher,
+                    &my_progress,
+                    RunSettings {start : start, end : end, .. settings}
+                )).unwrap();
             });
 
             start += CHUNK_SIZE;
@@ -475,7 +458,7 @@ fn search_duplications(strand1_file: &str,
         thread::spawn(move || {
             let pb = ProgressBar::new(100);
             pb.set_style(ProgressStyle::default_bar()
-                         .template("{spinner:.green} [{elapsed}] {wide_bar} {pos}% ({eta} remaining)"));
+                         .template("{spinner:.blue} [{elapsed}] {wide_bar} {pos}% ({eta} remaining)"));
 
             loop {
                 thread::sleep(Duration::from_millis(100));
@@ -503,12 +486,12 @@ fn search_duplications(strand1_file: &str,
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
-                left: if !reverse {sd.left} else {strand1.data.len() - sd.left - sd.length - 1},
-                right: sd.right,
-                length: sd.length,
-                identity: sd.identity,
-                reversed: reverse,
-                translated: translate,
+                left:       if !settings.reverse {sd.left} else {strand1.data.len() - sd.left - sd.length - 1},
+                right:      sd.right,
+                length:     sd.length,
+                identity:   sd.identity,
+                reversed:   settings.reverse,
+                translated: settings.translate,
             }
         }));
         a
@@ -545,10 +528,7 @@ fn search_duplications(strand1_file: &str,
             length: strand2.data.len() - 1, // Drop the '$'
             map: strand2.map.clone(),
         },
-
-        kmer: kmer_size,
-        gap: max_gap_size as usize,
-
+        settings: settings,
         sds: result,
     })
 }

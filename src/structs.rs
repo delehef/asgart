@@ -12,8 +12,10 @@ pub struct RunSettings {
     pub interlaced: bool,
     pub skip_masked: bool,
     #[serde(skip_serializing)]
+    #[serde(default)]
     pub start: usize,
     #[serde(skip_serializing)]
+    #[serde(default)]
     pub end: usize,
 }
 

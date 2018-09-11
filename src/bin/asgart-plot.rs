@@ -19,7 +19,7 @@ use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
-use asgart::plot::chr_plot::GenomePlotter;
+use asgart::plot::genome_plot::GenomePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
 

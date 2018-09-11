@@ -2,6 +2,7 @@ use ::structs::*;
 use std::fs::File;
 use std::io::Write;
 use ::plot::{Plotter, Settings};
+use plot::regex::Regex;
 
 pub struct GenomePlotter {
     result: RunResult,
@@ -39,6 +40,8 @@ impl GenomePlotter {
 
 
         // 1. Draw the chromosomes
+        // let regex_chr_name = Regex::new("(?:chromosome ?([0-9XYxyZWzw]{1,2}))|(?:chr ?([0-9XYxyZWzwA-Za-z]{1,2}))|(?:[^0-9XYxyZWzwA-Za-z]([0-9XYxyZWzw]{1,2})[^0-9XYxyZWzw.:|,a-zA-Z])")
+        //     .expect("Unable to create regex");
         for (i, chr) in self.result.strand1.map.iter().enumerate() {
             // Chromosome bar
             svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#ccc' stroke-width='{}'/>\n",
@@ -75,10 +78,12 @@ impl GenomePlotter {
 
 
             // Label
+            // let chr_name_cap = regex_chr_name.captures(&chr.name).expect("No matches");
+            // let chr_name = chr_name_cap.get(1).unwrap().as_str();
             svg += &format!("<text x='{}' y='{}' style='font-size: 11;'>{}</text>\n",
                             chr_spacing + i as f32 * chr_spacing - 10.0,
                             20 + (i%2) * 10,
-                            if chr.name.len() > 7 { &chr.name[0..7] } else { &chr.name },
+                            if chr.name.len() > 3 { &chr.name[0..3] } else { &chr.name },
             );
         }
 

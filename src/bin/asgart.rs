@@ -482,7 +482,7 @@ fn search_duplications(
     }
     drop(tx);
 
-    info!("{} Looking for hulls...", style("[2/4]").blue().bold());
+    info!("{} Looking for duplications...", style("[2/4]").blue().bold());
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {

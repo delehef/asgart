@@ -258,8 +258,8 @@ fn run() -> Result<()> {
 
         size:                  200.0,
         thickness:             1.0,
-        color1:                "#ff5b0088".to_owned(),
-        color2:                "#00b2ae88".to_owned(),
+        color1:                "#ff5b00".to_owned(),
+        color2:                "#00b2ae".to_owned(),
 
         feature_tracks: features_tracks,
     };

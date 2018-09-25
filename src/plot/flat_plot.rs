@@ -152,22 +152,15 @@ impl FlatPlotter {
                                     color
                     );
 
-                    // if feature.name != "X" {
-                    println!("Got {}", feature.name);
-                        svg += &format!("<text x='{}' y='{}' font-family='sans-serif' font-size='{}'>{}</text>",
-                                        x0, self.height + 20.0 + font_size,
-                                        font_size, feature.name);
-                    // }
-
+                    svg += &format!("<text x='{}' y='{}' font-family='sans-serif' font-size='{}'>{}</text>",
+                                    x0, self.height + 20.0 + font_size,
+                                    font_size, feature.name);
                 }
             }
         }
 
         for sd in self.result.sds
-            .iter()
-            .filter(|&sd| !(self.settings.filter_reversed && sd.reversed))
-            .filter(|&sd| !(self.settings.filter_translated && sd.translated))
-            .filter(|&sd| sd.length >= self.settings.min_length) {
+            .iter() {
                 let left1 = (sd.left as f64)/self.max_length * self.width;
                 let left2 = (sd.left as f64 + sd.length as f64)/self.max_length * self.width;
                 let right1 = (sd.right as f64)/self.max_length * self.width;

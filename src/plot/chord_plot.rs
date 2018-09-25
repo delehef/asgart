@@ -75,15 +75,6 @@ impl Plotter for ChordPlotter {
 }
 
 impl ChordPlotter {
-    fn title(self, x: i32, y: i32, text: &str, font_size: i32) -> String {
-        format!("<text x='{}' y='{}' font-family='Helvetica' \
-                 font-size='{}'>{}</text>",
-                x,
-                y + font_size,
-                font_size,
-                text)
-    }
-
     fn angle(&self, x: f64) -> f64 {
         PI/2.0 - x / self.length * 2.0 * PI
     }
@@ -297,12 +288,6 @@ impl ChordPlotter {
         }
 
         svg += "</g>";
-        let title = format!("{} (>{}Kbp)",
-                            Path::new(&self.settings.out_file).file_stem().unwrap().to_str().unwrap().to_owned(),
-                            self.settings.min_length/1000
-        );
-
-        svg += &(self.title(10, 10, &title, 20));
         format!("<?xml version='1.0' encoding='iso-8859-1' standalone='no' ?> <!DOCTYPE svg \
                  PUBLIC '-//W3C//DTD SVG 1.0//EN' \
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \

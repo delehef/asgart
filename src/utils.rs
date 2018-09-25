@@ -4,7 +4,15 @@ pub fn translate_nucleotide(n: u8) -> u8 {
         b'T' => b'A',
         b'G' => b'C',
         b'C' => b'G',
-        b'N' | _ => b'N',
+        b'N' => b'N',
+
+        b'a' => b't',
+        b't' => b'a',
+        b'g' => b'c',
+        b'c' => b'g',
+        b'n' => b'n',
+
+        _    => b'N'
     }
 }
 

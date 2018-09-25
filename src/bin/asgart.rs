@@ -24,7 +24,7 @@ use std::time::Instant;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
 
-use asgart::structs::{ALPHABET, RunSettings, StrandResult, RunResult, SD, Start};
+use asgart::structs::{ALPHABET, ALPHABET_MASKED, RunSettings, StrandResult, RunResult, SD, Start};
 use asgart::logger::Logger;
 use asgart::errors::*;
 use asgart::exporters::Exporter;
@@ -53,15 +53,16 @@ fn prepare_data(strand1_file: &str,
                 strand2_file: &str,
                 reverse: bool,
                 translate: bool,
+                skip_masked: bool,
                 trim: Option<(usize, usize)>)
                 -> Result<PreparedData> {
     //
     // Read and map the FASTA files to process
     //
-    let (map1, strand1) = read_fasta(strand1_file)?;
+    let (map1, strand1) = read_fasta(strand1_file, skip_masked)?;
     let (map2, strand2) = {
         let (map2, strand2) = if strand2_file != strand1_file {
-            read_fasta(strand2_file)?
+            read_fasta(strand2_file, skip_masked)?
         } else {
             trace!("Using same file for strands 1 & 2\n");
             (map1.clone(), strand1.clone())
@@ -141,7 +142,7 @@ fn prepare_data(strand1_file: &str,
     Ok((Arc::new(strand1), Arc::new(strand2), shared_suffix_array, shared_searcher))
 }
 
-fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>)> {
+fn read_fasta(filename: &str, skip_masked: bool) -> Result<(Vec<Start>, Vec<u8>)> {
     let mut map = Vec::new();
     let mut r = Vec::new();
 
@@ -155,9 +156,11 @@ fn read_fasta(filename: &str) -> Result<(Vec<Start>, Vec<u8>)> {
                            record.id(),
                            record.desc().unwrap_or(""));
         let mut seq = record.seq().to_vec();
-        seq = seq.to_ascii_uppercase();
+        if !skip_masked {seq = seq.to_ascii_uppercase();}
         for c in &mut seq {
-            if !(ALPHABET).contains(c) {
+            if ALPHABET_MASKED.contains(c) && skip_masked {
+                *c = b'N'
+            } else if !(ALPHABET).contains(c) {
                 warn!("Unknown base `{}` replaced by `N`", std::char::from_u32(u32::from(*c)).unwrap());
                 *c = b'N'
             }
@@ -376,10 +379,12 @@ fn run() -> Result<()> {
             max_gap_size:           settings.gap_size + settings.kmer_size as u32,
             min_duplication_length: settings.min_duplication_length,
             max_cardinality:        settings.max_cardinality,
+
             reverse:                settings.reverse,
             translate:              settings.translate,
             interlaced:             settings.interlaced,
             skip_masked:            settings.skip_masked,
+
             start:                  0,
             end:                    0
         },
@@ -415,6 +420,7 @@ fn search_duplications(
             strand2_file,
             settings.reverse,
             settings.translate,
+            settings.skip_masked,
             trim)?;
 
 
@@ -482,7 +488,7 @@ fn search_duplications(
     }
     drop(tx);
 
-    info!("{} Looking for hulls...", style("[2/4]").blue().bold());
+    info!("{} Looking for duplications...", style("[2/4]").blue().bold());
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {

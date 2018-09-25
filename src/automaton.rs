@@ -114,22 +114,20 @@ pub fn search_duplications(strand1: &[u8],
                 prune = 0;
                 current_start = i;
                 progress.store(cmp::min(i - settings.start, settings.end - settings.start), Ordering::Relaxed);
-                state = if
-                    (strand1[i] == b'N' || strand1[i] == b'n')
-                    || (settings.skip_masked && (strand1[i] as char).is_lowercase()) {
+                state = if strand1[i] == b'N' {
+                    i += 1;
+                    SearchState::Start
+                } else {
+                    current_segments = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
+                        .into_iter()
+                        .filter(|x| x.start != i)
+                        .collect();
+                    if current_segments.is_empty() {
                         i += 1;
                         SearchState::Start
                     } else {
-                        current_segments = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
-                            .into_iter()
-                            .filter(|x| x.start != i)
-                            .collect();
-                        if current_segments.is_empty() {
-                            i += 1;
-                            SearchState::Start
-                        } else {
-                            SearchState::Grow
-                        }
+                        SearchState::Grow
+                    }
                 }
             }
             SearchState::Grow => {

@@ -1,4 +1,9 @@
-pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
+pub const ALPHABET: [u8; 5] = [
+    b'A', b'T', b'G', b'C', b'N'
+];
+pub const ALPHABET_MASKED: [u8; 5] = [
+    b'a', b't', b'g', b'c', b'n'
+];
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct RunSettings {
@@ -9,8 +14,9 @@ pub struct RunSettings {
 
     pub reverse: bool,
     pub translate: bool,
-    pub interlaced: bool,
     pub skip_masked: bool,
+
+    pub interlaced: bool,
     #[serde(skip_serializing)]
     #[serde(default)]
     pub start: usize,

@@ -26,6 +26,10 @@ args:
         short: T
         long: translate
         help: Translate the second strand
+    - skipmasked:
+        long: skip-masked
+        short: S
+        help: ignore soft-masked repeated zones (lowercased regions)
     - trim:
         long: trim
         help: Trim the first strand
@@ -44,10 +48,6 @@ args:
         help: maximal cardinality of duplications families
         default_value: "1000"
         takes_value: true
-    - skipmasked:
-        long: skip-masked
-        short: S
-        help: skip soft-masked repeated zones (lowercased regions)
 
     - minlength:
         long: min-length

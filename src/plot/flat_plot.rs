@@ -81,17 +81,17 @@ impl FlatPlotter {
         //                 CHR_WIDTH/2.0,
         //                 CHR_WIDTH
         // );
-        svg += &format!(r#"
-                <line
-                x1='{}' y1='{}' x2='{}' y2='{}'
-                stroke='#afafaf' stroke-width='{}'/>
-                "#,
-                        centromere_start as f64/self.max_length*self.width,
-                        self.height-CHR_WIDTH/2.0,
-                        centromere_end as f64/self.max_length*self.width,
-                        self.height-CHR_WIDTH/2.0,
-                        CHR_WIDTH
-        );
+        // svg += &format!(r#"
+        //         <line
+        //         x1='{}' y1='{}' x2='{}' y2='{}'
+        //         stroke='#afafaf' stroke-width='{}'/>
+        //         "#,
+        //                 centromere_start as f64/self.max_length*self.width,
+        //                 self.height-CHR_WIDTH/2.0,
+        //                 centromere_end as f64/self.max_length*self.width,
+        //                 self.height-CHR_WIDTH/2.0,
+        //                 CHR_WIDTH
+        // );
 
 
 

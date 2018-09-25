@@ -6,6 +6,7 @@ extern crate asgart;
 extern crate error_chain;
 extern crate regex;
 extern crate rand;
+extern crate bio;
 
 use error_chain::*;
 use regex::Regex;
@@ -15,6 +16,7 @@ use std::fs::File;
 use std::path::Path;
 use clap::{App, AppSettings};
 use colored::Colorize;
+use bio::io::gff;
 use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
@@ -64,7 +66,92 @@ fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Featu
     result.sds = r.clone();
 }
 
+fn filter_features_in_sds(result: &mut RunResult, features_families: &mut Vec<Vec<Feature>>, threshold: usize) {
+    fn _overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
+        let xend = xstart + xlen;
+        let yend = ystart + ylen;
+
+        (xstart >= ystart && xstart <= yend) ||
+            (ystart >= xstart && ystart <= xend)
+    }
+
+    features_families
+        .iter_mut()
+        .for_each(|ref mut family|
+                  family
+                  .retain(|feature| {
+                      feature.positions
+                          .iter()
+                          .any(|p| {
+                              let (start, length) = match *p {
+                                  FeaturePosition::Relative { ref chr, start, length} => {
+                                      let chr = result.strand1.find_chr(&chr);
+                                      (chr.position + start, length)
+                                  }
+                                  FeaturePosition::Absolute { start, length }         => { (start, length) }
+                              };
+
+                              result.sds.iter().any(|ref sd| {
+                                  _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
+                                      || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
+                              })
+                          })
+                  })
+        );
+}
+
 fn read_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
+    let path = Path::new(file);
+    let extension: &str = path.extension().unwrap().to_str().unwrap();
+
+    match extension {
+        "gff3" => {read_gff3_feature_file(r, file)}
+        _      => {read_custom_feature_file(r, file)}
+    }
+}
+
+fn read_gff3_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
+    let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
+    let f = BufReader::new(f);
+
+    let r = f.lines()
+        .map(|l| l.unwrap())
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .fold(Vec::new(), |mut ax, l| {
+            let l = l.split('\t').collect::<Vec<&str>>();
+            if l[2] == "gene" {
+                let start = l[3].parse::<usize>().unwrap();
+                let end = l[4].parse::<usize>().unwrap();
+
+                let name = if l[8].contains("Name") {
+                    l[8]
+                        .split(";")
+                        .find(|cx| cx.contains("Name")).unwrap()
+                        .split('=')
+                        .nth(1).unwrap()
+                        .to_string()
+                } else {
+                    l[8].to_owned()
+                };
+
+                let feature = Feature {
+                    name: name,
+                    positions: vec![FeaturePosition::Absolute{
+                        start:  start,
+                        length: end - start,
+                    }],
+                } ;
+
+                ax.push(feature);
+            }
+
+            ax
+        });
+
+        Ok(r)
+}
+
+fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
     let f = BufReader::new(f);
     let mut d = HashMap::new();
@@ -148,11 +235,16 @@ fn run() -> Result<()> {
         None    => Ok(Vec::new())
     };
     if let Err(e) = features_tracks {return Err(e);}
-    let features_tracks = features_tracks.unwrap();
+    let mut features_tracks = features_tracks.unwrap();
 
-    if args.is_present("filter_features") {
-        filter_sds_in_features(&mut result, &features_tracks, value_t!(args, "filter_features", usize).unwrap());
-    }
+
+    if args.is_present("no-direct")       { result.sds.retain(|sd| sd.reversed) }
+    if args.is_present("no-reversed")     { result.sds.retain(|sd| !sd.reversed) }
+    if args.is_present("no-untranslated") { result.sds.retain(|sd| sd.translated) }
+    if args.is_present("no-translated")   { result.sds.retain(|sd| !sd.translated) }
+
+    if args.is_present("filter_duplications") {filter_sds_in_features(&mut result, &features_tracks, value_t!(args, "filter_duplications", usize).unwrap());}
+    if args.is_present("filter_features") {filter_features_in_sds(&mut result, &mut features_tracks, value_t!(args, "filter_features", usize).unwrap());}
 
     let settings = Settings {
         out_file:              out_file,
@@ -172,10 +264,10 @@ fn run() -> Result<()> {
         feature_tracks: features_tracks,
     };
     result.sds = result.sds
-        .into_iter()
-        .filter(|sd| !(settings.filter_direct && !sd.reversed))
-        .filter(|sd| !(settings.filter_reversed && sd.reversed))
-        .filter(|sd| !(settings.filter_non_translated && !sd.translated))
+            .into_iter()
+            .filter(|sd| !(settings.filter_direct && !sd.reversed))
+            .filter(|sd| !(settings.filter_reversed && sd.reversed))
+            .filter(|sd| !(settings.filter_non_translated && !sd.translated))
         .filter(|sd| !(settings.filter_translated && sd.translated))
         .filter(|sd| sd.length >= settings.min_length)
         .filter(|sd| sd.identity >= settings.min_identity)
@@ -191,15 +283,15 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn main() {
-    if let Err(ref e) = run() {
-        println!("{} {}", "Error: ".red(), e);
-        for e in e.iter().skip(1) {
-            println!("{}", e);
+    fn main() {
+        if let Err(ref e) = run() {
+            println!("{} {}", "Error: ".red(), e);
+            for e in e.iter().skip(1) {
+                println!("{}", e);
+            }
+            if let Some(backtrace) = e.backtrace() {
+                println!("backtrace: {:?}", backtrace);
+            }
+            std::process::exit(1);
         }
-        if let Some(backtrace) = e.backtrace() {
-            println!("backtrace: {:?}", backtrace);
-        }
-        std::process::exit(1);
     }
-}

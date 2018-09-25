@@ -1,10 +1,12 @@
+extern crate rand;
+
 use separator::Separatable;
 
 use std::cmp;
 use std::io::prelude::*;
 use std::fs::File;
 use ::structs::*;
-use ::plot::{Plotter, Settings};
+use ::plot::*;
 
 const CHR_WIDTH: f64 = 4.0;
 
@@ -66,19 +68,19 @@ impl FlatPlotter {
                         self.height-CHR_WIDTH/2.0,
                         CHR_WIDTH
         );
-        let centromere_start = 10316945.0;
-        let centromere_end = 10544039.0;
-        svg += &format!(r#"
-                <line
-                x1='{}' y1='{}' x2='{}' y2='{}'
-                stroke='#afafaf' stroke-width='{}'/>
-                "#,
-                        centromere_start as f64/self.max_length*self.width,
-                        CHR_WIDTH/2.0,
-                        centromere_end as f64/self.max_length*self.width,
-                        CHR_WIDTH/2.0,
-                        CHR_WIDTH
-        );
+        // let centromere_start = 10316945.0;
+        // let centromere_end = 10544039.0;
+        // svg += &format!(r#"
+        //         <line
+        //         x1='{}' y1='{}' x2='{}' y2='{}'
+        //         stroke='#afafaf' stroke-width='{}'/>
+        //         "#,
+        //                 centromere_start as f64/self.max_length*self.width,
+        //                 CHR_WIDTH/2.0,
+        //                 centromere_end as f64/self.max_length*self.width,
+        //                 CHR_WIDTH/2.0,
+        //                 CHR_WIDTH
+        // );
         svg += &format!(r#"
                 <line
                 x1='{}' y1='{}' x2='{}' y2='{}'
@@ -121,7 +123,46 @@ impl FlatPlotter {
             }
         }
 
-        println!("Min length = {}", self.settings.min_length);
+        //
+        // Feaures
+        //
+        for features_family in &self.settings.feature_tracks {
+            for feature in features_family.iter() {
+                for position in &feature.positions {
+                    let (start, end) = match *position {
+                        FeaturePosition::Relative { ref chr, start, length} => {
+                            let chr = self.result.strand1.find_chr(&chr);
+                            (chr.position + start, chr.position + start + length)
+                        }
+                        FeaturePosition::Absolute { start, length }         => { (start, start + length) }
+                    };
+
+                    let color = format!("#{:2X}{:2X}{:2X}", rand::random::<i8>(), rand::random::<i8>(), rand::random::<i8>());
+                    let x0 = start as f64/self.max_length * self.width;
+                    let x1 = end as f64/self.max_length * self.width;
+                    let x2 = x1 + 2.0;
+                    let x3 = x0 - 2.0;
+                    let font_size = 1.0;
+
+                    svg += &format!("<polygon points='{},{} {},{} {},{} {},{}' style='fill:{};'/>\n",
+                                    x0, self.height,
+                                    x1, self.height,
+                                    x2, self.height + 10.0,
+                                    x3, self.height + 10.0,
+                                    color
+                    );
+
+                    // if feature.name != "X" {
+                    println!("Got {}", feature.name);
+                        svg += &format!("<text x='{}' y='{}' font-family='sans-serif' font-size='{}'>{}</text>",
+                                        x0, self.height + 20.0 + font_size,
+                                        font_size, feature.name);
+                    // }
+
+                }
+            }
+        }
+
         for sd in self.result.sds
             .iter()
             .filter(|&sd| !(self.settings.filter_reversed && sd.reversed))
@@ -130,7 +171,7 @@ impl FlatPlotter {
                 let left1 = (sd.left as f64)/self.max_length * self.width;
                 let left2 = (sd.left as f64 + sd.length as f64)/self.max_length * self.width;
                 let right1 = (sd.right as f64)/self.max_length * self.width;
-                let right2 = (sd.right as f64+ sd.length as f64)/self.max_length * self.width;
+                let right2 = (sd.right as f64 + sd.length as f64)/self.max_length * self.width;
 
                 let color = if sd.reversed { &self.settings.color2 } else { &self.settings.color1 };
 
@@ -144,8 +185,8 @@ impl FlatPlotter {
                             </polygon>
                             "#,
                                 left1, CHR_WIDTH,
-                                left2, CHR_WIDTH,
-                                right2, self.height - CHR_WIDTH,
+                                if left2 - left1 < 1.0 { left1 + 1.0} else { left2 }, CHR_WIDTH,
+                                if right2 - right1 < 1.0 { right1 + 1.0} else { right2 }, self.height - CHR_WIDTH,
                                 right1, self.height - CHR_WIDTH,
                                 color,
                                 color,

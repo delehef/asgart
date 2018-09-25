@@ -271,7 +271,7 @@ impl ChordPlotter {
                             let chr = self.result.strand1.find_chr(&chr);
                             (chr.position + start, chr.position + start + length)
                         }
-                        FeaturePosition::Absolute { start, length }         => { (start, length) }
+                        FeaturePosition::Absolute { start, length }         => { (start, start + length) }
                     };
                     let t1 = self.angle(start as f64);
                     let t2 = self.angle(end as f64);

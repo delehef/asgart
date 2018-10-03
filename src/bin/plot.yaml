@@ -35,14 +35,14 @@ args:
         long: no-reversed
         short: r
         help: filters out reversed duplications
-    - no-untranslated:
-        long: no-untranslated
+    - no-uncomplemented:
+        long: no-uncomplemented
         short: u
-        help: filters out non translated duplications
-    - no-translated:
-        long: no-translated
+        help: filters out non complemented duplications
+    - no-complemented:
+        long: no-complemented
         short: t
-        help: filters out translated duplications
+        help: filters out complemented duplications
     - features:
         long: features
         help: additional gene tracks to plot

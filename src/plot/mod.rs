@@ -20,8 +20,8 @@ pub struct Settings {
     pub min_identity: f32,
     pub filter_direct: bool,
     pub filter_reversed: bool,
-    pub filter_translated: bool,
-    pub filter_non_translated: bool,
+    pub filter_complemented: bool,
+    pub filter_non_complemented: bool,
 
     pub feature_tracks: Vec<Vec<Feature>>,
 }

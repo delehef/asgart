@@ -52,7 +52,7 @@ struct Strand {
 fn prepare_data(strand1_file: &str,
                 strand2_file: &str,
                 reverse: bool,
-                translate: bool,
+                complement: bool,
                 skip_masked: bool,
                 trim: Option<(usize, usize)>)
                 -> Result<PreparedData> {
@@ -124,7 +124,7 @@ fn prepare_data(strand1_file: &str,
         )
     };
 
-    if translate { strand1.data = utils::translated(&*strand1.data); }
+    if complement { strand1.data = utils::complemented(&*strand1.data); }
     if reverse { strand1.data.reverse(); }
     strand2.data.push(b'$');
 
@@ -227,7 +227,7 @@ fn merge(x: &SD, y: &SD) -> SD {
         length: cmp::min(lsize, rsize),
         identity: x.identity,
         reversed: x.reversed,
-        translated: x.translated,
+        complemented: x.complemented,
     }
 }
 
@@ -289,7 +289,7 @@ fn run() -> Result<()> {
         skip_masked: bool,
 
         reverse: bool,
-        translate: bool,
+        complement: bool,
         interlaced: bool,
         trim: Vec<usize>,
 
@@ -315,7 +315,7 @@ fn run() -> Result<()> {
         skip_masked: args.is_present("skipmasked"),
 
         reverse: args.is_present("reverse"),
-        translate: args.is_present("translate"),
+        complement: args.is_present("complement"),
         interlaced: args.is_present("interlaced"),
         trim: values_t!(args, "trim", usize).unwrap_or_else(|_| Vec::new()),
 
@@ -341,7 +341,7 @@ fn run() -> Result<()> {
                 settings.kmer_size,
                 settings.gap_size,
                 if settings.reverse {"r"} else {""},
-                if settings.translate {"t"} else {""},
+                if settings.complement {"c"} else {""},
         )
     } else {
         settings.out
@@ -353,7 +353,7 @@ fn run() -> Result<()> {
     trace!("Max gap size             {}", settings.gap_size);
     trace!("Output file              {}", &out_file);
     trace!("Reverse 2nd strand       {}", settings.reverse);
-    trace!("Translate 2nd strand     {}", settings.translate);
+    trace!("Complement 2nd strand    {}", settings.complement);
     trace!("Interlaced SD            {}", settings.interlaced);
     trace!("Skipping soft-masked     {}", settings.skip_masked);
     trace!("Min. length              {}", settings.min_duplication_length);
@@ -381,7 +381,7 @@ fn run() -> Result<()> {
             max_cardinality:        settings.max_cardinality,
 
             reverse:                settings.reverse,
-            translate:              settings.translate,
+            complement:             settings.complement,
             interlaced:             settings.interlaced,
             skip_masked:            settings.skip_masked,
 
@@ -419,7 +419,7 @@ fn search_duplications(
             strand1_file,
             strand2_file,
             settings.reverse,
-            settings.translate,
+            settings.complement,
             settings.skip_masked,
             trim)?;
 
@@ -492,12 +492,12 @@ fn search_duplications(
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
-                left:       if !settings.reverse {sd.left} else {strand1.data.len() - sd.left - sd.length - 1},
-                right:      sd.right,
-                length:     sd.length,
-                identity:   sd.identity,
-                reversed:   settings.reverse,
-                translated: settings.translate,
+                left:         if !settings.reverse {sd.left} else {strand1.data.len() - sd.left - sd.length - 1},
+                right:        sd.right,
+                length:       sd.length,
+                identity:     sd.identity,
+                reversed:     settings.reverse,
+                complemented: settings.complement,
             }
         }));
         a

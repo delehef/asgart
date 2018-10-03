@@ -12,8 +12,12 @@ pub struct RunSettings {
     pub min_duplication_length: usize,
     pub max_cardinality: usize,
 
+    #[serde(skip_serializing)]
+    #[serde(default)]
     pub reverse: bool,
-    pub translate: bool,
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    pub complement: bool,
     pub skip_masked: bool,
 
     pub interlaced: bool,
@@ -74,7 +78,7 @@ pub struct SD {
     pub length: usize,
     pub identity: f32,
     pub reversed: bool,
-    pub translated: bool,
+    pub complemented: bool,
 }
 
 impl SD {

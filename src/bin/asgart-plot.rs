@@ -16,7 +16,6 @@ use std::fs::File;
 use std::path::Path;
 use clap::{App, AppSettings};
 use colored::Colorize;
-use bio::io::gff;
 use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
@@ -110,7 +109,7 @@ fn read_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     }
 }
 
-fn read_gff3_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
+fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
     let f = BufReader::new(f);
 
@@ -238,37 +237,37 @@ fn run() -> Result<()> {
     let mut features_tracks = features_tracks.unwrap();
 
 
-    if args.is_present("no-direct")       { result.sds.retain(|sd| sd.reversed) }
-    if args.is_present("no-reversed")     { result.sds.retain(|sd| !sd.reversed) }
-    if args.is_present("no-untranslated") { result.sds.retain(|sd| sd.translated) }
-    if args.is_present("no-translated")   { result.sds.retain(|sd| !sd.translated) }
+    if args.is_present("no-direct")         { result.sds.retain(|sd| sd.reversed) }
+    if args.is_present("no-reversed")       { result.sds.retain(|sd| !sd.reversed) }
+    if args.is_present("no-uncomplemented") { result.sds.retain(|sd| sd.complemented) }
+    if args.is_present("no-complemented")   { result.sds.retain(|sd| !sd.complemented) }
 
     if args.is_present("filter_duplications") {filter_sds_in_features(&mut result, &features_tracks, value_t!(args, "filter_duplications", usize).unwrap());}
     if args.is_present("filter_features") {filter_features_in_sds(&mut result, &mut features_tracks, value_t!(args, "filter_features", usize).unwrap());}
 
     let settings = Settings {
-        out_file:              out_file,
+        out_file:                out_file,
 
-        min_length:            value_t!(args, "min_length", usize).unwrap(),
-        min_identity:          value_t!(args, "min_identity", f32).unwrap(),
-        filter_direct:         args.is_present("no-direct"),
-        filter_non_translated: args.is_present("no-untranslated"),
-        filter_reversed:       args.is_present("no-reversed"),
-        filter_translated:     args.is_present("no-translated"),
+        min_length:              value_t!(args, "min_length", usize).unwrap(),
+        min_identity:            value_t!(args, "min_identity", f32).unwrap(),
+        filter_direct:           args.is_present("no-direct"),
+        filter_non_complemented: args.is_present("no-uncomplemented"),
+        filter_reversed:         args.is_present("no-reversed"),
+        filter_complemented:     args.is_present("no-complemented"),
 
-        size:                  200.0,
-        thickness:             1.0,
-        color1:                "#ff5b00".to_owned(),
-        color2:                "#00b2ae".to_owned(),
+        size:                    200.0,
+        thickness:               1.0,
+        color1:                  "#ff5b00".to_owned(),
+        color2:                  "#00b2ae".to_owned(),
 
-        feature_tracks: features_tracks,
+        feature_tracks:          features_tracks,
     };
     result.sds = result.sds
-            .into_iter()
-            .filter(|sd| !(settings.filter_direct && !sd.reversed))
-            .filter(|sd| !(settings.filter_reversed && sd.reversed))
-            .filter(|sd| !(settings.filter_non_translated && !sd.translated))
-        .filter(|sd| !(settings.filter_translated && sd.translated))
+        .into_iter()
+        .filter(|sd| !(settings.filter_direct && !sd.reversed))
+        .filter(|sd| !(settings.filter_reversed && sd.reversed))
+        .filter(|sd| !(settings.filter_non_complemented && !sd.complemented))
+        .filter(|sd| !(settings.filter_complemented && sd.complemented))
         .filter(|sd| sd.length >= settings.min_length)
         .filter(|sd| sd.identity >= settings.min_identity)
         .collect();

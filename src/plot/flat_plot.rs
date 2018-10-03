@@ -5,7 +5,6 @@ use separator::Separatable;
 use std::cmp;
 use std::io::prelude::*;
 use std::fs::File;
-use ::structs::*;
 use ::plot::*;
 
 const CHR_WIDTH: f64 = 4.0;

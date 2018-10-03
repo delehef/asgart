@@ -9,23 +9,29 @@ args:
         help: Second strand, FASTA format
         required: true
         index: 2
+
     - probe_size:
         help: Length of the probing k-mers
-        required: true
-        index: 3
+        long: probe-size
+        short: k
+        default_value: "20"
+        takes_value: true
+
     - max_gap:
         help: Maximum length of a gap
-        required: true
-        index: 4
+        long: gap-size
+        short: g
+        default_value: "100"
+        takes_value: true
 
     - reverse:
         short: R
         long: reverse
         help: Reverse the second strand
-    - translate:
-        short: T
-        long: translate
-        help: Translate the second strand
+    - complement:
+        short: C
+        long: complement
+        help: Complement the second strand
     - skipmasked:
         long: skip-masked
         short: S

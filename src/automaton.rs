@@ -79,7 +79,7 @@ fn make_duplications(psd: &ProtoSD,
             length: size,
             identity: 0.0,
             reversed: false,
-            translated: false,
+            complemented: false,
         });
     }
 

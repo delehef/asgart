@@ -2,7 +2,6 @@ extern crate rand;
 
 use std::io::prelude::*;
 use std::fs::File;
-use std::path::Path;
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use ::plot::*;
@@ -156,10 +155,7 @@ impl ChordPlotter {
 
         for sd in self.result.sds
             .iter()
-            .filter(|&sd| sd.identity >= self.settings.min_identity)
-            .filter(|&sd| !(self.settings.filter_reversed && sd.reversed))
-            .filter(|&sd| !(self.settings.filter_translated && sd.translated))
-            .filter(|&sd| self.inter_sd(sd) && sd.length >= self.settings.min_length) {
+            .filter(|&sd| self.inter_sd(sd)) {
                 let (left, right) = (sd.left as i64, sd.right as i64);
 
                 let t11 = self.angle(left as f64);
@@ -209,10 +205,7 @@ impl ChordPlotter {
 
         for sd in self.result.sds
             .iter()
-            .filter(|&sd| sd.identity >= self.settings.min_identity)
-            .filter(|&sd| !(self.settings.filter_reversed && sd.reversed))
-            .filter(|&sd| !(self.settings.filter_translated && sd.translated))
-            .filter(|&sd| self.intra_sd(sd) && sd.length >= self.settings.min_length) {
+            .filter(|&sd| self.intra_sd(sd)) {
                 let (left, right) = (sd.left as i64, sd.right as i64);
 
                 let t11 = self.angle(left as f64);

@@ -2,7 +2,6 @@ use ::structs::*;
 use std::fs::File;
 use std::io::Write;
 use ::plot::{Plotter, Settings};
-use plot::regex::Regex;
 
 pub struct GenomePlotter {
     result: RunResult,

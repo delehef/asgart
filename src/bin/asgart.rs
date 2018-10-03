@@ -280,23 +280,23 @@ fn reduce_overlap(result: &[SD]) -> Vec<SD> {
 
 fn run() -> Result<()> {
     struct Settings {
-        strand1_file: String,
-        strand2_file: String,
-        kmer_size: usize,
-        gap_size: u32,
+        strand1_file:           String,
+        strand2_file:           String,
+        kmer_size:              usize,
+        gap_size:               u32,
         min_duplication_length: usize,
-        max_cardinality: usize,
-        skip_masked: bool,
+        max_cardinality:        usize,
+        skip_masked:            bool,
 
-        reverse: bool,
-        complement: bool,
-        interlaced: bool,
-        trim: Vec<usize>,
+        reverse:                bool,
+        complement:             bool,
+        interlaced:             bool,
+        trim:                   Vec<usize>,
 
-        prefix: String,
-        out: String,
-        out_format: String,
-        threads_count: usize,
+        prefix:                 String,
+        out:                    String,
+        out_format:             String,
+        threads_count:          usize,
     }
 
     let yaml = load_yaml!("asgart.yaml");
@@ -306,32 +306,26 @@ fn run() -> Result<()> {
         .get_matches();
 
     let settings = Settings {
-        strand1_file: args.value_of("strand1").unwrap().to_owned(),
-        strand2_file: args.value_of("strand2").unwrap().to_owned(),
-        kmer_size: value_t_or_exit!(args, "probe_size", usize),
-        gap_size: value_t_or_exit!(args, "max_gap", u32),
+        strand1_file:           args.value_of("strand1").unwrap().to_owned(),
+        strand2_file:           args.value_of("strand2").unwrap().to_owned(),
+        kmer_size:              value_t_or_exit!(args, "probe_size", usize),
+        gap_size:               value_t_or_exit!(args, "max_gap", u32),
         min_duplication_length: value_t!(args, "minlength", usize).unwrap(),
-        max_cardinality: value_t!(args, "maxcardinality", usize).unwrap(),
-        skip_masked: args.is_present("skipmasked"),
+        max_cardinality:        value_t!(args, "maxcardinality", usize).unwrap(),
+        skip_masked:            args.is_present("skipmasked"),
 
-        reverse: args.is_present("reverse"),
-        complement: args.is_present("complement"),
-        interlaced: args.is_present("interlaced"),
-        trim: values_t!(args, "trim", usize).unwrap_or_else(|_| Vec::new()),
+        reverse:                args.is_present("reverse"),
+        complement:             args.is_present("complement"),
+        interlaced:             args.is_present("interlaced"),
+        trim:                   values_t!(args, "trim", usize).unwrap_or_else(|_| Vec::new()),
 
-        prefix: args.value_of("prefix").unwrap().to_owned(),
-        out: args.value_of("out").unwrap_or("").to_owned(),
-        out_format: args.value_of("out_format").unwrap().to_owned(),
-        threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
+        prefix:                 args.value_of("prefix").unwrap().to_owned(),
+        out:                    args.value_of("out").unwrap_or("").to_owned(),
+        out_format:             args.value_of("out_format").unwrap().to_owned(),
+        threads_count:          value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
     };
 
-    let verbose = args.is_present("verbose");
-    Logger::init(if verbose {
-        LevelFilter::Trace
-    } else {
-        LevelFilter::Info
-    })
-        .unwrap();
+    Logger::init(if args.is_present("verbose") {LevelFilter::Trace} else {LevelFilter::Info}).unwrap();
 
     let out_file = if settings.out.is_empty() {
         format!("{}{}_vs_{}_{}_{}{}{}",
@@ -360,9 +354,7 @@ fn run() -> Result<()> {
     trace!("Max. cardinality         {}", settings.max_cardinality);
     trace!("Threads count            {}", settings.threads_count);
     if !settings.trim.is_empty() {
-        trace!("Trimming                 {} → {}\n",
-               settings.trim[0],
-               settings.trim[1]);
+        trace!("Trimming                   {} → {}\n", settings.trim[0], settings.trim[1]);
     }
 
 
@@ -506,8 +498,15 @@ fn search_duplications(
 
 
     info!("{} Re-ordering...", style("[3/4]").blue().bold());
-    result.sort_by(|a, b| if a.left != b.left {
-        (a.left).cmp(&b.left)
+    result = result
+        .into_iter()
+        .map(|sd| if sd.left > sd.right {
+            SD {left: sd.right, right: sd.left, .. sd}
+        } else {
+            sd
+        })
+        .collect::<Vec<SD>>();
+    result.sort_by(|a, b| if a.left != b.left {(a.left).cmp(&b.left)
     } else {
         (a.right).cmp(&b.right)
     });

@@ -31,11 +31,11 @@ You should use ASGART if
 
 ## Linux
 
-Static binaries for Linux are available for [i686](https://github.com/delehef/asgart/releases/download/v1/asgart_linux-i686.tar.gz) and [x86-64](https://github.com/delehef/asgart/releases/download/v1.0/asgart_linux-x86-64.tar.gz) platforms.
+Static binaries for Linux are available [here](https://github.com/delehef/asgart/releases) for x86_64 platforms.
 
 ## MacOS
 
-Binaries for macOS are available [here](https://github.com/delehef/asgart/releases/download/v1/asgart_macos.tar.gz).
+Binaries for macOS are available [here](https://github.com/delehef/asgart/releases).
 
 ## Windows
 

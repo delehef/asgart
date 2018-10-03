@@ -279,12 +279,16 @@ length of the duplication.
 
 # Update log
 
+## v1.3.1
+
+- Fix erreneous GFF3 output: seq names are now corrent, no superfluous underscore and correct, relative positions instead of absolute ones.
+
 ## v1.3
 
 - Add a new plot format, _genomic_
 - Relabel “translate” to “complement”
 - Fix the lack of color in SVG export
-- `asgart-plot` can now read features track, either in custom or GFF3 format
+- `asgart-plot` can now read features tracks, either in custom or GFF3 format
 - Add a setting to skip soft-masked zones
 - Update dependencies
 

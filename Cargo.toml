@@ -1,6 +1,6 @@
 [package]
 name = "asgart"
-version = "1.2.0"
+version = "1.3.1"
 authors = ["Franklin Delehelle <franklin.delehelle@irit.fr>"]
 license = "GPLv3"
 

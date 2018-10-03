@@ -87,21 +87,24 @@ impl Exporter for GFF3Exporter {
         }
 
         for (i, sd) in result.sds.iter().enumerate() {
+            let left_chr = result.strand1.find_chr_by_pos(sd.left+1);
+            let right_chr = result.strand2.find_chr_by_pos(sd.right+1);
+
             writeln!(&mut out,
                      "{name}\tASGART\t.\t{left}\t{end}\t{identity}\t+\t.\tID=sd{i}",
-                     name = str::replace(&result.strand1.map[0].name, " ", "_"),
-                     left = sd.left+1,
-                     end = sd.left + 1 + sd.length,
+                     name     = str::replace(&left_chr.name.trim(), " ", "_"),
+                     left     = sd.left + 1 - left_chr.position,
+                     end      = sd.left + 1 + sd.length - left_chr.position,
                      identity = sd.identity,
-                     i = i
+                     i        = i
             ).chain_err(|| "Unable to write results")?;
             writeln!(&mut out,
                      "{name}\tASGART\t.\t{right}\t{end}\t{identity}\t+\t.\tID=sd{i}-right;Parent=sd{i}",
-                     name = str::replace(&result.strand2.map[0].name, " ", "_"),
-                     right = sd.right + 1,
-                     end = sd.right + sd.length + 1,
+                     name     = str::replace(&right_chr.name.trim(), " ", "_"),
+                     right    = sd.right + 1 - right_chr.position,
+                     end      = sd.right + sd.length + 1 - right_chr.position,
                      identity = sd.identity,
-                     i = i
+                     i        = i
             ).chain_err(|| "Unable to write results")?;
         }
 

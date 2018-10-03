@@ -283,9 +283,13 @@ length of the duplication.
 
 # Update log
 
+## v1.3.2
+
+- Fix arg name runtime error
+
 ## v1.3.1
 
-- Fix erreneous GFF3 output: seq names are now corrent, no superfluous underscore and correct, relative positions instead of absolute ones.
+- Fix erroneous GFF3 output: seq names are now corrent, no superfluous underscore and correct, relative positions instead of absolute ones.
 
 ## v1.3
 

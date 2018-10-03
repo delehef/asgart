@@ -16,7 +16,6 @@ args:
         short: k
         default_value: "20"
         takes_value: true
-
     - max_gap:
         help: Maximum length of a gap
         long: gap-size
@@ -32,7 +31,7 @@ args:
         short: C
         long: complement
         help: Complement the second strand
-    - skipmasked:
+    - skip_masked:
         long: skip-masked
         short: S
         help: ignore soft-masked repeated zones (lowercased regions)
@@ -49,13 +48,13 @@ args:
         short: i
         long: interlaced
         help: Look for interlaced duplications (may drastically impair performances!)
-    - maxcardinality:
+    - max_cardinality:
         long: max-cardinality
         help: maximal cardinality of duplications families
         default_value: "1000"
         takes_value: true
 
-    - minlength:
+    - min_length:
         long: min-length
         help: minimal length (in bp) of the duplications
         default_value: "1000"
@@ -86,7 +85,6 @@ args:
           - json
           - gff2
           - gff3
-
 
 
     - verbose:

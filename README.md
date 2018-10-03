@@ -159,6 +159,10 @@ results in a GFF3 file.
 
 ### Functional
 
+  - `--probe-size`/`-k` set the probing k-mers length (default: 20)
+
+  - `--gap-size`/`-g` set the maximal gap size in a duplicon (default: 100)
+
   - `--verbose`/`-v` display mnore information and a progress bar
 
   - `--reverse`/`-R` look for duplication which second arm is reversed

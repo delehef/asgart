@@ -1,5 +1,5 @@
 name: asgart
-about: A Segmental duplications Gathering and Refinment Tool
+about: A Segmental duplications Gathering and Refinement Tool
 args:
     - strand1:
         help: First strand, FASTA format

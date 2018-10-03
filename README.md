@@ -276,3 +276,29 @@ length of the duplication.
 `asgart-plot human_Y.json flat --out=flat.svg --no-direct --no-uncomplemented --min-length 2000`
 
 ![Flat graph example](screenshots/flat.png)
+
+# Update log
+
+## v1.3
+
+- Add a new plot format, _genomic_
+- Relabel “translate” to “complement”
+- Fix the lack of color in SVG export
+- `asgart-plot` can now read features track, either in custom or GFF3 format
+- Add a setting to skip soft-masked zones
+- Update dependencies
+
+## v1.2
+
+- Deep refactoring of the plotting system
+
+## v1.1
+
+- Add GFF2 & GFF3 export formats
+- Improve build system
+- Refactoring
+- Fix various small bugs
+
+## v1.0
+
+- First published version

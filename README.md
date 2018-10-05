@@ -283,6 +283,10 @@ length of the duplication.
 
 # Update log
 
+## v1.3.3
+
+- Fix regression
+
 ## v1.3.2
 
 - Fix arg name runtime error

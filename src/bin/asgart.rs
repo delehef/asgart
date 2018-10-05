@@ -500,11 +500,12 @@ fn search_duplications(
     info!("{} Re-ordering...", style("[3/4]").blue().bold());
     result = result
         .into_iter()
-        .map(|sd| if sd.left > sd.right {
-            SD {left: sd.right, right: sd.left, .. sd}
-        } else {
-            sd
-        })
+        .map(|sd| if sd.left > sd.right
+             && (*strand1).file_name == (*strand2).file_name {
+                 SD {left: sd.right, right: sd.left, .. sd}
+             } else {
+                 sd
+             })
         .collect::<Vec<SD>>();
     result.sort_by(|a, b| if a.left != b.left {(a.left).cmp(&b.left)
     } else {

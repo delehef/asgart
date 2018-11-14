@@ -47,7 +47,7 @@ impl Exporter for GFF2Exporter {
                      left = sd.left,
                      end = sd.left + sd.length,
                      identity = sd.identity * 10.0,
-                     reverse = if sd.reversed { "-" } else { "+" },
+                     reverse = "+",
                      i = i
             ).chain_err(|| "Unable to write results")?;
             writeln!(&mut out,
@@ -91,19 +91,21 @@ impl Exporter for GFF3Exporter {
             let right_chr = result.strand2.find_chr_by_pos(sd.right+1);
 
             writeln!(&mut out,
-                     "{name}\tASGART\t.\t{left}\t{end}\t{identity}\t+\t.\tID=sd{i}",
+                     "{name}\tASGART\tSD\t{left}\t{end}\t{identity}\t{reverse}\t.\tID=sd{i};Name=SD#{i}",
                      name     = str::replace(&left_chr.name.trim(), " ", "_"),
                      left     = sd.left + 1 - left_chr.position,
                      end      = sd.left + 1 + sd.length - left_chr.position,
                      identity = sd.identity,
+                     reverse  = "+",
                      i        = i
             ).chain_err(|| "Unable to write results")?;
             writeln!(&mut out,
-                     "{name}\tASGART\t.\t{right}\t{end}\t{identity}\t+\t.\tID=sd{i}-right;Parent=sd{i}",
+                     "{name}\tASGART\tSD\t{right}\t{end}\t{identity}\t{reverse}\t.\tID=sd{i}-right;Parent=sd{i};Name=SD#{i}",
                      name     = str::replace(&right_chr.name.trim(), " ", "_"),
                      right    = sd.right + 1 - right_chr.position,
                      end      = sd.right + sd.length + 1 - right_chr.position,
                      identity = sd.identity,
+                     reverse  = if sd.reversed { "-" } else { "+" },
                      i        = i
             ).chain_err(|| "Unable to write results")?;
         }

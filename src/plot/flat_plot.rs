@@ -141,7 +141,7 @@ impl FlatPlotter {
                     let x1 = end as f64/self.max_length * self.width;
                     let x2 = x1 + 2.0;
                     let x3 = x0 - 2.0;
-                    let font_size = 1.0;
+                    let font_size = 8.0;
 
                     svg += &format!("<polygon points='{},{} {},{} {},{} {},{}' style='fill:{};'/>\n",
                                     x0, self.height,
@@ -151,7 +151,7 @@ impl FlatPlotter {
                                     color
                     );
 
-                    svg += &format!("<text x='{}' y='{}' font-family='sans-serif' font-size='{}'>{}</text>",
+                    svg += &format!("<text x='{}' y='{}' font-family='sans-serif' font-size='{}' style='writing-mode: tb;'>{}</text>",
                                     x0, self.height + 20.0 + font_size,
                                     font_size, feature.name);
                 }
@@ -197,7 +197,7 @@ impl FlatPlotter {
                  width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
                  xmlns:xlink='http://www.w3.org/1999/xlink'>{}</svg>",
                 self.width,
-                self.height+30.0,
+                self.height+300.0,
                 svg)
     }
 }

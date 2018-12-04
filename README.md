@@ -104,45 +104,46 @@ where it was launched, following the following structure:
 ```
 {
         "strand1": {
-                "name": first strand filename,
-                "length": FATA file length,
+                "name":   first strand filename,
+                "length": FASTA file total content length,
                 "map": [
                         {
-                                "name": FASTA fragment name,
+                                "name":     FASTA fragment name,
                                 "position": offset in the FASTA file,
-                                "length": FASTA fragment length
+                                "length":   FASTA fragment length
                         }
                 ]
         },
 
         "strand2": {
-                "name": second strand filename,
-                "length": FATA file length,
+                "name":   second strand filename,
+                "length": FASTA file total content length,
                 "map": [
                         {
-                                "name": FASTA fragment name,
+                                "name":     FASTA fragment name,
                                 "position": offset in the FASTA file,
-                                "length": FASTA fragment length
+                                "length":   FASTA fragment length
                         }
                 ]
         },
 
         "settings": {
-                "probe_size": probe size used,
-                "max_gap_size": maximal gap size used,
+                "probe_size":             probe size used,
+                "max_gap_size":           maximal gap size used,
                 "min_duplication_length": minimal length for a duplicon,
-                "max_cardinality": maximal size of a family,
-                "skip_masked": were masked nucleotides skipped?,
-                "interlaced": were interlaced looked for?
+                "max_cardinality":        maximal size of a family,
+                "skip_masked":            were masked nucleotides skipped?,
+                "interlaced":             were interlaced looked for?
         },
 
         "sds": [
                 {
-                        "left": position of the left arm in the first file,
-                        "right": position of the right arm in the second file,
-                        "length": length of the duplication (bp),
-                        "reversed": true if the duplication is reversed, false else,
+                        "left":         position of the left arm in the first file,
+                        "right":        position of the right arm in the second file,
+                        "length":       length of the duplication (bp),
+                        "reversed":     true if the duplication is reversed, false else,
                         "complemented": true if the duplication is complemented, false else
+                        "identity":     the Jaccard distance between the two duplicons
                 },
                 ...
         ]
@@ -282,6 +283,11 @@ length of the duplication.
 ![Flat graph example](screenshots/flat.png)
 
 # Update log
+
+## v1.4.0
+
+- Add Jaccard distance computation to estimate identity between duplicons
+- Increase font size for feature plotting
 
 ## v1.3.3
 

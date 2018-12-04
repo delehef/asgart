@@ -5,6 +5,7 @@ extern crate indicatif;
 extern crate console;
 extern crate num_cpus;
 extern crate bio;
+extern crate rayon;
 extern crate asgart;
 
 use threadpool::ThreadPool;
@@ -13,6 +14,7 @@ use console::style;
 use bio::io::fasta;
 use clap::App;
 use log::LevelFilter;
+use rayon::prelude::*;
 
 use std::path;
 use std::thread;
@@ -131,7 +133,7 @@ fn prepare_data(strand1_file: &str,
     //
     // Build the suffix array
     //
-    info!("{} Building suffix array...", style("[1/4]").blue().bold());
+    info!("{} Building suffix array...", style("[1/5]").blue().bold());
     let suffix_array = r_divsufsort(&strand2.data);
 
     let shared_suffix_array = Arc::new(suffix_array);
@@ -480,7 +482,7 @@ fn search_duplications(
     }
     drop(tx);
 
-    info!("{} Looking for duplications...", style("[2/4]").blue().bold());
+    info!("{} Looking for duplications...", style("[2/5]").blue().bold());
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
@@ -497,7 +499,7 @@ fn search_duplications(
     let _ = tx_monitor.send(());
 
 
-    info!("{} Re-ordering...", style("[3/4]").blue().bold());
+    info!("{} Re-ordering...", style("[3/5]").blue().bold());
     result = result
         .into_iter()
         .map(|sd| if sd.left > sd.right
@@ -513,8 +515,12 @@ fn search_duplications(
     });
 
 
-    info!("{} Reducing overlapping...", style("[4/4]").blue().bold());
+    info!("{} Reducing overlapping...", style("[4/5]").blue().bold());
     result = reduce_overlap(&result);
+
+    info!("{} Computing Jaccard distance...", style("[5/5]").blue().bold());
+    result.par_iter_mut()
+        .for_each(|ref mut sd| sd.identity = sd.jaccard(settings.probe_size, &strand1.data, &strand2.data) as f32);
 
     info!("{}",
           style(format!("{} vs. {} processed in {}.",

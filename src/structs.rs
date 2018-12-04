@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 pub const ALPHABET: [u8; 5] = [
     b'A', b'T', b'G', b'C', b'N'
 ];
@@ -88,5 +90,17 @@ impl SD {
 
     pub fn right_part(&self) -> (usize, usize) {
         (self.right, self.length)
+    }
+
+    pub fn jaccard(&self, kmers_length: usize, strand1: &[u8], strand2: &[u8]) -> f64 {
+        fn kmerize(s: &[u8], kmers_length: usize) -> HashSet<Vec<u8>> {
+            s.windows(kmers_length).map(|w| w.iter().cloned().collect()).collect()
+        }
+        let left_kmers  = kmerize(&strand1[self.left ..= self.left + self.length], kmers_length);
+        let right_kmers = kmerize(&strand2[self.right ..= self.right + self.length], kmers_length);
+        let inter = left_kmers.intersection(&right_kmers).count() as f64;
+        let union = left_kmers.union(&right_kmers).count() as f64;
+
+        (100.0*inter/union * 100.0).round() / 100.0
     }
 }

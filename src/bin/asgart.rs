@@ -430,7 +430,7 @@ fn search_duplications(
         let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(num_tasks);
 
         let mut start = 0;
-        for id in 0..num_tasks + 1 {
+        for id in 0..=num_tasks {
             progresses.push(Arc::new(AtomicUsize::new(0)));
             let my_tx = tx.clone();
             let suffix_array = Arc::clone(&shared_suffix_array);
@@ -447,7 +447,7 @@ fn search_duplications(
                     &suffix_array,
                     &searcher,
                     &my_progress,
-                    RunSettings {start : start, end : end, .. settings}
+                    RunSettings {start, end, .. settings}
                 )).unwrap();
             });
 

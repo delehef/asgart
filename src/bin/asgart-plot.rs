@@ -124,7 +124,7 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
 
                 let name = if l[8].contains("Name") {
                     l[8]
-                        .split(";")
+                        .split(';')
                         .find(|cx| cx.contains("Name")).unwrap()
                         .split('=')
                         .nth(1).unwrap()

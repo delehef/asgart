@@ -1,6 +1,8 @@
 use std::mem;
 use std::collections::HashMap;
 
+use superslice::Ext;
+
 use structs::ALPHABET;
 use divsufsort64::*;
 use automaton::Segment;
@@ -75,10 +77,13 @@ impl Searcher {
         s
     }
 
+
     pub fn search(&self, dna: &[u8], sa: &[idx], pattern: &[u8]) -> Vec<Segment> {
+        fn stringcmp(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
+            return a.cmp(b)
+        }
         let index = Searcher::indexize(pattern);
 
-        let mut out = 0;
         if !self.cache.contains_key(&index) {
             panic!("Unable to find {} ({})",
                    index,
@@ -86,21 +91,15 @@ impl Searcher {
         }
 
         let (lstart, rstart) = self.cache[&index];
-        let count = unsafe {
-            sa_searchb64(dna.as_ptr(),
-                         dna.len() as i64,
-                         pattern.as_ptr(),
-                         pattern.len() as i64,
-                         sa.as_ptr(),
-                         sa.len() as i64,
-                         &mut out,
-                         lstart as idx,
-                         rstart as idx)
-        };
+        let range = &sa[lstart..rstart]
+            .equal_range_by(|x| if *x as usize + pattern.len() > dna.len() {
+                std::cmp::Ordering::Less
+            } else {
+                stringcmp(&dna[*x as usize .. *x as usize + pattern.len()], &pattern)
+            });
 
-        let mut rr = Vec::with_capacity(count as usize);
-
-        for start in sa.iter().skip(out as usize).take(count as usize) {
+        let mut rr = Vec::with_capacity(range.end - range.start + 1);
+        for start in &sa[lstart + range.start .. lstart + range.end] {
             let start = *start as usize;
             rr.push(Segment {
                 tag: 0,

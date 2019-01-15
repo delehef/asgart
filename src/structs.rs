@@ -94,7 +94,7 @@ impl SD {
 
     pub fn jaccard(&self, kmers_length: usize, strand1: &[u8], strand2: &[u8]) -> f64 {
         fn kmerize(s: &[u8], kmers_length: usize) -> HashSet<Vec<u8>> {
-            s.windows(kmers_length).map(|w| w.iter().cloned().collect()).collect()
+            s.windows(kmers_length).map(|w| w.to_vec()).collect()
         }
         let left_kmers  = kmerize(&strand1[self.left  ..= self.left + self.length], kmers_length);
         let right_kmers = kmerize(&strand2[self.right ..= self.right + self.length], kmers_length);

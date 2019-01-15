@@ -96,7 +96,7 @@ impl SD {
         fn kmerize(s: &[u8], kmers_length: usize) -> HashSet<Vec<u8>> {
             s.windows(kmers_length).map(|w| w.iter().cloned().collect()).collect()
         }
-        let left_kmers  = kmerize(&strand1[self.left ..= self.left + self.length], kmers_length);
+        let left_kmers  = kmerize(&strand1[self.left  ..= self.left + self.length], kmers_length);
         let right_kmers = kmerize(&strand2[self.right ..= self.right + self.length], kmers_length);
         let inter = left_kmers.intersection(&right_kmers).count() as f64;
         let union = left_kmers.union(&right_kmers).count() as f64;

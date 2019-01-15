@@ -208,26 +208,18 @@ fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bo
 }
 
 fn merge(x: &SD, y: &SD) -> SD {
-    let (xleft, yleft, xsize, ysize) = if x.left < y.left {
-        (x.left, y.left, x.length, y.length)
-    } else {
-        (y.left, x.left, x.length, y.length)
-    };
-    let lsize = (yleft - xleft) + ((xleft + xsize) - yleft) + ((yleft + ysize) - (xleft + xsize));
+    let new_left = cmp::min(x.left, y.left);
+    let lsize = cmp::max(x.left + x.length, y.left + y.length) - new_left;
 
-    let (xright, yright, xsize, ysize) = if x.right < y.right {
-        (x.right, y.right, x.length, y.length)
-    } else {
-        (y.right, x.right, x.length, y.length)
-    };
-    let rsize = (yright - xright) + ((xright + xsize) - yright) +
-        ((yright + ysize) - (xright + xsize));
+    let new_right = cmp::min(x.right, y.right);
+    let rsize = cmp::max(x.right + x.length, y.right + y.length) - new_right;
+
 
     SD {
-        left: xleft,
-        right: xright,
-        length: cmp::min(lsize, rsize),
-        identity: x.identity,
+        left: new_left,
+        right: new_right,
+        length: cmp::max(lsize, rsize),
+        identity: 0.,
         reversed: x.reversed,
         complemented: x.complemented,
     }
@@ -250,7 +242,6 @@ fn reduce_overlap(result: &[SD]) -> Vec<SD> {
                         y.left = x.left;
                         y.right = x.right;
                         y.length = x.length;
-                        y.identity = x.identity;
                         continue 'to_insert;
                     }
 
@@ -482,7 +473,7 @@ fn search_duplications(
     }
     drop(tx);
 
-    info!("{} Looking for duplications...", style("[2/5]").blue().bold());
+    trace!("{} Looking for duplications...", style("[2/5]").blue().bold());
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
@@ -499,34 +490,32 @@ fn search_duplications(
     let _ = tx_monitor.send(());
 
 
-    info!("{} Re-ordering...", style("[3/5]").blue().bold());
+    trace!("{} Re-ordering...", style("[3/5]").blue().bold());
     result = result
         .into_iter()
-        .map(|sd| if sd.left > sd.right
-             && (*strand1).file_name == (*strand2).file_name {
+        .map(|sd|
+             if sd.left > sd.right && (*strand1).file_name == (*strand2).file_name {
                  SD {left: sd.right, right: sd.left, .. sd}
              } else {
                  sd
-             })
+             }
+        )
         .collect::<Vec<SD>>();
-    result.sort_by(|a, b| if a.left != b.left {(a.left).cmp(&b.left)
-    } else {
-        (a.right).cmp(&b.right)
-    });
+    result.sort_by(|a, b| (a.right).cmp(&b.right));
 
 
-    info!("{} Reducing overlapping...", style("[4/5]").blue().bold());
+    trace!("{} Reducing overlapping...", style("[4/5]").blue().bold());
     result = reduce_overlap(&result);
 
-    info!("{} Computing Jaccard distance...", style("[5/5]").blue().bold());
+    trace!("{} Computing Jaccard distance...\n", style("[5/5]").blue().bold());
     result.par_iter_mut()
         .for_each(|ref mut sd| sd.identity = sd.jaccard(settings.probe_size, &strand1.data, &strand2.data) as f32);
 
-    info!("{}",
-          style(format!("{} vs. {} processed in {}.",
-                        strand1_file,
-                        strand2_file,
-                        HumanDuration(total.elapsed()))).green().bold()
+    trace!("{}",
+           style(format!("{:?} vs. {:?} processed in {}.",
+                         path::Path::new(strand1_file).file_name().expect("Should never fail"),
+                         path::Path::new(strand2_file).file_name().expect("Should never fail"),
+                         HumanDuration(total.elapsed()))).green().bold()
     );
 
     Ok(RunResult {

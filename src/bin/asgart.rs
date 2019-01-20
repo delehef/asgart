@@ -1,5 +1,6 @@
 #[macro_use] pub extern crate clap;
 #[macro_use] extern crate log;
+#[macro_use] extern crate human_panic;
 extern crate threadpool;
 extern crate indicatif;
 extern crate console;
@@ -536,6 +537,8 @@ fn search_duplications(
 
 
 fn main() {
+    setup_panic!();
+
     if let Err(ref e) = run() {
         println!("{} {}", style("Error: ").red(), e);
         for e in e.iter().skip(1) {

@@ -321,14 +321,13 @@ fn run() -> Result<()> {
     Logger::init(if args.is_present("verbose") {LevelFilter::Trace} else {LevelFilter::Info}).unwrap();
 
     let out_file = if settings.out.is_empty() {
-        format!("{}{}_vs_{}_{}_{}{}{}",
+        format!("{}{}-{}{}{}{}",
                 &settings.prefix,
-                path::Path::new(&settings.strand1_file).file_name().unwrap().to_str().unwrap(),
-                path::Path::new(&settings.strand2_file).file_name().unwrap().to_str().unwrap(),
-                settings.kmer_size,
-                settings.gap_size,
-                if settings.reverse {"r"} else {""},
-                if settings.complement {"c"} else {""},
+                path::Path::new(&settings.strand1_file).file_stem().unwrap().to_str().unwrap(),
+                path::Path::new(&settings.strand2_file).file_stem().unwrap().to_str().unwrap(),
+                if settings.reverse || settings.complement {"_"} else {""},
+                if settings.reverse {"R"} else {""},
+                if settings.complement {"C"} else {""},
         )
     } else {
         settings.out

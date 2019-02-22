@@ -134,7 +134,6 @@ fn prepare_data(strand1_file: &str,
     //
     // Build the suffix array
     //
-    info!("{} Building suffix array...", style("[1/5]").blue().bold());
     let suffix_array = r_divsufsort(&strand2.data);
 
     let shared_suffix_array = Arc::new(suffix_array);
@@ -399,6 +398,7 @@ fn search_duplications(
 
     let total = Instant::now();
 
+    trace!("{} Building suffix array...", style("[1/5]").blue().bold());
     let (strand1, strand2, shared_suffix_array, shared_searcher) =
         prepare_data(
             strand1_file,

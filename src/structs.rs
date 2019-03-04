@@ -29,6 +29,10 @@ pub struct RunSettings {
     #[serde(skip_serializing)]
     #[serde(default)]
     pub end: usize,
+
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    pub chunk_size: usize,
     #[serde(skip_serializing)]
     #[serde(default)]
     pub compute_score: bool,

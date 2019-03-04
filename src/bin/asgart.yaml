@@ -89,6 +89,12 @@ args:
         help: number of threads used, number of cores if 0
         takes_value: true
         number_of_values: 1
+    - chunk_size:
+        long: chunk-size
+        help: Size used to slice input data for parallel processing
+        takes_value: true
+        number_of_values: 1
+        default_value: "1000000"
 
     - verbose:
         short: v

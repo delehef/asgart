@@ -88,14 +88,14 @@ fn prepare_data(strand1_file: &str,
     if stop <= shift {
         return Err(format!("{} greater than {}", shift, stop).into());
     }
-    let size = stop - shift;
+    let trimmed_size = stop - shift;
     let strand1 = strand1[shift..stop].to_vec();
 
 
     //
     // Invert strands 1 & 2 to ensure efficient processing
     //
-    let (mut strand1, mut strand2, _, shift2) = if strand2.len() < size {
+    let (mut strand1, mut strand2, _, shift2) = if strand2.len() < trimmed_size {
         (
             Strand {
                 file_name: strand1_file.to_owned(),
@@ -272,6 +272,8 @@ fn reduce_overlap(result: &[SD]) -> Vec<SD> {
 
 
 fn run() -> Result<()> {
+    // Those settings are needed by the porcelaine
+    // They encompass RunSettings
     struct Settings {
         strand1_file:           String,
         strand2_file:           String,
@@ -291,6 +293,7 @@ fn run() -> Result<()> {
         out_format:             String,
         compute_score:          bool,
         threads_count:          usize,
+        chunk_size:             usize,
     }
 
     let yaml = load_yaml!("asgart.yaml");
@@ -318,6 +321,7 @@ fn run() -> Result<()> {
         out_format:             args.value_of("out_format").unwrap().to_owned(),
         compute_score:          args.is_present("compute_score"),
         threads_count:          value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
+        chunk_size:             value_t!(args, "chunk_size", usize).unwrap(),
     };
 
     Logger::init(if args.is_present("verbose") {LevelFilter::Trace} else {LevelFilter::Info}).unwrap();
@@ -347,6 +351,7 @@ fn run() -> Result<()> {
     trace!("Min. length              {}", settings.min_duplication_length);
     trace!("Max. cardinality         {}", settings.max_cardinality);
     trace!("Threads count            {}", settings.threads_count);
+    trace!("Chunk size               {}", settings.chunk_size);
     if !settings.trim.is_empty() {
         trace!("Trimming                   {} → {}\n", settings.trim[0], settings.trim[1]);
     }
@@ -372,7 +377,9 @@ fn run() -> Result<()> {
             skip_masked:            settings.skip_masked,
 
             start:                  0,
-            end:                    0
+            end:                    0,
+
+            chunk_size:             settings.chunk_size,
             compute_score:          settings.compute_score,
         },
         settings.threads_count,
@@ -416,10 +423,8 @@ fn search_duplications(
     let (tx_monitor, rx_monitor) = mpsc::channel();
     let (tx, rx) = mpsc::channel();
     {
-        const CHUNK_SIZE: usize = 100_000;
-
-        let num_tasks = (strand1.data.len() - settings.probe_size) / CHUNK_SIZE;
-        let chunk_overflow = (strand1.data.len() - settings.probe_size) % CHUNK_SIZE;
+        let num_tasks = (strand1.data.len() - settings.probe_size) / settings.chunk_size;
+        let chunk_overflow = (strand1.data.len() - settings.probe_size) % settings.chunk_size;
 
         let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(num_tasks);
 
@@ -434,7 +439,7 @@ fn search_duplications(
             let my_progress = Arc::clone(&progresses[id]);
 
             thread_pool.execute(move || {
-                let end = start + if id < num_tasks { CHUNK_SIZE } else { chunk_overflow };
+                let end = start + if id < num_tasks { settings.chunk_size } else { chunk_overflow };
                 my_tx.send(automaton::search_duplications(
                     &strand1.data,
                     &strand2.data,
@@ -445,7 +450,7 @@ fn search_duplications(
                 )).unwrap();
             });
 
-            start += CHUNK_SIZE;
+            start += settings.chunk_size;
         }
 
         let total = strand1.data.len();

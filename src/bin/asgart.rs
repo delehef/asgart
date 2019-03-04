@@ -289,6 +289,7 @@ fn run() -> Result<()> {
         prefix:                 String,
         out:                    String,
         out_format:             String,
+        compute_score:          bool,
         threads_count:          usize,
     }
 
@@ -315,6 +316,7 @@ fn run() -> Result<()> {
         prefix:                 args.value_of("prefix").unwrap().to_owned(),
         out:                    args.value_of("out").unwrap_or("").to_owned(),
         out_format:             args.value_of("out_format").unwrap().to_owned(),
+        compute_score:          args.is_present("compute_score"),
         threads_count:          value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
     };
 
@@ -371,6 +373,7 @@ fn run() -> Result<()> {
 
             start:                  0,
             end:                    0
+            compute_score:          settings.compute_score,
         },
         settings.threads_count,
     )?;
@@ -398,7 +401,7 @@ fn search_duplications(
 
     let total = Instant::now();
 
-    trace!("{} Building suffix array...", style("[1/5]").blue().bold());
+    info!("{} Building suffix array...", style("[1/5]").blue().bold());
     let (strand1, strand2, shared_suffix_array, shared_searcher) =
         prepare_data(
             strand1_file,
@@ -473,7 +476,7 @@ fn search_duplications(
     }
     drop(tx);
 
-    trace!("{} Looking for duplications...", style("[2/5]").blue().bold());
+    info!("{} Looking for duplications...", style("[2/5]").blue().bold());
     let mut result = rx.iter().fold(Vec::new(), |mut a, b| {
         a.extend(b.iter().map(|sd| {
             SD {
@@ -490,9 +493,21 @@ fn search_duplications(
     let _ = tx_monitor.send(());
 
 
-    trace!("{} Re-ordering...", style("[3/5]").blue().bold());
+    if settings.compute_score {
+        info!("{} Computing score...\n", style("[3/5]").blue().bold());
+        let (shift, _) = trim.unwrap_or((0, 0));
+        result
+            .par_iter_mut()
+            .for_each(|ref mut sd| sd.identity = sd.levenshtein(
+                shift,
+                &strand1.data,
+                &strand2.data
+            ) as f32);
+    }
+
+    info!("{} Re-ordering...", style("[4/5]").blue().bold());
     result = result
-        .into_iter()
+        .into_par_iter()
         .map(|sd|
              if sd.left > sd.right && (*strand1).file_name == (*strand2).file_name {
                  SD {left: sd.right, right: sd.left, .. sd}
@@ -503,19 +518,14 @@ fn search_duplications(
         .collect::<Vec<SD>>();
     result.sort_by(|a, b| (a.right).cmp(&b.right));
 
-
-    trace!("{} Reducing overlapping...", style("[4/5]").blue().bold());
+    info!("{} Reducing overlapping...", style("[5/5]").blue().bold());
     result = reduce_overlap(&result);
 
-    trace!("{} Computing Jaccard distance...\n", style("[5/5]").blue().bold());
-    result.par_iter_mut()
-        .for_each(|ref mut sd| sd.identity = sd.jaccard(settings.probe_size, &strand1.data, &strand2.data) as f32);
-
-    trace!("{}",
-           style(format!("{:?} vs. {:?} processed in {}.",
-                         path::Path::new(strand1_file).file_name().expect("Should never fail"),
-                         path::Path::new(strand2_file).file_name().expect("Should never fail"),
-                         HumanDuration(total.elapsed()))).green().bold()
+    info!("{}",
+          style(format!("{:?} vs. {:?} processed in {}.",
+                        path::Path::new(strand1_file).file_name().expect("Should never fail"),
+                        path::Path::new(strand2_file).file_name().expect("Should never fail"),
+                        HumanDuration(total.elapsed()))).green().bold()
     );
 
     Ok(RunResult {

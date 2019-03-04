@@ -29,6 +29,9 @@ pub struct RunSettings {
     #[serde(skip_serializing)]
     #[serde(default)]
     pub end: usize,
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    pub compute_score: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -92,15 +95,13 @@ impl SD {
         (self.right, self.length)
     }
 
-    pub fn jaccard(&self, kmers_length: usize, strand1: &[u8], strand2: &[u8]) -> f64 {
-        fn kmerize(s: &[u8], kmers_length: usize) -> HashSet<Vec<u8>> {
-            s.windows(kmers_length).map(|w| w.to_vec()).collect()
-        }
-        let left_kmers  = kmerize(&strand1[self.left  ..= self.left + self.length], kmers_length);
-        let right_kmers = kmerize(&strand2[self.right ..= self.right + self.length], kmers_length);
-        let inter = left_kmers.intersection(&right_kmers).count() as f64;
-        let union = left_kmers.union(&right_kmers).count() as f64;
+    pub fn levenshtein(&self, trim: usize, strand1: &[u8], strand2: &[u8]) -> f64 {
+        let left_arm  = &strand1[self.left  ..= self.left + self.length];
+        let right_arm = &strand2[self.right - trim ..= self.right - trim + self.length];
+        let dist = bio::alignment::distance::levenshtein(left_arm, right_arm) as f64;
 
-        (100.0*inter/union * 100.0).round() / 100.0
+        let score = 100.0 * (1.0 - dist/(self.length as f64));
+
+        score
     }
 }

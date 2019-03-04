@@ -9,33 +9,37 @@ pub const ALPHABET_MASKED: [u8; 5] = [
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct RunSettings {
-    pub probe_size: usize,
-    pub max_gap_size: u32,
+    pub probe_size:             usize,
+    pub max_gap_size:           u32,
     pub min_duplication_length: usize,
-    pub max_cardinality: usize,
+    pub max_cardinality:        usize,
+    pub trim:                   Option<(usize, usize)>,
 
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub reverse: bool,
+    pub reverse:                bool,
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub complement: bool,
-    pub skip_masked: bool,
+    pub complement:             bool,
+    pub skip_masked:            bool,
 
-    pub interlaced: bool,
+    pub interlaced:             bool,
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub start: usize,
+    pub start:                  usize,
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub end: usize,
+    pub end:                    usize,
 
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub chunk_size: usize,
+    pub threads_count:          usize,
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub compute_score: bool,
+    pub chunk_size:             usize,
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    pub compute_score:          bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

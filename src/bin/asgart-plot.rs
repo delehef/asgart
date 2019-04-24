@@ -118,31 +118,30 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
         .filter(|l| !l.is_empty() && !l.starts_with('#'))
         .fold(Vec::new(), |mut ax, l| {
             let l = l.split('\t').collect::<Vec<&str>>();
-            if l[2] == "gene" {
-                let start = l[3].parse::<usize>().unwrap();
-                let end = l[4].parse::<usize>().unwrap();
+            let start = l[3].parse::<usize>().unwrap();
+            let end = l[4].parse::<usize>().unwrap();
 
-                let name = if l[8].contains("Name") {
-                    l[8]
-                        .split(';')
-                        .find(|cx| cx.contains("Name")).unwrap()
-                        .split('=')
-                        .nth(1).unwrap()
-                        .to_string()
-                } else {
-                    l[8].to_owned()
-                };
+            let name = if l[8].contains("Name") {
+                l[8]
+                    .split(';')
+                    .find(|cx| cx.contains("Name")).unwrap()
+                    .split('=')
+                    .nth(1).unwrap()
+                    .to_string()
+            } else {
+                l[8].to_owned()
+            };
 
-                let feature = Feature {
-                    name: name,
-                    positions: vec![FeaturePosition::Absolute{
-                        start:  start,
-                        length: end - start,
-                    }],
-                } ;
+            let feature = Feature {
+                name: name,
+                positions: vec![FeaturePosition::Relative{
+                    chr: l[0].to_string(),
+                    start:  start,
+                                    length: end - start,
+                }],
+            } ;
 
-                ax.push(feature);
-            }
+            ax.push(feature);
 
             ax
         });

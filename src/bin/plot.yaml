@@ -51,13 +51,11 @@ args:
         number_of_values: 1
     - filter_duplications:
         long: filter-duplications
-        help: don't plot duplicons farther away than <filter-features> bp from features in track.
+        help: if present, don't plot duplicons farther away than <filter-features> bp from features in track.
         takes_value: true
         number_of_values: 1
-        default_value: "0"
     - filter_features:
         long: filter-features
-        help: don't plot features farther away than <filter-features> bp from duplicons in track.
+        help: if present, don't plot features farther away than <filter-features> bp from duplicons.
         takes_value: true
         number_of_values: 1
-        default_value: "0"

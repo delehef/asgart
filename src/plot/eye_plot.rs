@@ -50,27 +50,7 @@ impl EyePlotter {
         (CX + t.cos() * r, CY - t.sin() * r)
     }
 
-    fn chr_left(&self, sd: &SD) -> isize {
-        for (i, chr) in self.result.strand1.map.iter().enumerate() {
-            if sd.left >= chr.position && sd.left <= chr.position + chr.length {
-                return i as isize
-            }
-        }
-        -1
-    }
-
-    fn chr_right(&self, sd: &SD) -> isize {
-        for (i, chr) in self.result.strand2.map.iter().enumerate() {
-            if sd.right >= chr.position && sd.right <= chr.position + chr.length {
-                return i as isize
-            }
-        }
-        -1
-    }
-
-    fn inter_sd(&self, sd: &SD) -> bool {
-        self.chr_left(sd) != self.chr_right(sd)
-    }
+    fn inter_sd(&self, sd: &SD) -> bool {sd.chr_left != sd.chr_right}
 
     fn plot_chord(self) -> String {
         let mut svg = String::new();
@@ -80,7 +60,7 @@ impl EyePlotter {
             if sd.length < 5000 {
                 continue;
             }
-            let (left, right) = (sd.left as i64, sd.right as i64);
+            let (left, right) = (sd.global_left_position as i64, sd.global_right_position as i64);
 
             let t11 = self.angle(left as f64);
             let t12 = self.angle(left as f64 + sd.length as f64);
@@ -139,7 +119,7 @@ impl EyePlotter {
             // let (cx, cy) = self.cartesian(tt, rout);
             // format!("M {},{} Q {},{} {} {}", x1, y1, cx, cy, x2, y2)
 
-            let (left, right) = (sd.left as i64, sd.right as i64);
+            let (left, right) = (sd.global_left_position as i64, sd.global_right_position as i64);
 
             let t11 = self.angle(left as f64);
             let t12 = self.angle(left as f64 + sd.length as f64);

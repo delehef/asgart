@@ -2,7 +2,7 @@ use std::cmp;
 use std::fmt;
 
 use super::divsufsort64::*;
-use super::structs::{RunSettings, SD};
+use super::structs::{RunSettings, ProtoSD};
 use super::searcher::Searcher;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -32,23 +32,23 @@ enum SearchState {
 }
 
 #[derive(Debug,Clone)]
-pub struct ProtoSD {
+pub struct ProtoProtoSD {
     bottom: usize,
     top: usize,
     matches: Vec<Segment>,
 }
 
-fn make_right_arms(p: &ProtoSD, max_hole_size: u32) -> Vec<Segment> {
+fn make_right_arms(p: &ProtoProtoSD, max_hole_size: u32) -> Vec<Segment> {
     let matches = p.matches.clone();
     merge_segments_with_delta(&matches, u64::from(max_hole_size))
 }
 
 
-fn make_duplications(psd: &ProtoSD,
+fn make_duplications(psd: &ProtoProtoSD,
                      strand1: &[u8],
                      max_hole_size: u32,
                      min_duplication_size: usize)
-                     -> Vec<SD> {
+                     -> Vec<ProtoSD> {
     let right_segments = make_right_arms(psd, max_hole_size);
     let mut r = Vec::new();
 
@@ -73,7 +73,7 @@ fn make_duplications(psd: &ProtoSD,
             continue;
         }
 
-        r.push(SD {
+        r.push(ProtoSD {
             left: cmp::max(psd.bottom, right_segment.tag),
             right: right_segment.start,
             length: size,
@@ -94,7 +94,7 @@ pub fn search_duplications(strand1: &[u8],
                            progress: &AtomicUsize,
 
                            settings: RunSettings
-) -> Vec<SD> {
+) -> Vec<ProtoSD> {
     let mut r = Vec::new();
 
     let mut prune = 0;
@@ -138,13 +138,13 @@ pub fn search_duplications(strand1: &[u8],
                 } else if i + settings.probe_size > strand1.len() - 1 {
                     SearchState::Proto
                 } else {
-                    prune += 1;
-                    if prune > 2*(settings.min_duplication_length/settings.probe_size) {
-                        current_segments.retain(|segment|
-                                                (segment.end - segment.start) > settings.min_duplication_length
-                        );
-                        prune = 0;
-                    }
+                    // prune += 1;
+                    // if prune > 2*(settings.min_duplication_length/settings.probe_size) {
+                    //     current_segments.retain(|segment|
+                    //                             (segment.end - segment.start) > settings.min_duplication_length
+                    //     );
+                    //     prune = 0;
+                    // }
 
                     let new_matches: Vec<Segment> =
                         searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
@@ -208,7 +208,7 @@ pub fn search_duplications(strand1: &[u8],
             }
             SearchState::Proto => {
                 if (i - current_start >= settings.min_duplication_length) && !current_segments.is_empty() {
-                    let psd = ProtoSD {
+                    let psd = ProtoProtoSD {
                         bottom: current_start,
                         top: i,
                         matches: current_segments.clone(),

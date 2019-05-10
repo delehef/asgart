@@ -7,7 +7,7 @@ pub const ALPHABET_MASKED: [u8; 5] = [
     b'a', b't', b'g', b'c', b'n'
 ];
 
-#[derive(Serialize, Deserialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct RunSettings {
     pub probe_size:             usize,
     pub max_gap_size:           u32,
@@ -42,14 +42,14 @@ pub struct RunSettings {
     pub compute_score:          bool,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Start {
     pub name: String,
     pub position: usize,
     pub length: usize,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct StrandResult {
     pub name: String,
     pub length: usize,
@@ -65,17 +65,17 @@ impl StrandResult {
         self.map.iter().find(|chr| chr.name == name).unwrap()
     }
 
-    pub fn find_chr_by_pos(&self, pos: usize) -> &Start {
-        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length).unwrap()
+    pub fn find_chr_index(&self, name: &str) -> Option<usize> {
+        self.map.iter().position(|chr| chr.name == name)
     }
 
-    pub fn find_chr_index(&self, pos: usize) -> Option<usize> {
-        self.map.iter().position(|ref chr| pos> chr.position &&  pos < chr.position + chr.length)
+    pub fn find_chr_by_pos(&self, pos: usize) -> &Start {
+        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length).unwrap()
     }
 }
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RunResult {
     pub strand1: StrandResult,
     pub strand2: StrandResult,
@@ -85,7 +85,7 @@ pub struct RunResult {
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SD {
+pub struct ProtoSD {
     pub left: usize,
     pub right: usize,
     pub length: usize,
@@ -93,8 +93,7 @@ pub struct SD {
     pub reversed: bool,
     pub complemented: bool,
 }
-
-impl SD {
+impl ProtoSD {
     pub fn left_part(&self) -> (usize, usize) {
         (self.left, self.length)
     }
@@ -111,5 +110,31 @@ impl SD {
         let score = 100.0 * (1.0 - dist/(self.length as f64));
 
         score
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SD {
+    pub chr_left: String,
+    pub chr_right: String,
+
+    pub global_left_position: usize,
+    pub global_right_position: usize,
+
+    pub chr_left_position: usize,
+    pub chr_right_position: usize,
+
+    pub length: usize,
+    pub identity: f32,
+    pub reversed: bool,
+    pub complemented: bool,
+}
+impl SD {
+    pub fn left_part(&self) -> (usize, usize) {
+        (self.global_left_position, self.length)
+    }
+
+    pub fn right_part(&self) -> (usize, usize) {
+        (self.global_right_position, self.length)
     }
 }

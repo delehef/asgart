@@ -137,7 +137,7 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
                 positions: vec![FeaturePosition::Relative{
                     chr: l[0].to_string(),
                     start:  start,
-                                    length: end - start,
+                    length: end - start,
                 }],
             } ;
 
@@ -146,7 +146,7 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
             ax
         });
 
-        Ok(r)
+    Ok(r)
 }
 
 fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
@@ -214,8 +214,9 @@ fn run() -> Result<()> {
 
     let json_file = args.value_of("FILE").unwrap();
     let mut result = read_result(json_file)?;
-    let out_file =
-        args.value_of("out")
+
+    let out_file = args
+        .value_of("out")
         .and_then(|f| {
             let path = Path::new(f);
             if path.is_dir() {
@@ -223,12 +224,13 @@ fn run() -> Result<()> {
             } else {
                 Some(f.to_owned())
             }
-        }).or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
+        })
+        .or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
 
     let features_tracks: Result<Vec<_>> = match args.values_of("features") {
         Some(x) => { x
-                    .map(|feature_track| read_feature_file(&result, feature_track))
-                    .collect()
+                     .map(|feature_track| read_feature_file(&result, feature_track))
+                     .collect()
         }
         None    => Ok(Vec::new())
     };
@@ -261,6 +263,7 @@ fn run() -> Result<()> {
 
         feature_tracks:          features_tracks,
     };
+
     result.sds = result.sds
         .into_iter()
         .filter(|sd| !(settings.filter_direct && !sd.reversed))
@@ -281,15 +284,15 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-    fn main() {
-        if let Err(ref e) = run() {
-            println!("{} {}", "Error: ".red(), e);
-            for e in e.iter().skip(1) {
-                println!("{}", e);
-            }
-            if let Some(backtrace) = e.backtrace() {
-                println!("backtrace: {:?}", backtrace);
-            }
-            std::process::exit(1);
+fn main() {
+    if let Err(ref e) = run() {
+        println!("{} {}", "Error: ".red(), e);
+        for e in e.iter().skip(1) {
+            println!("{}", e);
         }
+        if let Some(backtrace) = e.backtrace() {
+            println!("backtrace: {:?}", backtrace);
+        }
+        std::process::exit(1);
     }
+}

@@ -27,7 +27,7 @@ use std::time::Instant;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
 
-use asgart::structs::{ALPHABET, ALPHABET_MASKED, RunSettings, StrandResult, RunResult, SD, Start};
+use asgart::structs::{ALPHABET, ALPHABET_MASKED, RunSettings, StrandResult, RunResult, ProtoSD, SD, Start};
 use asgart::logger::Logger;
 use asgart::errors::*;
 use asgart::exporters::Exporter;
@@ -40,30 +40,30 @@ use asgart::divsufsort64;
 
 trait Step {
     fn name(&self) -> &str;
-    fn run(&self, input: &mut Vec<SD>, strand1: &Strand, strand2: &Strand,) -> Vec<SD>;
+    fn run(&self, input: &mut Vec<ProtoSD>, strand1: &Strand, strand2: &Strand,) -> Vec<ProtoSD>;
 }
 
 struct ReOrder;
 impl Step for ReOrder {
     fn name(&self) -> &str { "Re-ordering" }
-    fn run(&self, input: &mut Vec<SD>, strand1: &Strand, strand2: &Strand,) -> Vec<SD> {
+    fn run(&self, input: &mut Vec<ProtoSD>, strand1: &Strand, strand2: &Strand,) -> Vec<ProtoSD> {
         input
             .into_par_iter()
             .map(|sd|
                  if sd.left > sd.right && (*strand1).file_name == (*strand2).file_name {
-                     SD {left: sd.right, right: sd.left, .. *sd}
+                     ProtoSD {left: sd.right, right: sd.left, .. *sd}
                  } else {
                      sd.clone()
                  }
             )
-            .collect::<Vec<SD>>()
+            .collect::<Vec<ProtoSD>>()
     }
 }
 
 struct Sort;
 impl Step for Sort {
     fn name(&self) -> &str { "Re-ordering" }
-    fn run(&self, input: &mut Vec<SD>, _strand1: &Strand, _strand2: &Strand,) -> Vec<SD> {
+    fn run(&self, input: &mut Vec<ProtoSD>, _strand1: &Strand, _strand2: &Strand,) -> Vec<ProtoSD> {
         input.sort_by(|a, b| (a.left).cmp(&b.left));
         input.to_vec()
     }
@@ -72,7 +72,7 @@ impl Step for Sort {
 struct ReduceOverlap;
 impl Step for ReduceOverlap {
     fn name(&self) -> &str { "Reducing overlap" }
-    fn run(&self, input: &mut Vec<SD>, _strand1: &Strand, _strand2: &Strand,) -> Vec<SD> {
+    fn run(&self, input: &mut Vec<ProtoSD>, _strand1: &Strand, _strand2: &Strand,) -> Vec<ProtoSD> {
         reduce_overlap(&input)
     }
 }
@@ -83,7 +83,7 @@ impl ComputeScore {
 }
 impl Step for ComputeScore {
     fn name(&self) -> &str { "Computing Levenshtein distance" }
-    fn run(&self, input: &mut Vec<SD>, strand1: &Strand, strand2: &Strand) -> Vec<SD> {
+    fn run(&self, input: &mut Vec<ProtoSD>, strand1: &Strand, strand2: &Strand) -> Vec<ProtoSD> {
         let (shift, _) = self.trim.unwrap_or((0, 0));
         input
             .par_iter_mut()
@@ -122,7 +122,7 @@ impl SearchDuplications {
 }
 impl Step for SearchDuplications {
     fn name(&self) -> &str { "Looking for proto-duplications" }
-    fn run(&self, _input: &mut Vec<SD>, _strand1: &Strand, _strand2: &Strand) -> Vec<SD> {
+    fn run(&self, _input: &mut Vec<ProtoSD>, _strand1: &Strand, _strand2: &Strand) -> Vec<ProtoSD> {
         let thread_pool = ThreadPool::new(self.settings.threads_count);
         let (tx_monitor, rx_monitor) = mpsc::channel();
         let (tx, rx) = mpsc::channel();
@@ -188,7 +188,7 @@ impl Step for SearchDuplications {
 
         let result = rx.iter().fold(Vec::new(), |mut a, b| {
             a.extend(b.iter().map(|sd| {
-                SD {
+                ProtoSD {
                     left:         if !self.settings.reverse {sd.left} else {self.strand1.data.len() - sd.left - sd.length - 1},
                     right:        sd.right,
                     length:       sd.length,
@@ -373,7 +373,7 @@ fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bo
         (ystart >= xstart && ystart <= xend && yend >= xend)
 }
 
-fn merge(x: &SD, y: &SD) -> SD {
+fn merge(x: &ProtoSD, y: &ProtoSD) -> ProtoSD {
     let new_left = cmp::min(x.left, y.left);
     let lsize = cmp::max(x.left + x.length, y.left + y.length) - new_left;
 
@@ -381,7 +381,7 @@ fn merge(x: &SD, y: &SD) -> SD {
     let rsize = cmp::max(x.right + x.length, y.right + y.length) - new_right;
 
 
-    SD {
+    ProtoSD {
         left: new_left,
         right: new_right,
         length: cmp::max(lsize, rsize),
@@ -391,9 +391,9 @@ fn merge(x: &SD, y: &SD) -> SD {
     }
 }
 
-fn reduce_overlap(result: &[SD]) -> Vec<SD> {
-    fn _reduce(result: &[SD]) -> Vec<SD> {
-        let mut news: Vec<SD> = Vec::new();
+fn reduce_overlap(result: &[ProtoSD]) -> Vec<ProtoSD> {
+    fn _reduce(result: &[ProtoSD]) -> Vec<ProtoSD> {
+        let mut news: Vec<ProtoSD> = Vec::new();
         'to_insert: for x in result.iter() {
             for y in &mut news {
                 // x ⊂ y
@@ -611,19 +611,36 @@ fn search_duplications(
                         HumanDuration(total.elapsed()))).green().bold()
     );
 
+    let strand1 = StrandResult {
+        name: strand1.file_name.to_owned(),
+        length: strand1.data.len(),
+        map: strand1.map.clone(),
+    };
+    let strand2 = StrandResult {
+        name: strand2.file_name.to_owned(),
+        length: strand2.data.len() - 1, // Drop the '$'
+        map: strand2.map.clone(),
+    };
+
     Ok(RunResult {
-        strand1: StrandResult {
-            name: strand1.file_name.to_owned(),
-            length: strand1.data.len(),
-            map: strand1.map.clone(),
-        },
-        strand2: StrandResult {
-            name: strand2.file_name.to_owned(),
-            length: strand2.data.len() - 1, // Drop the '$'
-            map: strand2.map.clone(),
-        },
+        strand1: strand1.clone(),
+        strand2: strand2.clone(),
         settings: settings,
-        sds: result,
+        sds: result.iter().map(|sd| SD {
+            chr_left: strand1.find_chr_by_pos(sd.left).name.clone(),
+            chr_right: strand2.find_chr_by_pos(sd.right).name.clone(),
+
+            global_left_position: sd.left,
+            global_right_position: sd.right,
+
+            chr_left_position: sd.left - strand1.find_chr_by_pos(sd.left).position,
+            chr_right_position: sd.right - strand2.find_chr_by_pos(sd.right).position,
+
+            length: sd.length,
+            identity: sd.identity,
+            reversed: sd.reversed,
+            complemented: sd.complemented,
+        }).collect::<Vec<SD>>(),
     })
 }
 

@@ -160,10 +160,10 @@ impl FlatPlotter {
 
         for sd in self.result.sds
             .iter() {
-                let left1 = (sd.left as f64)/self.max_length * self.width;
-                let left2 = (sd.left as f64 + sd.length as f64)/self.max_length * self.width;
-                let right1 = (sd.right as f64)/self.max_length * self.width;
-                let right2 = (sd.right as f64 + sd.length as f64)/self.max_length * self.width;
+                let left1 = (sd.global_left_position as f64)/self.max_length * self.width;
+                let left2 = (sd.global_left_position as f64 + sd.length as f64)/self.max_length * self.width;
+                let right1 = (sd.global_right_position as f64)/self.max_length * self.width;
+                let right2 = (sd.global_right_position as f64 + sd.length as f64)/self.max_length * self.width;
 
                 let color = if sd.reversed { &self.settings.color2 } else { &self.settings.color1 };
 
@@ -184,10 +184,10 @@ impl FlatPlotter {
                                 color,
                                 &format!("{}bp\n{} → {}\n{} → {}",
                                          sd.length.separated_string(),
-                                         sd.left.separated_string(),
-                                         (sd.left + sd.length).separated_string(),
-                                         sd.right.separated_string(),
-                                         (sd.right + sd.length).separated_string()
+                                         sd.global_left_position.separated_string(),
+                                         (sd.global_left_position + sd.length).separated_string(),
+                                         sd.global_right_position.separated_string(),
+                                         (sd.global_right_position + sd.length).separated_string()
                                 )
                 );
             }

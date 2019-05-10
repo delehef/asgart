@@ -43,21 +43,21 @@ impl Exporter for GFF2Exporter {
         for (i, sd) in result.sds.iter().enumerate() {
             writeln!(&mut out,
                      "{chr_left}\tASGART\tSD\t{left}\t{end}\t#{identity}\t#{reverse}\t.\tsd#{i}-{chr_left}",
-                     chr_left = result.strand1.name,
-                     left = sd.left,
-                     end = sd.left + sd.length,
-                     identity = sd.identity * 10.0,
-                     reverse = "+",
-                     i = i
+                     chr_left = str::replace(&sd.chr_left.trim(), " ", "_"),
+                     left     = sd.chr_left_position,
+                     end      = sd.chr_left_position + sd.length,
+                     identity = sd.identity * 100.0,
+                     reverse  = "+",
+                     i        = i
             ).chain_err(|| "Unable to write results")?;
             writeln!(&mut out,
                      "{chr_right}\tASGART\tSD\t{right}\t{end}\t#{identity}\t#{reverse}\t.\tsd#{i}-{chr_right}",
-                     chr_right = result.strand2.name,
-                     right = sd.right,
-                     end = sd.right + sd.length,
-                     identity = sd.identity * 10.0,
-                     reverse = if sd.reversed { "-" } else { "+" },
-                     i = i
+                     chr_right = str::replace(&sd.chr_right.trim(), " ", "_"),
+                     right     = sd.chr_right_position,
+                     end       = sd.chr_right_position + sd.length,
+                     identity  = sd.identity * 100.0,
+                     reverse   = if sd.reversed { "-" } else { "+" },
+                     i         = i
             ).chain_err(|| "Unable to write results")?;
         }
 
@@ -87,23 +87,20 @@ impl Exporter for GFF3Exporter {
         }
 
         for (i, sd) in result.sds.iter().enumerate() {
-            let left_chr = result.strand1.find_chr_by_pos(sd.left+1);
-            let right_chr = result.strand2.find_chr_by_pos(sd.right+1);
-
             writeln!(&mut out,
                      "{name}\tASGART\tSD\t{left}\t{end}\t{identity}\t{reverse}\t.\tID=sd{i};Name=SD#{i}",
-                     name     = str::replace(&left_chr.name.trim(), " ", "_"),
-                     left     = sd.left + 1 - left_chr.position,
-                     end      = sd.left + 1 + sd.length - left_chr.position,
+                     name     = str::replace(&sd.chr_left.trim(), " ", "_"),
+                     left     = sd.chr_left_position + 1,
+                     end      = sd.chr_left_position + sd.length + 1,
                      identity = sd.identity,
                      reverse  = "+",
                      i        = i
             ).chain_err(|| "Unable to write results")?;
             writeln!(&mut out,
                      "{name}\tASGART\tSD\t{right}\t{end}\t{identity}\t{reverse}\t.\tID=sd{i}-right;Parent=sd{i};Name=SD#{i}",
-                     name     = str::replace(&right_chr.name.trim(), " ", "_"),
-                     right    = sd.right + 1 - right_chr.position,
-                     end      = sd.right + sd.length + 1 - right_chr.position,
+                     name     = str::replace(&sd.chr_right.trim(), " ", "_"),
+                     right    = sd.chr_right_position + 1,
+                     end      = sd.chr_right_position + sd.length + 1,
                      identity = sd.identity,
                      reverse  = if sd.reversed { "-" } else { "+" },
                      i        = i

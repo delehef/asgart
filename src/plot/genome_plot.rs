@@ -18,12 +18,12 @@ impl Plotter for GenomePlotter {
 
     fn plot(self) {
         let mut f = File::create(&self.settings.out_file).unwrap();
-        f.write_all(self.plot().as_bytes()).expect("Unable to write result to file");
+        f.write_all(self.plot_genome().as_bytes()).expect("Unable to write result to file");
     }
 }
 
 impl GenomePlotter {
-    fn plot(self) -> String {
+    fn plot_genome(&self) -> String {
         let mut svg = String::new();
 
         // 100 px/chromosome
@@ -82,16 +82,14 @@ impl GenomePlotter {
             svg += &format!("<text x='{}' y='{}' style='font-size: 11;'>{}</text>\n",
                             chr_spacing + i as f32 * chr_spacing - 10.0,
                             20 + (i%2) * 10,
-                            if chr.name.len() > 3 { &chr.name[0..3] } else { &chr.name },
+                            if chr.name.len() > 8 { &chr.name[0..3] } else { &chr.name },
             );
         }
 
         // 2. Draw the SDs
         for sd in &self.result.sds {
-            let chr_left = self.result.strand1.find_chr_index(sd.left).unwrap();
-            let chr_right = self.result.strand2.find_chr_index(sd.right).unwrap();
             let color = if sd.reversed { &self.settings.color2 } else  { &self.settings.color1 };
-            let x: Box<Fn(usize) -> f32> = match (chr_left == chr_right, sd.reversed) {
+            let x: Box<Fn(usize) -> f32> = match (sd.chr_left == sd.chr_right, sd.reversed) {
                 (true, false) => {
                     Box::new(|x| chr_spacing - 3.0*chr_width/8.0 + chr_spacing*x as f32)
                 }
@@ -107,28 +105,30 @@ impl GenomePlotter {
             };
 
             // left arm
-            let left = sd.left - self.result.strand1.find_chr_by_pos(sd.left).position;
+            let chr_left_index = self.result.strand1.find_chr_index(&sd.chr_left).unwrap();
+            let left = sd.chr_left_position;
             let start = factor * left as f32;
             let mut end = factor * (left + sd.length) as f32;
             if start - end < threshold { end += threshold };
             svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
-                            x(chr_left),
+                            x(chr_left_index),
                             50.0 + start,
-                            x(chr_left),
+                            x(chr_left_index),
                             50.0 + end,
                             color,
                             chr_width/4.0,
             );
 
             // right arm
-            let right = sd.right - self.result.strand2.find_chr_by_pos(sd.right).position;
+            let chr_right_index = self.result.strand2.find_chr_index(&sd.chr_right).unwrap();
+            let right = sd.chr_right_position;
             let start = factor * right as f32;
             let mut end = factor * (right + sd.length) as f32;
             if start - end < threshold { end += threshold };
             svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
-                            x(chr_right),
+                            x(chr_right_index),
                             50.0 + start,
-                            x(chr_right),
+                            x(chr_right_index),
                             50.0 + end,
                             color,
                             chr_width/4.0,

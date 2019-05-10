@@ -25,45 +25,16 @@ pub struct ChordPlotter {
     settings: Settings,
 
     length: f64,
-    centromeres: HashMap<String, (f64, f64)>,
 }
 
 impl Plotter for ChordPlotter {
     fn new(settings: Settings, result: RunResult) -> ChordPlotter {
-        let mut _centromeres = HashMap::new();
-        _centromeres.insert("chr1 ".to_owned(), (122_026_460.0, 125184587.0));
-        _centromeres.insert("chr2 ".to_owned(), (92_188_146.0, 94090557.0));
-        _centromeres.insert("chr3 ".to_owned(), (90_772_459.0, 93655574.0));
-        _centromeres.insert("chr4 ".to_owned(), (49_708_101.0, 51743951.0));
-        _centromeres.insert("chr5 ".to_owned(), (46_485_901.0, 50059807.0));
-        _centromeres.insert("chr6 ".to_owned(), (58_553_889.0, 59829934.0));
-        _centromeres.insert("chr7 ".to_owned(), (58_169_654.0, 60828234.0));
-        _centromeres.insert("chr8 ".to_owned(), (44_033_745.0, 45877265.0));
-        _centromeres.insert("chr9 ".to_owned(), (43_236_168.0, 45518558.0));
-        _centromeres.insert("chr10 ".to_owned(), (39_686_383.0, 41593521.0));
-        _centromeres.insert("chr11 ".to_owned(), (51_078_349.0, 54425074.0));
-        _centromeres.insert("chr12 ".to_owned(), (34_769_408.0, 37185252.0));
-        _centromeres.insert("chr13 ".to_owned(), (16_000_001.0, 18051248.0));
-        _centromeres.insert("chr14 ".to_owned(), (16_000_001.0, 18173523.0));
-        _centromeres.insert("chr15 ".to_owned(), (17_000_001.0, 19725254.0));
-        _centromeres.insert("chr16 ".to_owned(), (36_311_159.0, 38280682.0));
-        _centromeres.insert("chr17 ".to_owned(), (22_813_680.0, 26885980.0));
-        _centromeres.insert("chr18 ".to_owned(), (15_460_900.0, 20861206.0));
-        _centromeres.insert("chr19 ".to_owned(), (24_498_981.0, 27190874.0));
-        _centromeres.insert("chr20 ".to_owned(), (26_436_233.0, 30038348.0));
-        _centromeres.insert("chr21 ".to_owned(), (10_864_561.0, 12915808.0));
-        _centromeres.insert("chr22 ".to_owned(), (12_954_789.0, 15054318.0));
-        _centromeres.insert("chrX ".to_owned(), (58_605_580.0, 62412542.0));
-        _centromeres.insert("chrY ".to_owned(), (10_316_745.0, 10544039.0));
-
-
         let length = result.strand1.length as f64;
         ChordPlotter {
             result: result,
             settings: settings,
 
             length: length,
-            centromeres: _centromeres,
         }
     }
 
@@ -91,37 +62,16 @@ impl ChordPlotter {
         format!("M {} {} A {} {} {} {} {} {} {}", start_x, start_y, radius, radius, 0, flag, 1, end_x, end_y)
     }
 
-    fn chr_left(&self, sd: &SD) -> isize {
-        for (i, chr) in self.result.strand1.map.iter().enumerate() {
-            if sd.left >= chr.position && sd.left <= chr.position + chr.length {
-                return i as isize
-            }
-        }
-        -1
-    }
-
-    fn chr_right(&self, sd: &SD) -> isize {
-        for (i, chr) in self.result.strand2.map.iter().enumerate() {
-            if sd.right >= chr.position && sd.right <= chr.position + chr.length {
-                return i as isize
-            }
-        }
-        -1
-    }
-
-    fn inter_sd(&self, sd: &SD) -> bool {
-        self.chr_left(sd) != self.chr_right(sd)
-    }
-
-    fn intra_sd(&self, sd: &SD) -> bool {
-        !self.inter_sd(sd)
-    }
+    fn inter_sd(&self, sd: &SD) -> bool {sd.chr_left != sd.chr_right}
+    fn intra_sd(&self, sd: &SD) -> bool {!self.inter_sd(sd)}
 
     fn plot_chord(self) -> String {
         let mut svg = String::new();
         svg += &format!("\n<g transform='translate({}, {})' >\n", 0, 0);
 
+        dbg!(&self.result.strand1);
         for chr in &self.result.strand1.map {
+            dbg!(chr);
             let t1 = self.angle(chr.position as f64) - INTER_RING_SPACING;
             let t2 = self.angle(chr.position as f64 + chr.length as f64) + INTER_RING_SPACING;
             let tt = t1 + (t2-t1)/2.0;
@@ -133,16 +83,6 @@ impl ChordPlotter {
             // Secondary chromosome bar
             svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='1.5' />\n",
                             self.arc(R + RING_WIDTH + OUT_CEILING * 0.7, t1, t2));
-
-
-            if false { // Plot centromeres ?
-                // Start/end angles of centromeres
-                let tc1 = self.angle(chr.position as f64 + self.centromeres[&chr.name].0);
-                let tc2 = self.angle(chr.position as f64 + self.centromeres[&chr.name].1);
-                svg += &format!("<path d='{}' stroke='#afafaf' fill='none' stroke-width='5' />\n",
-                                self.arc(R + RING_WIDTH, tc1, tc2));
-            }
-
 
             // Chromosomes labels
             let r = R + RING_WIDTH + RING_MARGIN;
@@ -156,7 +96,7 @@ impl ChordPlotter {
         for sd in self.result.sds
             .iter()
             .filter(|&sd| self.inter_sd(sd)) {
-                let (left, right) = (sd.left as i64, sd.right as i64);
+                let (left, right) = (sd.global_left_position as i64, sd.global_right_position as i64);
 
                 let t11 = self.angle(left as f64);
                 let t12 = self.angle(left as f64 + sd.length as f64);
@@ -206,7 +146,7 @@ impl ChordPlotter {
         for sd in self.result.sds
             .iter()
             .filter(|&sd| self.intra_sd(sd)) {
-                let (left, right) = (sd.left as i64, sd.right as i64);
+                let (left, right) = (sd.global_left_position as i64, sd.global_left_position as i64);
 
                 let t11 = self.angle(left as f64);
                 let t12 = self.angle(left as f64 + sd.length as f64);

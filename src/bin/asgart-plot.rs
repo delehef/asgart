@@ -20,6 +20,7 @@ use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
+use asgart::plot::circos_plot::CircosPlotter;
 use asgart::plot::genome_plot::GenomePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
@@ -278,6 +279,7 @@ fn run() -> Result<()> {
         Some("chord")   => ChordPlotter::new(settings, result).plot(),
         Some("flat")    => FlatPlotter::new(settings, result).plot(),
         Some("genome")  => GenomePlotter::new(settings, result).plot(),
+        Some("circos")  => CircosPlotter::new(settings, result).plot(),
         // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
         _               => unreachable!(),
     };

@@ -6,6 +6,7 @@ pub mod chord_plot;
 pub mod flat_plot;
 pub mod eye_plot;
 pub mod genome_plot;
+pub mod circos_plot;
 
 pub struct Settings {
     pub out_file: String,

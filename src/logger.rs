@@ -13,7 +13,7 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &Record) {
-        if isatty::stdout_isatty() {
+        if atty::is(atty::Stream::Stdout) {
             println!("{}",
                      match record.level() {
                          Level::Error => {
@@ -36,10 +36,10 @@ impl log::Log for Logger {
             println!("{}",
                      match record.level() {
                          Level::Error => {
-                             format!("{} {}", "✖", record.args().to_string().red().bold())
+                             format!("{} {}", "✖", record.args().to_string())
                          }
                          Level::Warn => {
-                             format!("{} {}", "⚠", record.args().to_string().yellow())
+                             format!("{} {}", "⚠", record.args().to_string())
                          }
                          Level::Info => {
                              format!("{}", record.args())
@@ -48,7 +48,7 @@ impl log::Log for Logger {
                              format!("{} {}", "▷", record.args())
                          }
                          Level::Debug => {
-                             format!("{} {}", "❖", record.args().to_string().blue())
+                             format!("{} {}", "❖", record.args().to_string())
                          }
                      });
         }

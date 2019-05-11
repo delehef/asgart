@@ -33,17 +33,19 @@ impl Plotter for FlatPlotter {
         }
     }
 
-    fn plot(self) {
+    fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
-            .expect(&format!("Unable to create `{}`", &out_filename))
-            .write_all(self.plot_flat().as_bytes())
-            .expect(&format!("Unable to write to `{}`", &out_filename));
+            .and_then(|mut f| f.write_all(self.plot_flat().as_bytes()).into())
+            .and_then(|_| Ok(println!("Flat plot written to `{}`", &out_filename)))
+            .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
+
+        Ok(())
     }
 }
 
 impl FlatPlotter {
-    fn plot_flat(self) -> String {
+    fn plot_flat(&self) -> String {
         let mut svg = String::new();
         //
         // Chromosomes

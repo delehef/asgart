@@ -1,8 +1,8 @@
+use ::plot::*;
+
 use std::io::prelude::*;
 use std::fs::File;
 use std::f64::consts::PI;
-use ::structs::*;
-use ::plot::{Plotter, Settings};
 
 const R: f64 = 200.0;
 
@@ -35,9 +35,11 @@ impl Plotter for EyePlotter {
         }
     }
 
-    fn plot(self) {
+    fn plot(&self) -> Result<()> {
         let mut f = File::create(&self.settings.out_file).expect(&format!("Unable to create `{}`", &self.settings.out_file));
         f.write_all(self.plot_chord().as_bytes()).unwrap();
+
+        Ok(())
     }
 }
 
@@ -52,7 +54,7 @@ impl EyePlotter {
 
     fn inter_sd(&self, sd: &SD) -> bool {sd.chr_left != sd.chr_right}
 
-    fn plot_chord(self) -> String {
+    fn plot_chord(&self) -> String {
         let mut svg = String::new();
         svg += &format!("\n<g transform='translate({}, {})' >\n", 0, 0);
         svg += &format!("<circle cx='{}' cy='{}' r='{}' fill='#001a44' filter='url(#blurMe)'/>", CX, CY, TOTAL_WIDTH/2.0 - 5.0);

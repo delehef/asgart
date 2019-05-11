@@ -1,8 +1,7 @@
-extern crate rand;
+use ::plot::*;
 
 use std::io::prelude::*;
 use std::fs::File;
-use ::plot::*;
 
 pub struct CircosPlotter {
     result: RunResult,
@@ -17,7 +16,7 @@ impl Plotter for CircosPlotter {
         }
     }
 
-    fn plot(self) {
+    fn plot(&self) -> Result<()> {
         let prefix = self.settings.out_file.clone();
 
         let karyotype_filename = &format!("{}.karyotype", &prefix);
@@ -25,19 +24,21 @@ impl Plotter for CircosPlotter {
         let config_filename    = &format!("{}.conf", &prefix);
 
         File::create(karyotype_filename)
-            .expect(&format!("Unable to create `{}`", &karyotype_filename))
-            .write_all(self.plot_karyotype().as_bytes())
-            .expect(&format!("Unable to write in `{}`", &karyotype_filename));
+            .and_then(|mut f| f.write_all(self.plot_karyotype().as_bytes()).into())
+            .and_then(|_| Ok(println!("Karyotype written to `{}`", &karyotype_filename)))
+            .chain_err(|| format!("Unable to write in `{}`", &karyotype_filename))?;
 
         File::create(links_filename)
-            .expect(&format!("Unable to create `{}`", &links_filename))
-            .write_all(self.plot_links().as_bytes())
-            .expect(&format!("Unable to write in `{}`", &links_filename));
+            .and_then(|mut f| f.write_all(self.plot_links().as_bytes()).into())
+            .and_then(|_| Ok(println!("Links written to `{}`", &links_filename)))
+            .chain_err(|| format!("Unable to write in `{}`", &links_filename))?;
 
         File::create(config_filename)
-            .expect(&format!("Unable to create `{}`", &config_filename))
-            .write_all(self.plot_config(karyotype_filename, links_filename).as_bytes())
-            .expect(&format!("Unable to write in `{}`", &config_filename));
+            .and_then(|mut f| f.write_all(self.plot_config(karyotype_filename, links_filename).as_bytes()).into())
+            .and_then(|_| Ok(println!("Config written to `{}`", &config_filename)))
+            .chain_err(|| format!("Unable to write in `{}`", &config_filename))?;
+
+        Ok(())
     }
 }
 
@@ -58,6 +59,7 @@ impl CircosPlotter {
             .join("\n");
 
         if self.result.strand1.name != self.result.strand2.name {
+            karyotype += "\n";
             karyotype += &self.result.strand2.map
                 .iter()
                 .map(|chr|

@@ -26,7 +26,6 @@ use asgart::errors::*;
 use std::collections::HashMap;
 
 fn read_result(filename: &str) -> Result<RunResult> {
-    println!("Reading {}", filename);
     let mut f = File::open(filename).chain_err(|| format!("Unable to open {}", filename))?;
     let mut s = String::new();
     let _ = f.read_to_string(&mut s);
@@ -37,19 +36,21 @@ fn read_results(filenames: &[&str]) -> Result<RunResult> {
     let results = filenames
         .iter()
         .map(|filename| read_result(filename))
-        .collect::<std::result::Result<Vec<RunResult>, _>>()
-        .unwrap();
+        .collect::<std::result::Result<Vec<RunResult>, _>>()?;
 
-    if results.iter().any(|ref result|
-                          result.strand1.name != results[0].strand1.name
-                          || result.strand2.name != results[0].strand2.name) {
-        bail!("Trying to combine non-homogeneous results");
+    for result in &results {
+        if result.strand1.name != results[0].strand1.name || result.strand2.name != results[0].strand2.name {
+            bail!(format!("trying to combine ASGART files containing different karyotypes: `{}/{}` and `{}/{}`",
+                              result.strand1.name, result.strand2.name,
+                              results[0].strand1.name, results[0].strand2.name
+            ));
+        }
     }
 
     Ok(RunResult {
         settings: results[0].settings.clone(),
         strand1: results[0].strand1.clone(),
-        strand2: results[0].strand1.clone(),
+        strand2: results[0].strand2.clone(),
         sds: results.iter().flat_map(|ref r| r.sds.iter()).cloned().collect::<Vec<_>>(),
     })
 }
@@ -305,8 +306,7 @@ fn run() -> Result<()> {
         Some("circos")  => CircosPlotter::new(settings, result).plot(),
         // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
         _               => unreachable!(),
-    };
-    Ok(())
+    }
 }
 
 fn main() {
@@ -316,7 +316,7 @@ fn main() {
             println!("{}", e);
         }
         if let Some(backtrace) = e.backtrace() {
-            println!("backtrace: {:?}", backtrace);
+            println!("Backtrace: {:?}", backtrace);
         }
         std::process::exit(1);
     }

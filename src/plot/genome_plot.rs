@@ -1,7 +1,7 @@
-use ::structs::*;
+use ::plot::*;
+
 use std::fs::File;
 use std::io::Write;
-use ::plot::{Plotter, Settings};
 
 pub struct GenomePlotter {
     result: RunResult,
@@ -16,12 +16,14 @@ impl Plotter for GenomePlotter {
         }
     }
 
-    fn plot(self) {
+    fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
-            .expect(&format!("Unable to create `{}`", &out_filename))
-            .write_all(self.plot_genome().as_bytes())
-            .expect(&format!("Unable to write to `{}`", &out_filename));
+            .and_then(|mut f| f.write_all(self.plot_genome().as_bytes()).into())
+            .and_then(|_| Ok(println!("Genome plot written to `{}`", &out_filename)))
+            .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
+
+        Ok(())
     }
 }
 

@@ -37,12 +37,14 @@ impl Plotter for ChordPlotter {
         }
     }
 
-    fn plot(self) {
+    fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
-            .expect(&format!("Unable to create `{}`", &out_filename))
-            .write_all(self.plot_chord().as_bytes())
-            .expect(&format!("Unable to write to `{}`", &out_filename))
+            .and_then(|mut f| f.write_all(self.plot_chord().as_bytes()).into())
+            .and_then(|_| Ok(println!("Chord plot written to `{}`", &out_filename)))
+            .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
+
+        Ok(())
     }
 }
 
@@ -67,7 +69,7 @@ impl ChordPlotter {
     fn inter_sd(&self, sd: &SD) -> bool {sd.chr_left != sd.chr_right}
     fn intra_sd(&self, sd: &SD) -> bool {!self.inter_sd(sd)}
 
-    fn plot_chord(self) -> String {
+    fn plot_chord(&self) -> String {
         let mut svg = String::new();
         svg += &format!("\n<g transform='translate({}, {})' >\n", 0, 0);
 

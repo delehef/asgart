@@ -1,5 +1,6 @@
 extern crate regex;
 
+use ::errors::*;
 use ::structs::*;
 
 pub mod chord_plot;
@@ -41,5 +42,5 @@ pub struct Feature {
 
 pub trait Plotter {
     fn new(settings: Settings, result: RunResult) -> Self;
-    fn plot(self);
+    fn plot(&self) -> Result<()>;
 }

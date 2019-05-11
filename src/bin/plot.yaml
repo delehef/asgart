@@ -7,6 +7,7 @@ args:
         help: Sets the input file to use
         index: 1
         required: true
+        multiple: true
     - PLOT-TYPE:
         help: Type of plot to generate
         possible_values: ["flat", "chord", "genome", "circos"]

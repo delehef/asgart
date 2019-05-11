@@ -25,11 +25,33 @@ use asgart::plot::genome_plot::GenomePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
 
-fn read_result(file: &str) -> Result<RunResult> {
-    let mut f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
+fn read_result(filename: &str) -> Result<RunResult> {
+    println!("Reading {}", filename);
+    let mut f = File::open(filename).chain_err(|| format!("Unable to open {}", filename))?;
     let mut s = String::new();
     let _ = f.read_to_string(&mut s);
     serde_json::from_str(&s).chain_err(|| "Failed to parse JSON")
+}
+
+fn read_results(filenames: &[&str]) -> Result<RunResult> {
+    let results = filenames
+        .iter()
+        .map(|filename| read_result(filename))
+        .collect::<std::result::Result<Vec<RunResult>, _>>()
+        .unwrap();
+
+    if results.iter().any(|ref result|
+                          result.strand1.name != results[0].strand1.name
+                          || result.strand2.name != results[0].strand2.name) {
+        bail!("Trying to combine non-homogeneous results");
+    }
+
+    Ok(RunResult {
+        settings: results[0].settings.clone(),
+        strand1: results[0].strand1.clone(),
+        strand2: results[0].strand1.clone(),
+        sds: results.iter().flat_map(|ref r| r.sds.iter()).cloned().collect::<Vec<_>>(),
+    })
 }
 
 fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {
@@ -213,25 +235,26 @@ fn run() -> Result<()> {
         .setting(AppSettings::UnifiedHelpMessage)
         .get_matches();
 
-    let json_file = args.value_of("FILE").unwrap();
-    let mut result = read_result(json_file)?;
+    let json_files = args.values_of("FILE").unwrap().collect::<Vec<_>>();
+    let mut result = read_results(&json_files)?;
 
     let out_file = args
         .value_of("out")
         .and_then(|f| {
             let path = Path::new(f);
             if path.is_dir() {
-                Some(path.join("out.svg").to_str().unwrap().to_owned())
+                Some(path.join("out").to_str().unwrap().to_owned())
             } else {
                 Some(f.to_owned())
             }
         })
-        .or(Some(format!("{}.svg", Path::new(json_file).file_stem().unwrap().to_str().unwrap()))).unwrap();
+        .or(Some(Path::new(json_files[0]).file_stem().unwrap().to_str().unwrap().to_owned()))
+        .unwrap();
 
     let features_tracks: Result<Vec<_>> = match args.values_of("features") {
         Some(x) => { x
-                     .map(|feature_track| read_feature_file(&result, feature_track))
-                     .collect()
+                    .map(|feature_track| read_feature_file(&result, feature_track))
+                    .collect()
         }
         None    => Ok(Vec::new())
     };

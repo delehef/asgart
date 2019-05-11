@@ -34,8 +34,11 @@ impl Plotter for FlatPlotter {
     }
 
     fn plot(self) {
-        let mut f = File::create(&self.settings.out_file).unwrap();
-        f.write_all(self.plot_flat().as_bytes()).unwrap();
+        let out_filename = format!("{}.svg", &self.settings.out_file);
+        File::create(&out_filename)
+            .expect(&format!("Unable to create `{}`", &out_filename))
+            .write_all(self.plot_flat().as_bytes())
+            .expect(&format!("Unable to write to `{}`", &out_filename));
     }
 }
 

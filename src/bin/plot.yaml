@@ -45,7 +45,7 @@ args:
         help: filters out complemented duplications
     - features:
         long: features
-        help: additional gene tracks to plot
+        help: additional features tracks to plot
         multiple: true
         takes_value: true
         number_of_values: 1

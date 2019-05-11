@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 pub const ALPHABET: [u8; 5] = [
     b'A', b'T', b'G', b'C', b'N'
 ];
@@ -61,6 +59,7 @@ impl StrandResult {
         self.map.iter().any(|chr| chr.name == name)
     }
 
+    // TODO Actually use an error type like civilised humans
     pub fn find_chr(&self, name: &str) -> &Start {
         self.map.iter().find(|chr| chr.name == name).unwrap()
     }

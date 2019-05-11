@@ -2,7 +2,6 @@ extern crate rand;
 
 use std::io::prelude::*;
 use std::fs::File;
-use std::collections::HashMap;
 use std::f64::consts::PI;
 use ::plot::*;
 
@@ -39,8 +38,11 @@ impl Plotter for ChordPlotter {
     }
 
     fn plot(self) {
-        let mut f = File::create(&self.settings.out_file).expect(&format!("Unable to create `{}`", &self.settings.out_file));
-        f.write_all(self.plot_chord().as_bytes()).unwrap();
+        let out_filename = format!("{}.svg", &self.settings.out_file);
+        File::create(&out_filename)
+            .expect(&format!("Unable to create `{}`", &out_filename))
+            .write_all(self.plot_chord().as_bytes())
+            .expect(&format!("Unable to write to `{}`", &out_filename))
     }
 }
 
@@ -69,9 +71,7 @@ impl ChordPlotter {
         let mut svg = String::new();
         svg += &format!("\n<g transform='translate({}, {})' >\n", 0, 0);
 
-        dbg!(&self.result.strand1);
         for chr in &self.result.strand1.map {
-            dbg!(chr);
             let t1 = self.angle(chr.position as f64) - INTER_RING_SPACING;
             let t2 = self.angle(chr.position as f64 + chr.length as f64) + INTER_RING_SPACING;
             let tt = t1 + (t2-t1)/2.0;

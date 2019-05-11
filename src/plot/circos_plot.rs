@@ -2,44 +2,38 @@ extern crate rand;
 
 use std::io::prelude::*;
 use std::fs::File;
-use std::collections::HashMap;
-use std::f64::consts::PI;
 use ::plot::*;
 
 pub struct CircosPlotter {
     result: RunResult,
     settings: Settings,
-
-    length: f64,
 }
 
 impl Plotter for CircosPlotter {
     fn new(settings: Settings, result: RunResult) -> CircosPlotter {
-        let length = result.strand1.length as f64;
         CircosPlotter {
             result: result,
             settings: settings,
-
-            length: length,
         }
     }
 
     fn plot(self) {
         let prefix = self.settings.out_file.clone();
 
-        let karyotype_filename = &format!("karyotype-{}", &prefix);
+        let karyotype_filename = &format!("{}.karyotype", &prefix);
+        let links_filename     = &format!("{}.links", &prefix);
+        let config_filename    = &format!("{}.conf", &prefix);
+
         File::create(karyotype_filename)
             .expect(&format!("Unable to create `{}`", &karyotype_filename))
             .write_all(self.plot_karyotype().as_bytes())
             .expect(&format!("Unable to write in `{}`", &karyotype_filename));
 
-        let links_filename = &format!("links-{}", &prefix);
         File::create(links_filename)
             .expect(&format!("Unable to create `{}`", &links_filename))
             .write_all(self.plot_links().as_bytes())
             .expect(&format!("Unable to write in `{}`", &links_filename));
 
-        let config_filename = &format!("config-{}", &prefix);
         File::create(config_filename)
             .expect(&format!("Unable to create `{}`", &config_filename))
             .write_all(self.plot_config(karyotype_filename, links_filename).as_bytes())
@@ -53,10 +47,10 @@ impl CircosPlotter {
             .iter()
             .map(|chr|
                  format!("chr - {id} {label} {start} {end} {color}",
-                         id = chr.name,
+                         id    = str::replace(&chr.name.trim(), " ", "_"),
                          label = chr.name,
                          start = 0,
-                         end = chr.length,
+                         end   = chr.length,
                          color = "grey"
                  )
             )
@@ -68,10 +62,10 @@ impl CircosPlotter {
                 .iter()
                 .map(|chr|
                      format!("chr - {id} {label} {start} {end} {color}",
-                             id = chr.name,
+                             id    = str::replace(&chr.name.trim(), " ", "_"),
                              label = chr.name,
                              start = 0,
-                             end = chr.length,
+                             end   = chr.length,
                              color = "grey"
                      )
                 )
@@ -86,10 +80,10 @@ impl CircosPlotter {
             .iter()
             .map(|sd|
                  format!("{chr_left} {chr_left_start} {chr_left_end} {chr_right} {chr_right_start} {chr_right_end} {color}",
-                         chr_left        = sd.chr_left,
+                         chr_left        = str::replace(&sd.chr_left.trim(), " ", "_"),
                          chr_left_start  = sd.chr_left_position,
                          chr_left_end    = sd.chr_left_position + sd.length,
-                         chr_right       = sd.chr_right,
+                         chr_right        = str::replace(&sd.chr_right.trim(), " ", "_"),
                          chr_right_start = sd.chr_right_position,
                          chr_right_end   = sd.chr_right_position + sd.length,
                          color           = if sd.reversed { "color=teal" } else { "color=orange"}
@@ -104,7 +98,6 @@ impl CircosPlotter {
 
     fn plot_config(&self, karyotype_filename: &str, links_filename: &str) -> String {
         format!("
-# circos.conf
 karyotype = {karyotype_filename}
 chromosomes_units = 1000000
 
@@ -112,6 +105,7 @@ chromosomes_units = 1000000
 orange = 255,  91,   0, 0.5
 teal   =   0, 178, 174, 0.5
 </colors>
+
 ### IDEOGRAM SECTION
 <ideogram>
 

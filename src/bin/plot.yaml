@@ -1,6 +1,4 @@
 name: asgart-plot
-version: "1.2"
-author: Franklin Delehelle <franklin.delehelle@irit.fr>
 about: Generate plots from ASGART results
 args:
     - FILE:

@@ -13,7 +13,7 @@ use threadpool::ThreadPool;
 use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
 use console::style;
 use bio::io::fasta;
-use clap::App;
+use clap::{App, AppSettings};
 use log::LevelFilter;
 use rayon::prelude::*;
 
@@ -465,6 +465,10 @@ fn run() -> Result<()> {
     let args = App::from_yaml(yaml)
         .version(crate_version!())
         .author(crate_authors!())
+        .setting(AppSettings::ColoredHelp)
+        .setting(AppSettings::ColorAuto)
+        .setting(AppSettings::VersionlessSubcommands)
+        .setting(AppSettings::UnifiedHelpMessage)
         .get_matches();
 
     let settings = Settings {

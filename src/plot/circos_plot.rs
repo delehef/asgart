@@ -167,13 +167,17 @@ format         = %d
 </links>
 
 <image>
-<<include /home/franklin/repos/circos/etc/image.conf>>
+<<include {circos_root}/etc/image.conf>>
 </image>
-<<include /home/franklin/repos/circos/etc/colors_fonts_patterns.conf>>
-<<include /home/franklin/repos/circos/etc/housekeeping.conf>>
+<<include {circos_root}/etc/colors_fonts_patterns.conf>>
+<<include {circos_root}/etc/housekeeping.conf>>
 ",
                 karyotype_filename = karyotype_filename,
                 links_filename = links_filename,
+                circos_root = std::env::var("CIRCOS_ROOT").unwrap_or_else(|_| {
+                    eprintln!("CIRCOS_ROOT is not set - using a placeholder in config file.\nPlease set the CICRCOS_ROOT environment variable with the root of your Circos install.");
+                    "REPLACE_ME_WITH_CIRCOS_ROOT".to_string()
+                }),
         )
     }
 

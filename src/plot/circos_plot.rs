@@ -11,8 +11,8 @@ pub struct CircosPlotter {
 impl Plotter for CircosPlotter {
     fn new(settings: Settings, result: RunResult) -> CircosPlotter {
         CircosPlotter {
-            result: result,
-            settings: settings,
+            result,
+            settings,
         }
     }
 
@@ -24,18 +24,18 @@ impl Plotter for CircosPlotter {
         let config_filename    = &format!("{}.conf", &prefix);
 
         File::create(karyotype_filename)
-            .and_then(|mut f| f.write_all(self.plot_karyotype().as_bytes()).into())
-            .and_then(|_| Ok(println!("Karyotype written to `{}`", &karyotype_filename)))
+            .and_then(|mut f| f.write_all(self.plot_karyotype().as_bytes()))
+            .and_then(|_| { println!("Karyotype written to `{}`", &karyotype_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &karyotype_filename))?;
 
         File::create(links_filename)
-            .and_then(|mut f| f.write_all(self.plot_links().as_bytes()).into())
-            .and_then(|_| Ok(println!("Links written to `{}`", &links_filename)))
+            .and_then(|mut f| f.write_all(self.plot_links().as_bytes()))
+            .and_then(|_| { println!("Links written to `{}`", &links_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &links_filename))?;
 
         File::create(config_filename)
-            .and_then(|mut f| f.write_all(self.plot_config(karyotype_filename, links_filename).as_bytes()).into())
-            .and_then(|_| Ok(println!("Config written to `{}`", &config_filename)))
+            .and_then(|mut f| f.write_all(self.plot_config(karyotype_filename, links_filename).as_bytes()))
+            .and_then(|_| { println!("Config written to `{}`", &config_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &config_filename))?;
 
         Ok(())

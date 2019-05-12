@@ -30,10 +30,9 @@ impl Plotter for ChordPlotter {
     fn new(settings: Settings, result: RunResult) -> ChordPlotter {
         let length = result.strand1.length as f64;
         ChordPlotter {
-            result: result,
-            settings: settings,
-
-            length: length,
+            result,
+            settings,
+            length,
         }
     }
 
@@ -41,7 +40,7 @@ impl Plotter for ChordPlotter {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_chord().as_bytes()).into())
-            .and_then(|_| Ok(println!("Chord plot written to `{}`", &out_filename)))
+            .and_then(|_| { println!("Chord plot written to `{}`", &out_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
 
         Ok(())

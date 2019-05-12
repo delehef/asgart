@@ -11,16 +11,16 @@ pub struct GenomePlotter {
 impl Plotter for GenomePlotter {
     fn new(settings: Settings, result: RunResult) -> GenomePlotter {
         GenomePlotter {
-            result: result,
-            settings: settings,
+            result,
+            settings,
         }
     }
 
     fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
-            .and_then(|mut f| f.write_all(self.plot_genome().as_bytes()).into())
-            .and_then(|_| Ok(println!("Genome plot written to `{}`", &out_filename)))
+            .and_then(|mut f| f.write_all(self.plot_genome().as_bytes()))
+            .and_then(|_| { println!("Genome plot written to `{}`", &out_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
 
         Ok(())

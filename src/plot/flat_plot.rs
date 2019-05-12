@@ -24,8 +24,8 @@ impl Plotter for FlatPlotter {
         let length2 = result.strand2.length as i64;
 
         FlatPlotter {
-            result: result,
-            settings: settings,
+            result,
+            settings,
 
             max_length: cmp::max(length1, length2) as f64,
             width: 1500.0,
@@ -36,8 +36,8 @@ impl Plotter for FlatPlotter {
     fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
-            .and_then(|mut f| f.write_all(self.plot_flat().as_bytes()).into())
-            .and_then(|_| Ok(println!("Flat plot written to `{}`", &out_filename)))
+            .and_then(|mut f| f.write_all(self.plot_flat().as_bytes()))
+            .and_then(|_| { println!("Flat plot written to `{}`", &out_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
 
         Ok(())

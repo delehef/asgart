@@ -28,10 +28,10 @@ impl Plotter for EyePlotter {
     fn new(settings: Settings, result: RunResult) -> EyePlotter {
         let length = result.strand1.length as f64;
         EyePlotter {
-            result: result,
-            settings: settings,
+            result,
+            settings,
 
-            length: length,
+            length,
         }
     }
 

@@ -32,7 +32,7 @@ pub unsafe fn sse_compare_mask(one: &[u8], two: &[u8]) -> i32 {
     use std::arch::x86_64::*;
 
     // too lazy to figure out the bit-fiddly way to get this mask
-    const HIGH_HALF_MASK: u32 = 0b11111111111111110000000000000000;
+    const HIGH_HALF_MASK: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
 
     debug_assert!(is_x86_feature_detected!("sse4.2"));
 
@@ -114,7 +114,7 @@ impl Searcher {
     }
 
     pub fn new(dna: &[u8], sa: &[idx], offset: usize) -> Searcher {
-        let mut s = Searcher { cache: HashMap::new(), offset: offset };
+        let mut s = Searcher { cache: HashMap::new(), offset };
 
         unsafe {
             for a in &ALPHABET {
@@ -160,7 +160,7 @@ impl Searcher {
         fn stringcmp(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
             // return unsafe { ne_idx_sse(a, b) };
             // return unsafe { ne_idx_avx(a, b) };
-            return a.cmp(b);
+            a.cmp(b)
         }
 
         let index = Searcher::indexize(pattern);

@@ -1,4 +1,5 @@
 use ::plot::*;
+use ::utils::slugify;
 
 use std::io::prelude::*;
 use std::fs::File;
@@ -38,23 +39,26 @@ impl Plotter for CircosPlotter {
             .and_then(|_| { println!("Config written to `{}`", &config_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &config_filename))?;
 
+        println!("\nYou can now edit `{}` and/or run `circos {}` to generate the final plot.", config_filename, config_filename);
         Ok(())
     }
 }
 
 impl CircosPlotter {
     fn plot_karyotype(&self) -> String {
+        fn encode_chromosome(chr: &Start) -> String {
+            format!("chr - {id} {label} {start} {end} {color}",
+                    id    = slugify(&chr.name),
+                    label = slugify(&chr.name),
+                    start = 0,
+                    end   = chr.length,
+                    color = "grey"
+            )
+        }
+
         let mut karyotype : String = self.result.strand1.map
             .iter()
-            .map(|chr|
-                 format!("chr - {id} {label} {start} {end} {color}",
-                         id    = str::replace(&chr.name.trim(), " ", "_"),
-                         label = chr.name,
-                         start = 0,
-                         end   = chr.length,
-                         color = "grey"
-                 )
-            )
+            .map(encode_chromosome)
             .collect::<Vec<String>>()
             .join("\n");
 
@@ -62,15 +66,7 @@ impl CircosPlotter {
             karyotype += "\n";
             karyotype += &self.result.strand2.map
                 .iter()
-                .map(|chr|
-                     format!("chr - {id} {label} {start} {end} {color}",
-                             id    = str::replace(&chr.name.trim(), " ", "_"),
-                             label = chr.name,
-                             start = 0,
-                             end   = chr.length,
-                             color = "grey"
-                     )
-                )
+                .map(encode_chromosome)
                 .collect::<Vec<String>>()
                 .join("\n");
         }
@@ -82,10 +78,10 @@ impl CircosPlotter {
             .iter()
             .map(|sd|
                  format!("{chr_left} {chr_left_start} {chr_left_end} {chr_right} {chr_right_start} {chr_right_end} {color}",
-                         chr_left        = str::replace(&sd.chr_left.trim(), " ", "_"),
+                         chr_left        = slugify(&sd.chr_left),
                          chr_left_start  = sd.chr_left_position,
                          chr_left_end    = sd.chr_left_position + sd.length,
-                         chr_right        = str::replace(&sd.chr_right.trim(), " ", "_"),
+                         chr_right       = slugify(&sd.chr_right),
                          chr_right_start = sd.chr_right_position,
                          chr_right_end   = sd.chr_right_position + sd.length,
                          color           = if sd.reversed { "color=teal" } else { "color=orange"}

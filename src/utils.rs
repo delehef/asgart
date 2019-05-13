@@ -19,3 +19,10 @@ pub fn complement_nucleotide(n: u8) -> u8 {
 pub fn complemented(text: &[u8]) -> Vec<u8> {
     text.iter().map(|x| complement_nucleotide(*x)).collect::<Vec<u8>>()
 }
+
+pub fn slugify(x: &str) -> String {
+    x .trim()
+        .replace(" ", "_")
+        .replace(":", "_")
+        .replace("|", "_")
+}

@@ -1,4 +1,4 @@
-# ASGART: a large duplications finder
+# ASGART: A Large Duplications Finder
 
 `asgart` (A Segmental duplications Gathering and Refinement Tool) is a
 multiplatform (GNU/Linux, macOS, Windows) tool designed to search for
@@ -10,7 +10,7 @@ large duplications amongst one or two DNA strands.
 Asgart is distributed under the GPLv3 license. Please see the LICENSE
 file.
 
-# Why should I use ASGART?
+# Why Should I Use ASGART?
 
 ![A map of the Human genome long segmental
 duplications](screenshots/chord.png)
@@ -20,7 +20,7 @@ You should use ASGART if
 - you want to find segmental duplications, either direct, reversed
   and/or complement in a DNA sequence;
 
-- you want to find highly similar parts inbetween sequences up to the
+- you want to find highly similar parts between sequences up to the
   genome scale;
 
 - you want to map highly similar sequences amongst genomes;
@@ -37,11 +37,7 @@ Static binaries for Linux are available [here](https://github.com/delehef/asgart
 
 Binaries for macOS are available [here](https://github.com/delehef/asgart/releases).
 
-## Windows
-
-Binaries for Windows are not yet available.
-
-## From sources
+## From Sources
 
 To build ASGART from sources, you need CMake, a C compiler and the
 [Rust compiler](https://www.rust-lang.org/en-US/install.html).
@@ -66,7 +62,7 @@ Once the build is finished, you will find the binary in `target/release/`.
 
 # Usage
 
-## Simple usage
+## Simple Usage
 
 First, let us take a look at a simple example:
 
@@ -138,12 +134,18 @@ where it was launched, following the following structure:
 
         "sds": [
                 {
-                        "left":         position of the left arm in the first file,
-                        "right":        position of the right arm in the second file,
-                        "length":       length of the duplication (bp),
-                        "reversed":     true if the duplication is reversed, false else,
-                        "complemented": true if the duplication is complemented, false else
-                        "identity":     the Jaccard distance between the two duplicons
+                        "global_left_position":  position of the left arm in the first strand,
+                        "global_right_position": position of the right arm in the second strand,
+
+                        "chr_left":              chromosomome in the first strand containing the left arm,
+                        "chr_right":             chromosomome in the second strand containing the right arm,
+                        "chr_left_position":     position of the left arm relative to its chromosome,
+                        "chr_right_position":    position of the right arm relative to its chromosome,
+
+                        "length":                length of the duplication (bp),
+                        "reversed":              true if the duplication is reversed, false otherwise,
+                        "complemented":          true if the duplication is complemented, false otherwise,
+                        "identity":              the distance between the two duplicons (0.0 if not computed)
                 },
                 ...
         ]
@@ -164,6 +166,10 @@ results in a GFF3 file.
 
   - `--gap-size`/`-g` set the maximal gap size in a duplicon (default: 100)
 
+  - `--min-length SIZE` specifies the minimal length (in bp) over
+    which a duplication is kept in the final result and not discarded
+    (default: 1000)
+
   - `--verbose`/`-v` display mnore information and a progress bar
 
   - `--reverse`/`-R` look for duplication which second arm is reversed
@@ -173,10 +179,6 @@ results in a GFF3 file.
 
   - `--max-cardinality` specifies the maximal count of members in a
     duplication family (default: 1000)
-
-  - `--min-length SIZE` specifies the minimal length (in bp) over
-    which a duplication is kept in the final result and not discarded
-    (default: 1000)
 
   - `--skip-masked`/`-S` skip soft-masked zones, _i.e._ lowercased
     parts of the input files (default: no)
@@ -203,8 +205,20 @@ results in a GFF3 file.
 # Plotting
 
 ASGART comes with a plotting tool, producing a visual overview of the
-duplications. Currently, two type of graphs are available: chord
-graphs, or flat graphs.
+duplications. Currently, four types of graphs are available: chord
+graphs, flat graphs, genome graphs and Circos graphs.
+
+## Quick Start
+
+`asgart-plot chr22.json chr22_RC.json flat`
+
+## Arguments
+
+`asgart-plot` takes two mandatory arguments:
+
+1. one or more JSON-files containing results from ASGART runs;
+
+2. the type of plot to generate.
 
 ## Options
 
@@ -232,7 +246,7 @@ graphs, or flat graphs.
   - `--filter-features DISTANCE` don't plot duplications that are
     farther away then `DISTANCE` bp from the features in the track.
 
-### Feature file format
+### Feature File Format
 
 The feature file format contains a list of lines with three values
 separated by semi-colons.
@@ -256,7 +270,7 @@ MYH14;19+50188186;122358
 Foo;123456789;1250
 ```
 
-## Chord graphs
+## Chord Graphs
 
 A chord graph represents duplications amongst a DNA fragment as arcs
 linking point on a circle figuring a fragment bend over itself. Their
@@ -269,7 +283,7 @@ represent.
 
 ![Chord graph example](screenshots/chord.png)
 
-## Flat graphs
+## Flat Graphs
 
 Flat graphs are made of two superposed horizontal lines, representing
 the two fragments analyzed by ASGART, with lines linking left and
@@ -282,7 +296,36 @@ length of the duplication.
 
 ![Flat graph example](screenshots/flat.png)
 
-# Update log
+## Circos Graphs
+
+ASGART can generate files usable with the [Circos](http://circos.ca/) plotting tool.
+Although the most important files is arguably the `<out>.links` file (containing the
+duplicons to plot), ASGART also generates an `<out>.conf` file and an `<out>.karyotype`
+file, as to ensure a minimal start to be potentially later expanded according to your
+needs.
+
+ASGART refers to files found in the Circos distribution. Thus, the `CIRCOS_ROOT`
+environment variable should be set to point at the root of the Circos distribution.
+Otherwise, ASGART will generate an `<out>.conf` file containing `{circos_root}`
+placeholders to be manually replaced.
+
+### Example
+
+`asgart-plot human_Y.json human_Y_RC.json circos --min-length 10000`
+
+
+# Update Log
+
+## v1.5
+
+- New, *non-retrocompatible* JSON output format containing positions of the duplicons both globally in the strand and relative to the fragment they are on
+- `asgart-plot` can now superpose several files in a single plot
+- ASGART can optionally compute the Levenshtein distance between duplicons
+- User can set the chunking size for parallel processing (defaults to 1,000,000)
+- Improve output files naming
+- Fix a bug in post-processing
+- Fix several minor bugs in logging system
+- Minor under-the-hood refactoring and improvements
 
 ## v1.4.0
 
@@ -303,7 +346,7 @@ length of the duplication.
 
 ## v1.3
 
-- Add a new plot format, _genomic_
+- Add a new plot format, _genome_
 - Relabel “translate” to “complement”
 - Fix the lack of color in SVG export
 - `asgart-plot` can now read features tracks, either in custom or GFF3 format

@@ -88,7 +88,7 @@ impl ChordPlotter {
             // Chromosomes labels
             let r = R + RING_WIDTH + RING_MARGIN;
             let (x, y) = self.cartesian(tt, r + 65.0);
-            svg += &format!("<text x='{}' y='{}' font-family='\"Helvetica\"' font-size='8' fill='#333' transform='rotate({}, {}, {})'>\n{}\n</text>\n",
+            svg += &format!("<text x='{}' y='{}' font-family='Helvetica' font-size='8' fill='#333' transform='rotate({}, {}, {})'>\n{}\n</text>\n",
                             x, y,
                             -tt/(2.0*PI)*360.0 + 90.0, x, y,
                             str::replace(&chr.name, "chr", ""));
@@ -140,7 +140,7 @@ impl ChordPlotter {
                 let cy = CY;
 
                 let path = format!("M {},{} Q {},{} {} {}", x1, y1, cx, cy, x2, y2);
-                svg += &format!("<path d='{}' fill='none' stroke='{}' stroke-opacity='0.5' stroke-width='{}'/>\n",
+                svg += &format!("<path d='{}' fill='none' stroke='{}' stroke-opacity='0.3' stroke-width='{}' class='sd'/>\n",
                                 path, color, width);
             }
 
@@ -206,7 +206,7 @@ impl ChordPlotter {
                     let (x1, y1) = self.cartesian(t1, R);
                     let (x2, y2) = self.cartesian(t2, R);
                     let (x3, y3) = self.cartesian(t0 + 0.02, R - 5.0);
-                    let font_size = 6.0;
+                    let font_size = 4.0;
                     svg += &format!("<polygon points='{},{} {},{} {},{} {},{}' style='fill:{};'/>\n",
                                     x0, y0,
                                     x1, y1,
@@ -214,9 +214,10 @@ impl ChordPlotter {
                                     x3, y3,
                                     color
                     );
-                    svg += &format!("<text x='{}' y='{}' font-family='Helvetica' font-size='{}'>{}</text>",
-                                    x3, y3 + font_size,
-                                    font_size, feature.name);
+                    svg += &format!("<text x='{}' y='{}' font-family='Helvetica' font-size='{}' transform='rotate({}, {}, {})'>{}</text>",
+                                    x3 + font_size, y3 + font_size, font_size,
+                                    -t0/(2.0*PI)*360.0, x3, y3,
+                                    feature.name);
                 }
             }
         }
@@ -226,10 +227,16 @@ impl ChordPlotter {
                  PUBLIC '-//W3C//DTD SVG 1.0//EN' \
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
                  width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
-                 xmlns:xlink='http://www.w3.org/1999/xlink'>\n{}\n \
-                 </svg>",
-                TOTAL_WIDTH,
-                TOTAL_WIDTH,
+                 xmlns:xlink='http://www.w3.org/1999/xlink'> \
+
+                 <style type='text/css'> \
+                 .sd:hover {{ stroke-opacity: 1.0; stroke: crimson; stroke-width: {}; }} \
+                 </style> \
+
+                 {} \
+                </svg>",
+                TOTAL_WIDTH, TOTAL_WIDTH,
+                2.0*self.settings.thickness,
                 svg
         )
     }

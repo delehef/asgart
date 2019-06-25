@@ -36,7 +36,7 @@ impl Plotter for EyePlotter {
     }
 
     fn plot(&self) -> Result<()> {
-        let mut f = File::create(&self.settings.out_file).expect(&format!("Unable to create `{}`", &self.settings.out_file));
+        let mut f = File::create(&self.settings.out_file).unwrap_or_else(|_| panic!("Unable to create `{}`", &self.settings.out_file));
         f.write_all(self.plot_chord().as_bytes()).unwrap();
 
         Ok(())
@@ -87,7 +87,7 @@ impl EyePlotter {
 
             let (t1, t2) = if t2 < t1 {(t2, t1)} else {(t1, t2)};
 
-            let mut ttt = t2 - t1;
+            let ttt = t2 - t1;
 
             let f = border * (if ttt < PI/1.0{
                 1.0
@@ -125,11 +125,11 @@ impl EyePlotter {
 
             let t11 = self.angle(left as f64);
             let t12 = self.angle(left as f64 + sd.length as f64);
-            let mut t1 = t11 + (t12 - t11)/2.0;
+            let t1 = t11 + (t12 - t11)/2.0;
 
             let t21 = self.angle(right as f64);
             let t22 = self.angle(right as f64 + sd.length as f64);
-            let mut t2 = t21 + (t22 - t21)/2.0;
+            let t2 = t21 + (t22 - t21)/2.0;
 
             let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
             if width <= self.settings.thickness {width = self.settings.thickness};

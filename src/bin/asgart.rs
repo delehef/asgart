@@ -553,10 +553,10 @@ fn run() -> Result<()> {
     )?;
 
     let exporter = match &settings.out_format[..] {
-        "json" => { Box::new(exporters::JSONExporter) as Box<Exporter> }
-        "gff2" => { Box::new(exporters::GFF2Exporter) as Box<Exporter> }
-        "gff3" => { Box::new(exporters::GFF3Exporter) as Box<Exporter> }
-        _      => { Box::new(exporters::JSONExporter) as Box<Exporter> }
+        "json" => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
+        "gff2" => { Box::new(exporters::GFF2Exporter) as Box<dyn Exporter> }
+        "gff3" => { Box::new(exporters::GFF3Exporter) as Box<dyn Exporter> }
+        _      => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
     };
     let out_file_name = exporter.save(&result, &out_file)?;
     info!("{}", style(format!("Result written to {}", &out_file_name)).bold());
@@ -584,7 +584,7 @@ fn search_duplications(
 
 
 
-    let mut steps : Vec<Box<Step>> = Vec::new();
+    let mut steps : Vec<Box<dyn Step>> = Vec::new();
     steps.push(Box::new(SearchDuplications::new(
         strand1.clone(),
         strand2.clone(),

@@ -39,7 +39,7 @@ impl Plotter for ChordPlotter {
     fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
-            .and_then(|mut f| f.write_all(self.plot_chord().as_bytes()).into())
+            .and_then(|mut f| f.write_all(self.plot_chord().as_bytes()))
             .and_then(|_| { println!("Chord plot written to `{}`", &out_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
 
@@ -234,7 +234,7 @@ impl ChordPlotter {
                  </style> \
 
                  {} \
-                </svg>",
+                 </svg>",
                 TOTAL_WIDTH, TOTAL_WIDTH,
                 2.0*self.settings.thickness,
                 svg

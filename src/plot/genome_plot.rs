@@ -94,7 +94,7 @@ impl GenomePlotter {
         // 2. Draw the SDs
         for sd in &self.result.sds {
             let color = if sd.reversed { &self.settings.color2 } else  { &self.settings.color1 };
-            let x: Box<Fn(usize) -> f32> = match (sd.chr_left == sd.chr_right, sd.reversed) {
+            let x: Box<dyn Fn(usize) -> f32> = match (sd.chr_left == sd.chr_right, sd.reversed) {
                 (true, false) => {
                     Box::new(|x| chr_spacing - 3.0*chr_width/8.0 + chr_spacing*x as f32)
                 }

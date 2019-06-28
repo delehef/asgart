@@ -65,8 +65,6 @@ impl ChordPlotter {
         format!("M {} {} A {} {} {} {} {} {} {}", start_x, start_y, radius, radius, 0, flag, 1, end_x, end_y)
     }
 
-    fn inter_sd(&self, sd: &SD) -> bool {sd.chr_left != sd.chr_right}
-    fn intra_sd(&self, sd: &SD) -> bool {!self.inter_sd(sd)}
 
     fn plot_chord(&self) -> String {
         let mut svg = String::new();
@@ -94,60 +92,9 @@ impl ChordPlotter {
                             str::replace(&chr.name, "chr", ""));
         }
 
-        for sd in self.result.sds
-            .iter()
-            .filter(|&sd| self.inter_sd(sd)) {
+        for family in &self.result.families {
+            for sd in family {
                 let (left, right) = (sd.global_left_position as i64, sd.global_right_position as i64);
-
-                let t11 = self.angle(left as f64);
-                let t12 = self.angle(left as f64 + sd.length as f64);
-                let mut t1 = t11 + (t12 - t11)/2.0;
-
-                let t21 = self.angle(right as f64);
-                let t22 = self.angle(right as f64 + sd.length as f64);
-                let mut t2 = t21 + (t22 - t21)/2.0;
-
-                let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
-                if width <= self.settings.thickness {width = self.settings.thickness};
-
-                let color = if true {
-                    // Direction-based color
-                    if sd.reversed { &self.settings.color2 } else { &self.settings.color1 }
-                } else {
-                    // Position-based color
-                    // let color = Rgb::from_hsv(Hsv {
-                    //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
-                    //     saturation: 0.9,
-                    //     value: 0.9,
-                    // });
-                    // format!("#{:x}{:x}{:x}",
-                    //         (color.red * 255.0) as u8,
-                    //         (color.green * 255.0) as u8,
-                    //         (color.blue * 255.0) as u8);
-                    "#000000"
-                };
-
-
-
-                let (x1, y1) = self.cartesian(t1, R);
-                let (x2, y2) = self.cartesian(t2, R);
-
-                while t2 < 0.0 {t2 += 2.0*PI;}
-                while t2 > 2.0*PI {t2 -= 2.0*PI;}
-                while t1 > 2.0*PI {t1 -= 2.0*PI;}
-
-                let cx = CX;
-                let cy = CY;
-
-                let path = format!("M {},{} Q {},{} {} {}", x1, y1, cx, cy, x2, y2);
-                svg += &format!("<path d='{}' fill='none' stroke='{}' stroke-opacity='0.3' stroke-width='{}' class='sd'/>\n",
-                                path, color, width);
-            }
-
-        for sd in self.result.sds
-            .iter()
-            .filter(|&sd| self.intra_sd(sd)) {
-                let (left, right) = (sd.global_left_position as i64, sd.global_left_position as i64);
 
                 let t11 = self.angle(left as f64);
                 let t12 = self.angle(left as f64 + sd.length as f64);
@@ -157,35 +104,44 @@ impl ChordPlotter {
                 let t22 = self.angle(right as f64 + sd.length as f64);
                 let t2 = t21 + (t22 - t21)/2.0;
 
-                let tt = t1 + (t2-t1)/2.0;
                 let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
-                if width <= self.settings.thickness {width = self.settings.thickness};
+                if width <= self.settings.min_thickness {width = self.settings.min_thickness};
 
                 let color = if true {
                     // Direction-based color
                     if sd.reversed { &self.settings.color2 } else { &self.settings.color1 }
                 } else {
                     // Position-based color
-                    // let color = Rgb::from_hsv(Hsv {
-                    //     hue: RgbHue::from_radians(t1 + 1.5 * PI),
-                    //     saturation: 0.9,
-                    //     value: 0.9,
-                    // });
-                    // format!("#{:x}{:x}{:x}",
-                    //         (color.red * 255.0) as u8,
-                    //         (color.green * 255.0) as u8,
-                    //         (color.blue * 255.0) as u8);
+                    // let color = Rgb::from_hsv(Hsv {hue: RgbHue::from_radians(t1 + 1.5 * PI), saturation: 0.9, value: 0.9});
+                    // format!("#{:x}{:x}{:x}", (color.red * 255.0) as u8, (color.green * 255.0) as u8, (color.blue * 255.0) as u8);
                     "#000000"
                 };
-                let rin = R + RING_WIDTH + RING_MARGIN;
-                let rout = rin + OUT_CEILING;
-                let (x1, y1) = self.cartesian(t1, rin);
-                let (x2, y2) = self.cartesian(t2, rin);
-                let (cx, cy) = self.cartesian(tt, rout);
+
+
+                let ((x1, y1), (x2, y2), (cx, cy)) = if sd.chr_left != sd.chr_right {
+                    let (x1, y1) = self.cartesian(t1, R);
+                    let (x2, y2) = self.cartesian(t2, R);
+                    let (cx, cy) = (CX, CY);
+                    ((x1, y1), (x2, y2), (cx, cy))
+                } else {
+                    let tt = t1 + (t2-t1)/2.0;
+                    let rin = R + RING_WIDTH + RING_MARGIN;
+                    let rout = rin + OUT_CEILING;
+                    let (x1, y1) = self.cartesian(t1, rin);
+                    let (x2, y2) = self.cartesian(t2, rin);
+                    let (cx, cy) = self.cartesian(tt, rout);
+                    ((x1, y1), (x2, y2), (cx, cy))
+                };
+
+
                 let path = format!("M {},{} Q {},{} {} {}", x1, y1, cx, cy, x2, y2);
-                svg += &format!("<path d='{}' fill='none' stroke='{}' stroke-opacity='0.5' stroke-width='{}'/>\n",
-                                path, color, width);
+                svg += &format!(
+                    "<path d='{}' fill='none' stroke='{}' stroke-opacity='0.3' stroke-width='{}' class='sd'/>\n",
+                    path, color, width
+                );
             }
+        }
+
 
         for features_family in &self.settings.feature_tracks {
             let color = format!("#{:2X}{:2X}{:2X}", rand::random::<i8>(), rand::random::<i8>(), rand::random::<i8>());
@@ -224,10 +180,10 @@ impl ChordPlotter {
 
         svg += "</g>";
         format!("<?xml version='1.0' encoding='iso-8859-1' standalone='no' ?> <!DOCTYPE svg \
-                 PUBLIC '-//W3C//DTD SVG 1.0//EN' \
-                 'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
-                 width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
-                 xmlns:xlink='http://www.w3.org/1999/xlink'> \
+                     PUBLIC '-//W3C//DTD SVG 1.0//EN' \
+                     'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
+                     width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
+                     xmlns:xlink='http://www.w3.org/1999/xlink'> \
 
                  <style type='text/css'> \
                  .sd:hover {{ stroke-opacity: 1.0; stroke: crimson; stroke-width: {}; }} \
@@ -235,9 +191,9 @@ impl ChordPlotter {
 
                  {} \
                  </svg>",
-                TOTAL_WIDTH, TOTAL_WIDTH,
-                2.0*self.settings.thickness,
-                svg
-        )
+                    TOTAL_WIDTH, TOTAL_WIDTH,
+                    2.0*self.settings.min_thickness,
+                    svg
+            )
     }
 }

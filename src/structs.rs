@@ -69,7 +69,7 @@ impl StrandResult {
     }
 
     pub fn find_chr_by_pos(&self, pos: usize) -> &Start {
-        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length).unwrap()
+        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length).expect(&format!("No chr for {}", pos))
     }
 }
 
@@ -79,7 +79,7 @@ pub struct RunResult {
     pub strand1: StrandResult,
     pub strand2: StrandResult,
     pub settings: RunSettings,
-    pub sds: Vec<SD>,
+    pub families: Vec<SDsFamily>,
 }
 
 
@@ -109,6 +109,7 @@ impl ProtoSD {
         100.0 * (1.0 - dist/(self.length as f64))
     }
 }
+pub type ProtoSDsFamily = Vec<ProtoSD>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SD {
@@ -135,3 +136,4 @@ impl SD {
         (self.global_right_position, self.length)
     }
 }
+pub type SDsFamily = Vec<SD>;

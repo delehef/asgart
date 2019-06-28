@@ -41,17 +41,17 @@ fn read_results(filenames: &[&str]) -> Result<RunResult> {
     for result in &results {
         if result.strand1.name != results[0].strand1.name || result.strand2.name != results[0].strand2.name {
             bail!(format!("trying to combine ASGART files containing different karyotypes: `{}/{}` and `{}/{}`",
-                              result.strand1.name, result.strand2.name,
-                              results[0].strand1.name, results[0].strand2.name
+                          result.strand1.name, result.strand2.name,
+                          results[0].strand1.name, results[0].strand2.name
             ));
         }
     }
 
     Ok(RunResult {
         settings: results[0].settings.clone(),
-        strand1: results[0].strand1.clone(),
-        strand2: results[0].strand2.clone(),
-        sds: results.iter().flat_map(|ref r| r.sds.iter()).cloned().collect::<Vec<_>>(),
+        strand1:  results[0].strand1.clone(),
+        strand2:  results[0].strand2.clone(),
+        families: results.iter().flat_map(|ref r| r.families.iter()).cloned().collect::<Vec<_>>(),
     })
 }
 
@@ -64,29 +64,37 @@ fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Featu
             (ystart >= xstart && ystart <= xend)
     }
 
-    let mut r = Vec::new();
-    for sd in &result.sds{
-        for family in features_families {
-            for feature in family {
-                for position in &feature.positions{
-                    let (start, length) = match *position {
-                        FeaturePosition::Relative { ref chr, start, length} => {
-                            let chr = result.strand1.find_chr(&chr);
-                            (chr.position + start, length)
-                        }
-                        FeaturePosition::Absolute { start, length }         => { (start, length) }
-                    };
-                    if _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
-                        || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
-                    {
-                        r.push(sd.clone());
-                    }
-                }
-            }
-        }
-    }
-
-    result.sds = r.clone();
+    result.families = result.families.clone().into_iter()
+        .filter(
+            |family|
+            family.iter()
+                .any(|sd| {
+                    features_families.iter()
+                        .any(|feature_family| {
+                            feature_family.iter()
+                                .any(|feature| {
+                                    for position in &feature.positions{
+                                        let (start, length) = match *position {
+                                            FeaturePosition::Relative { ref chr, start, length} => {
+                                                let chr = result.strand1.find_chr(&chr);
+                                                (chr.position + start, length)
+                                            }
+                                            FeaturePosition::Absolute { start, length }         => {
+                                                (start, length)
+                                            }
+                                        };
+                                        if _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
+                                            || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
+                                        {
+                                            return true;
+                                        }
+                                    }
+                                    false
+                                })
+                        })
+                })
+        )
+        .collect();
 }
 
 fn filter_features_in_sds(result: &mut RunResult, features_families: &mut Vec<Vec<Feature>>, threshold: usize) {
@@ -114,10 +122,13 @@ fn filter_features_in_sds(result: &mut RunResult, features_families: &mut Vec<Ve
                                   FeaturePosition::Absolute { start, length }         => { (start, length) }
                               };
 
-                              result.sds.iter().any(|ref sd| {
-                                  _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
-                                      || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
-                              })
+                              result.families.iter().any(
+                                  |family| family.iter().any(
+                                      |ref sd|
+                                      _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
+                                          || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
+                                  )
+                              )
                           })
                   })
         );
@@ -256,8 +267,8 @@ fn run() -> Result<()> {
 
     let features_tracks: Result<Vec<_>> = match args.values_of("features") {
         Some(x) => { x
-                    .map(|feature_track| read_feature_file(&result, feature_track))
-                    .collect()
+                     .map(|feature_track| read_feature_file(&result, feature_track))
+                     .collect()
         }
         None    => Ok(Vec::new())
     };
@@ -265,41 +276,42 @@ fn run() -> Result<()> {
     let mut features_tracks = features_tracks.unwrap();
 
 
-    if args.is_present("no-direct")         { result.sds.retain(|sd| sd.reversed) }
-    if args.is_present("no-reversed")       { result.sds.retain(|sd| !sd.reversed) }
-    if args.is_present("no-uncomplemented") { result.sds.retain(|sd| sd.complemented) }
-    if args.is_present("no-complemented")   { result.sds.retain(|sd| !sd.complemented) }
+    if args.is_present("no-direct") {
+        result.families.iter_mut().for_each(|family| family.retain(|sd| sd.reversed))
+    }
+    if args.is_present("no-reversed") {
+        result.families.iter_mut().for_each(|family| family.retain(|sd| !sd.reversed))
+    }
+    if args.is_present("no-uncomplemented") {
+        result.families.iter_mut().for_each(|family| family.retain(|sd| sd.complemented))
+    }
+    if args.is_present("no-complemented") {
+        result.families.iter_mut().for_each(|family| family.retain(|sd| !sd.complemented))
+    }
 
-    if args.is_present("filter_duplications") {filter_sds_in_features(&mut result, &features_tracks, value_t!(args, "filter_duplications", usize).unwrap());}
-    if args.is_present("filter_features") {filter_features_in_sds(&mut result, &mut features_tracks, value_t!(args, "filter_features", usize).unwrap());}
+    let min_length   = value_t!(args, "min_length", usize).unwrap();
+    result.families.iter_mut().for_each(|family| family.retain(|sd| sd.length >= min_length));
+    let min_identity = value_t!(args, "min_identity", f32).unwrap();
+    result.families.iter_mut().for_each(|family| family.retain(|sd| sd.identity >= min_identity));
+
+    if args.is_present("filter_duplications") {
+        filter_sds_in_features(&mut result, &features_tracks, value_t!(args, "filter_duplications", usize).unwrap());
+    }
+    if args.is_present("filter_features") {
+        filter_features_in_sds(&mut result, &mut features_tracks, value_t!(args, "filter_features", usize).unwrap());
+    }
 
     let settings = Settings {
         out_file:                out_file,
 
-        min_length:              value_t!(args, "min_length", usize).unwrap(),
-        min_identity:            value_t!(args, "min_identity", f32).unwrap(),
-        filter_direct:           args.is_present("no-direct"),
-        filter_non_complemented: args.is_present("no-uncomplemented"),
-        filter_reversed:         args.is_present("no-reversed"),
-        filter_complemented:     args.is_present("no-complemented"),
-
         size:                    200.0,
-        thickness:               1.0,
+        min_thickness:           0.1,
         color1:                  "#ff5b00".to_owned(),
         color2:                  "#00b2ae".to_owned(),
 
         feature_tracks:          features_tracks,
     };
 
-    result.sds = result.sds
-        .into_iter()
-        .filter(|sd| !(settings.filter_direct && !sd.reversed))
-        .filter(|sd| !(settings.filter_reversed && sd.reversed))
-        .filter(|sd| !(settings.filter_non_complemented && !sd.complemented))
-        .filter(|sd| !(settings.filter_complemented && sd.complemented))
-        .filter(|sd| sd.length >= settings.min_length)
-        .filter(|sd| sd.identity >= settings.min_identity)
-        .collect();
 
     match args.value_of("PLOT-TYPE") {
         Some("chord")   => ChordPlotter::new(settings, result).plot(),

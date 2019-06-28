@@ -163,8 +163,9 @@ impl FlatPlotter {
             }
         }
 
-        for sd in self.result.sds
-            .iter() {
+
+        for family in &self.result.families {
+            for sd in family {
                 let left1 = (sd.global_left_position as f64)/self.max_length * self.width;
                 let left2 = (sd.global_left_position as f64 + sd.length as f64)/self.max_length * self.width;
                 let right1 = (sd.global_right_position as f64)/self.max_length * self.width;
@@ -182,8 +183,8 @@ impl FlatPlotter {
                             </polygon>
                             "#,
                                 left1, CHR_WIDTH,
-                                if left2 - left1 < 1.0 { left1 + 1.0} else { left2 }, CHR_WIDTH,
-                                if right2 - right1 < 1.0 { right1 + 1.0} else { right2 }, self.height - CHR_WIDTH,
+                                if left2 - left1 < self.settings.min_thickness { left1 + self.settings.min_thickness} else { left2 }, CHR_WIDTH,
+                                if right2 - right1 < self.settings.min_thickness { right1 + self.settings.min_thickness} else { right2 }, self.height - CHR_WIDTH,
                                 right1, self.height - CHR_WIDTH,
                                 color,
                                 color,
@@ -196,6 +197,8 @@ impl FlatPlotter {
                                 )
                 );
             }
+        }
+
         format!("<?xml version='1.0' encoding='UTF-8' standalone='no' ?> <!DOCTYPE svg \
                  PUBLIC '-//W3C//DTD SVG 1.0//EN' \
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \

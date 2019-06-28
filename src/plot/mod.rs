@@ -11,19 +11,11 @@ pub mod circos_plot;
 
 pub struct Settings {
     pub out_file: String,
-
     pub size: f64,
 
-    pub thickness: f64,
+    pub min_thickness: f64,
     pub color1: String,
     pub color2: String,
-
-    pub min_length: usize,
-    pub min_identity: f32,
-    pub filter_direct: bool,
-    pub filter_reversed: bool,
-    pub filter_complemented: bool,
-    pub filter_non_complemented: bool,
 
     pub feature_tracks: Vec<Vec<Feature>>,
 }

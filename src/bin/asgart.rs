@@ -6,8 +6,8 @@ extern crate indicatif;
 extern crate console;
 extern crate num_cpus;
 extern crate bio;
-extern crate rayon;
 extern crate asgart;
+extern crate rayon;
 
 use threadpool::ThreadPool;
 use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
@@ -27,7 +27,7 @@ use std::time::Instant;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::TryRecvError;
 
-use asgart::structs::{ALPHABET, ALPHABET_MASKED, RunSettings, StrandResult, RunResult, ProtoSD, SD, Start};
+use asgart::structs::*;
 use asgart::logger::Logger;
 use asgart::errors::*;
 use asgart::exporters::Exporter;
@@ -40,40 +40,49 @@ use asgart::divsufsort64;
 
 trait Step {
     fn name(&self) -> &str;
-    fn run(&self, input: &mut Vec<ProtoSD>, strand1: &Strand, strand2: &Strand,) -> Vec<ProtoSD>;
+    fn run(&self, input: Vec<ProtoSDsFamily>, strand1: &Strand, strand2: &Strand,) -> Vec<ProtoSDsFamily>;
 }
 
 struct ReOrder;
 impl Step for ReOrder {
     fn name(&self) -> &str { "Re-ordering" }
-    fn run(&self, input: &mut Vec<ProtoSD>, strand1: &Strand, strand2: &Strand,) -> Vec<ProtoSD> {
+    fn run(&self, mut input: Vec<ProtoSDsFamily>, strand1: &Strand, strand2: &Strand,) -> Vec<ProtoSDsFamily> {
         input
-            .into_par_iter()
-            .map(|sd|
-                 if sd.left > sd.right && (*strand1).file_name == (*strand2).file_name {
-                     ProtoSD {left: sd.right, right: sd.left, .. *sd}
-                 } else {
-                     sd.clone()
-                 }
-            )
-            .collect::<Vec<ProtoSD>>()
+            .par_iter_mut()
+            .for_each(|family| {
+                family
+                    .iter_mut()
+                    .for_each(|sd|
+                              if sd.left > sd.right && (*strand1).file_name == (*strand2).file_name {
+                                  let tmp = sd.left;
+                                  sd.left = sd.right;
+                                  sd.right = tmp
+                              }
+                    )});
+        input
     }
 }
 
 struct Sort;
 impl Step for Sort {
-    fn name(&self) -> &str { "Re-ordering" }
-    fn run(&self, input: &mut Vec<ProtoSD>, _strand1: &Strand, _strand2: &Strand,) -> Vec<ProtoSD> {
-        input.sort_by(|a, b| (a.left).cmp(&b.left));
-        input.to_vec()
+    fn name(&self) -> &str { "Sorting" }
+    fn run(&self, mut input: Vec<ProtoSDsFamily>, _strand1: &Strand, _strand2: &Strand,) -> Vec<ProtoSDsFamily> {
+        input
+            .iter_mut()
+            .for_each(|family| family.sort_by(|a, b| (a.left).cmp(&b.left)));
+
+        input
     }
 }
 
 struct ReduceOverlap;
 impl Step for ReduceOverlap {
     fn name(&self) -> &str { "Reducing overlap" }
-    fn run(&self, input: &mut Vec<ProtoSD>, _strand1: &Strand, _strand2: &Strand,) -> Vec<ProtoSD> {
-        reduce_overlap(&input)
+    fn run(&self, mut input: Vec<ProtoSDsFamily>, _strand1: &Strand, _strand2: &Strand,) -> Vec<ProtoSDsFamily> {
+        input
+            .iter_mut()
+            .map(|family| reduce_overlap(&family))
+            .collect()
     }
 }
 
@@ -83,16 +92,15 @@ impl ComputeScore {
 }
 impl Step for ComputeScore {
     fn name(&self) -> &str { "Computing Levenshtein distance" }
-    fn run(&self, input: &mut Vec<ProtoSD>, strand1: &Strand, strand2: &Strand) -> Vec<ProtoSD> {
+    fn run(&self, mut input: Vec<ProtoSDsFamily>, strand1: &Strand, strand2: &Strand) -> Vec<ProtoSDsFamily> {
         let (shift, _) = self.trim.unwrap_or((0, 0));
         input
             .par_iter_mut()
-            .for_each(|ref mut sd| sd.identity = sd.levenshtein(
-                shift,
-                &strand1.data,
-                &strand2.data
-            ) as f32);
-        input.to_vec()
+            .for_each(|family|
+                      family
+                      .iter_mut()
+                      .for_each(|ref mut sd| sd.identity = sd.levenshtein(shift, &strand1.data, &strand2.data) as f32));
+        input
     }
 }
 
@@ -122,94 +130,121 @@ impl SearchDuplications {
 }
 impl Step for SearchDuplications {
     fn name(&self) -> &str { "Looking for proto-duplications" }
-    fn run(&self, _input: &mut Vec<ProtoSD>, _strand1: &Strand, _strand2: &Strand) -> Vec<ProtoSD> {
-        let thread_pool = ThreadPool::new(self.settings.threads_count);
-        let (tx_monitor, rx_monitor) = mpsc::channel();
-        let (tx, rx) = mpsc::channel();
-        {
-            let num_tasks = (self.strand1.data.len() - self.settings.probe_size) / self.settings.chunk_size;
-            let chunk_overflow = (self.strand1.data.len() - self.settings.probe_size) % self.settings.chunk_size;
+    fn run(&self, _input: Vec<ProtoSDsFamily>, _strand1: &Strand, _strand2: &Strand) -> Vec<ProtoSDsFamily> {
+        // let thread_pool = ThreadPool::new(self.settings.threads_count);
+        // let (tx_monitor, rx_monitor) = mpsc::channel();
+        // let (tx, rx) = mpsc::channel();
+        // {
+        //     let num_tasks = (self.strand1.data.len() - self.settings.probe_size) / self.settings.chunk_size;
+        //     let chunk_overflow = (self.strand1.data.len() - self.settings.probe_size) % self.settings.chunk_size;
 
-            let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(num_tasks);
+        //     let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(num_tasks);
 
-            let mut start = 0;
-            for id in 0..=num_tasks {
-                progresses.push(Arc::new(AtomicUsize::new(0)));
-                let my_tx = tx.clone();
-                let suffix_array = Arc::clone(&self.suffix_array);
-                let strand1 = Arc::clone(&self.strand1);
-                let strand2 = Arc::clone(&self.strand2);
-                let searcher = Arc::clone(&self.searcher);
-                let my_progress = Arc::clone(&progresses[id]);
-                let end = start + if id < num_tasks { self.settings.chunk_size } else { chunk_overflow };
-                let run_settings = RunSettings {start, end, .. self.settings.clone()};
+        //     let mut start = 0;
+        //     for id in 0..=num_tasks {
+        //         progresses.push(Arc::new(AtomicUsize::new(0)));
+        //         let my_tx = tx.clone();
+        //         let suffix_array = Arc::clone(&self.suffix_array);
+        //         let strand1 = Arc::clone(&self.strand1);
+        //         let strand2 = Arc::clone(&self.strand2);
+        //         let searcher = Arc::clone(&self.searcher);
+        //         let my_progress = Arc::clone(&progresses[id]);
+        //         let end = start + if id < num_tasks { self.settings.chunk_size } else { chunk_overflow };
+        //         let run_settings = RunSettings {start, end, .. self.settings.clone()};
 
-                thread_pool.execute(move || {
-                    my_tx.send(automaton::search_duplications(
-                        &strand1.data,
-                        &strand2.data,
-                        &suffix_array,
-                        &searcher,
-                        &my_progress,
-                        run_settings
-                    )).unwrap();
-                });
+        //         thread_pool.execute(move || {
+        //             my_tx.send(automaton::search_duplications(
+        //                 &strand1.data,
+        //                 &strand2.data,
+        //                 &suffix_array,
+        //                 &searcher,
+        //                 &my_progress,
+        //                 run_settings
+        //             )).unwrap();
+        //         });
 
-                start += self.settings.chunk_size;
-            }
+        //         start += self.settings.chunk_size;
+        //     }
 
-            let total = self.strand1.data.len();
-            thread::spawn(move || {
-                let pb = ProgressBar::new(100);
-                pb.set_style(ProgressStyle::default_bar()
-                             .template("{spinner:.blue} [{elapsed}] {wide_bar} {pos}% ({eta} remaining)"));
+        //     let total = self.strand1.data.len();
+        //     // thread::spawn(move || {
+        //     //     let pb = ProgressBar::new(100);
+        //     //     pb.set_style(ProgressStyle::default_bar()
+        //     //                  .template("{spinner:.blue} [{elapsed}] {wide_bar} {pos}% ({eta} remaining)"));
 
-                loop {
-                    thread::sleep(Duration::from_millis(100));
-                    match rx_monitor.try_recv() {
-                        Ok(_) |
-                        Err(TryRecvError::Disconnected) => {
-                            pb.finish();
-                            break;
-                        }
-                        Err(TryRecvError::Empty) => {
-                            let mut current = 0;
-                            for x in &progresses {
-                                current += x.load(Ordering::Relaxed);
-                            }
-                            let percent = (current as f64 / total as f64 * 100.0) as u64;
-                            pb.set_position(percent);
-                        }
-                    }
-                }
-            });
-        }
-        drop(tx);
+        //     //     loop {
+        //     //         thread::sleep(Duration::from_millis(100));
+        //     //         match rx_monitor.try_recv() {
+        //     //             Ok(_) |
+        //     //             Err(TryRecvError::Disconnected) => {
+        //     //                 pb.finish();
+        //     //                 break;
+        //     //             }
+        //     //             Err(TryRecvError::Empty) => {
+        //     //                 let mut current = 0;
+        //     //                 for x in &progresses {
+        //     //                     current += x.load(Ordering::Relaxed);
+        //     //                 }
+        //     //                 let percent = (current as f64 / total as f64 * 100.0) as u64;
+        //     //                 pb.set_position(percent);
+        //     //             }
+        //     //         }
+        //     //     }
+        //     // });
+        // }
+        // drop(tx);
 
-        let result = rx.iter().fold(Vec::new(), |mut a, b| {
-            a.extend(b.iter().map(|sd| {
-                ProtoSD {
-                    left:         if !self.settings.reverse {sd.left} else {self.strand1.data.len() - sd.left - sd.length - 1},
-                    right:        sd.right,
-                    length:       sd.length,
-                    identity:     sd.identity,
-                    reversed:     self.settings.reverse,
-                    complemented: self.settings.complement,
-                }
-            }));
-            a
-        });
-        let _ = tx_monitor.send(());
-        thread::sleep(Duration::from_millis(500));
-        result
+        // let result = rx.iter().fold(Vec::new(), |mut a, b| {
+        //     a.extend(b.iter().map(|sd| {
+        //         ProtoSD {
+        //             left:         if !self.settings.reverse {sd.left} else {self.strand1.data.len() - sd.left - sd.length - 1},
+        //             right:        sd.right,
+        //             length:       sd.length,
+        //             identity:     sd.identity,
+        //             reversed:     self.settings.reverse,
+        //             complemented: self.settings.complement,
+        //         }
+        //     }));
+        //     a
+        // });
+        // let _ = tx_monitor.send(());
+        // thread::sleep(Duration::from_millis(500));
+        // result
+
+
+
+
+
+        let run_settings = RunSettings {start: 0, end: self.strand1.data.len(), .. self.settings.clone()};
+        automaton::search_duplications(
+            &self.strand1.data,
+            &self.strand2.data,
+            &self.suffix_array,
+            &self.searcher,
+            &AtomicUsize::new(0),
+            run_settings
+        )
+            .iter()
+            .map(|family|
+                 family.iter().map(|sd|
+                                   ProtoSD {
+                                       left:         if !self.settings.reverse {sd.left} else {self.strand1.data.len() - sd.left - sd.length - 1},
+                                       right:        sd.right,
+                                       length:       sd.length,
+                                       identity:     sd.identity,
+                                       reversed:     self.settings.reverse,
+                                       complemented: self.settings.complement,
+                                   }
+                 ).collect::<ProtoSDsFamily>()
+            ).collect::<Vec<ProtoSDsFamily>>()
     }
 }
 
 type PreparedData = (
-    std::sync::Arc<Strand>,                // First strand
-    std::sync::Arc<Strand>,                // Second strand
-    std::sync::Arc<std::vec::Vec<i64>>,    // Suffix array
-    std::sync::Arc<searcher::Searcher>     // Searcher for the suffix array
+std::sync::Arc<Strand>,                // First strand
+std::sync::Arc<Strand>,                // Second strand
+std::sync::Arc<std::vec::Vec<i64>>,    // Suffix array
+std::sync::Arc<searcher::Searcher>     // Searcher for the suffix array
 );
 
 struct Strand {
@@ -586,24 +621,21 @@ fn search_duplications(
 
     let mut steps : Vec<Box<dyn Step>> = Vec::new();
     steps.push(Box::new(SearchDuplications::new(
-        strand1.clone(),
-        strand2.clone(),
+        strand1.clone(), // XXX clone?
+        strand2.clone(), // XXX
         shared_suffix_array,
         shared_searcher,
         settings,
     )));
-    steps.push(Box::new(Sort{}));
     if settings.compute_score {steps.push(Box::new(ComputeScore::new(settings.trim)));}
+    steps.push(Box::new(Sort{}));
     steps.push(Box::new(ReOrder{}));
     steps.push(Box::new(ReduceOverlap{}));
 
     let mut result = Vec::new();
     for (i, step) in steps.iter().enumerate() {
-        info!("{} {}...",
-              style(format!("[{}/{}]", i + 1, steps.len())).blue().bold(),
-              step.name()
-        );
-        result = step.run(&mut result, &strand1, &strand2);
+        info!("{} {}...", style(format!("[{}/{}]", i + 1, steps.len())).blue().bold(), step.name());
+        result = step.run(result, &strand1, &strand2);
     }
 
     info!("{}",
@@ -615,12 +647,12 @@ fn search_duplications(
 
     let strand1 = StrandResult {
         name: strand1.file_name.to_owned(),
-        length: strand1.data.len(),
+        length: strand1.map.iter().fold(0, |ax, chr| ax + chr.length),
         map: strand1.map.clone(),
     };
     let strand2 = StrandResult {
         name: strand2.file_name.to_owned(),
-        length: strand2.data.len() - 1, // Drop the '$'
+        length: strand2.map.iter().fold(0, |ax, chr| ax + chr.length),
         map: strand2.map.clone(),
     };
 
@@ -628,28 +660,33 @@ fn search_duplications(
         strand1: strand1.clone(),
         strand2: strand2.clone(),
         settings: settings,
-        sds: result.iter().map(|sd| SD {
-            chr_left: strand1.find_chr_by_pos(sd.left).name.clone(),
-            chr_right: strand2.find_chr_by_pos(sd.right).name.clone(),
+        families: result.iter()
+            .map(|family|
+                 family.iter()
+                 .map(|sd|
+                      {
+                          SD {
+                              chr_left: strand1.find_chr_by_pos(sd.left).name.clone(),
+                              chr_right: strand2.find_chr_by_pos(sd.right).name.clone(),
 
-            global_left_position: sd.left,
-            global_right_position: sd.right,
+                              global_left_position: sd.left,
+                              global_right_position: sd.right,
 
-            chr_left_position: sd.left - strand1.find_chr_by_pos(sd.left).position,
-            chr_right_position: sd.right - strand2.find_chr_by_pos(sd.right).position,
+                              chr_left_position: sd.left - strand1.find_chr_by_pos(sd.left).position,
+                              chr_right_position: sd.right - strand2.find_chr_by_pos(sd.right).position,
 
-            length: sd.length,
-            identity: sd.identity,
-            reversed: sd.reversed,
-            complemented: sd.complemented,
-        }).collect::<Vec<SD>>(),
+                              length: sd.length,
+                              identity: sd.identity,
+                              reversed: sd.reversed,
+                              complemented: sd.complemented,
+                          }})
+                 .collect::<Vec<SD>>()
+            ).collect(),
     })
 }
 
 
 fn main() {
-    // setup_panic!();
-
     if let Err(ref e) = run() {
         println!("{} {}", style("Error: ").red(), e);
         for e in e.iter().skip(1) {

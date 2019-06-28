@@ -3,6 +3,7 @@ extern crate superslice;
 extern crate serde;
 extern crate serde_json;
 extern crate separator;
+extern crate rayon;
 #[macro_use] extern crate error_chain;
 
 pub mod structs;

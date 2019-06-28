@@ -1,10 +1,15 @@
+extern crate rayon;
+extern crate indicatif;
+
 use std::cmp;
 use std::fmt;
 
 use super::divsufsort64::*;
-use super::structs::{RunSettings, ProtoSD};
+use super::structs::{RunSettings, ProtoSD, ProtoSDsFamily};
 use super::searcher::Searcher;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use rayon::prelude::*;
+use self::indicatif::{ProgressBar, ProgressStyle, HumanDuration};
 
 
 #[derive(Clone)]
@@ -21,6 +26,11 @@ impl fmt::Debug for Segment {
                self.start,
                self.end,
                self.end - self.start)
+    }
+}
+impl Segment {
+    fn len(&self) -> usize {
+        self.end - self.start
     }
 }
 
@@ -86,6 +96,21 @@ fn make_duplications(psd: &ProtoProtoSD,
     r
 }
 
+#[derive(Debug)]
+struct Arm {
+    left: Segment,
+    right: Segment,
+    family_id: usize,
+    active: bool,
+    dirty: bool,
+    gap: usize,
+}
+
+enum Operation {
+    ExtendArm {i: usize, l_end: usize, r_end: usize},
+    NewArm {i: usize, m_start: usize, m_end: usize},
+}
+
 pub fn search_duplications(strand1: &[u8],
                            strand2: &[u8],
                            sa: &[idx],
@@ -94,6 +119,151 @@ pub fn search_duplications(strand1: &[u8],
                            progress: &AtomicUsize,
 
                            settings: RunSettings
+) -> Vec<ProtoSDsFamily> {
+    fn try_extend_arms(arms: &[Arm], m: &Segment, e: i64, i: usize, ps: usize) -> Operation {
+        for (j, a) in arms.iter().enumerate() {
+            if a.active && d_SS(&a.right, m) < e as i64 {
+                return Operation::ExtendArm {i: j, l_end: i + ps, r_end: m.end}
+            }
+        }
+
+        return Operation::NewArm {i: i, m_start: m.start, m_end: m.end}
+    }
+
+    fn old_try_extend_arms(arms: &mut [Arm], m: &Segment, e: i64, i: usize, ps: usize) -> bool {
+        for a in arms {
+            if a.active && d_SS(&a.right, m) < e as i64 {
+                a.left.end = i + ps;
+                a.right.end = m.end;
+                a.dirty = true;
+                a.gap = 0;
+                return true
+            }
+        }
+        false
+    }
+
+    let pb = ProgressBar::new((settings.end - settings.start) as u64);
+    pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [{elapsed}] {wide_bar} {percent}% (~{eta} remaining)"));
+    pb.set_draw_delta(10000);
+
+    let mut arms : Vec<Arm> = Vec::new();
+    let mut i = settings.start;
+    let mut r = Vec::new();
+    let mut current_family_id = 1;
+    let step_size = settings.probe_size/2;
+
+
+    while i < settings.end - settings.probe_size {
+        i += step_size; // TODO
+        pb.set_position(i as u64);
+
+        if strand1[i] == b'N' { continue }
+        let matches: Vec<Segment> = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
+            .into_iter()
+            .filter(|m| m.start != i)
+            .filter(|m| if !settings.reverse { m.start > i } else { m.start <= strand2.len() - i })
+            .collect();
+        if matches.len() > settings.max_cardinality {continue}
+
+        // Reset dirty bits of arms
+        arms.iter_mut().for_each(|arm| arm.dirty = false);
+
+        // for m in matches {
+        //     // Try to extend existing arms...
+        //     if !old_try_extend_arms(&mut arms, &m, settings.max_gap_size as i64, i, settings.probe_size) {
+        //         // ...or create new arm
+        //         arms.push(Arm{
+        //             left: Segment{start: i, end: i + settings.probe_size, tag: 0},
+        //             right: Segment{start: m.start, end: m.end, tag: 0},
+        //             family_id: current_family_id,
+        //             active: true, dirty: false,
+        //             gap: 0
+        //         })
+        //     }
+        // }
+
+        let todo = matches
+            .par_iter()
+            .map(|m| try_extend_arms(&arms, m, settings.max_gap_size as i64, i, settings.probe_size) )
+            .collect::<Vec<_>>();
+
+        todo.iter()
+            .for_each(|op| {
+                match op {
+                    Operation::ExtendArm {i, l_end, r_end} => {
+                        arms[*i].left.end = *l_end;
+                        arms[*i].right.end = *r_end;
+                        arms[*i].dirty = true;
+                        arms[*i].gap = 0;
+                    }
+                    _ => {}
+                }
+            });
+
+        todo.iter()
+            .for_each(|op| {
+                match op {
+                    Operation::NewArm {i, m_start, m_end} => {
+                        arms.push(Arm{
+                            left: Segment{start: *i, end: *i + settings.probe_size, tag: 0},
+                            right: Segment{start: *m_start, end: *m_end, tag: 0},
+                            family_id: current_family_id,
+                            active: true, dirty: false,
+                            gap: 0
+                        })
+                    }
+                    _ => {}
+                }
+            });
+
+        // Update the gaps of non-dirty arms
+        arms.iter_mut()
+            .filter(|a| !a.dirty)
+            .for_each(|a|{
+                a.gap += step_size;
+                if a.gap as u32 >= settings.max_gap_size { a.active = false }
+            });
+
+        arms.retain(|a| {
+            a.active || (!a.active && a.left.len() >= settings.min_duplication_length) // TODO
+        });
+
+        // Check if there are still extending arms
+        if !arms.is_empty() && arms.iter().all(|a| !a.active) {
+            let family: ProtoSDsFamily = arms.iter()
+                .filter(|a| a.right.len() >= settings.min_duplication_length)
+                .map(|a| {
+                    ProtoSD {
+                        left: a.left.start,
+                        right: a.right.start,
+                        length: a.left.len(),
+                        identity: 0.,
+                        reversed: false,
+                        complemented: false,
+                    }})
+                .collect();
+            if !family.is_empty() { r.push(family); }
+            arms.clear();
+
+            current_family_id += 1;
+        }
+    }
+    pb.finish_and_clear();
+
+    r
+}
+
+
+
+pub fn search_duplications_old(strand1: &[u8],
+                               strand2: &[u8],
+                               sa: &[idx],
+
+                               searcher: &Searcher,
+                               progress: &AtomicUsize,
+
+                               settings: RunSettings
 ) -> Vec<ProtoSD> {
     let mut r = Vec::new();
 
@@ -292,4 +462,14 @@ fn segments_to_segments_distance(segments: &[Segment], others: &[Segment]) -> u3
     }
 
     distance as u32
+}
+
+fn d_SS(a: &Segment, m: &Segment) -> i64 {
+    if (m.start >= a.start && m.start <= a.end)
+        || (m.end >= a.start && m.end <= a.end) {
+            0
+        } else {
+            cmp::min((a.start as i64 - m.end as i64).abs(),
+                     (a.end as i64 - m.start as i64).abs())
+        }
 }

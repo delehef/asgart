@@ -74,22 +74,27 @@ impl CircosPlotter {
     }
 
     fn plot_links(&self) -> String {
-        let links : String = self.result.sds
+        let links : String = self.result.families
             .iter()
-            .map(|sd|
-                 format!("{chr_left} {chr_left_start} {chr_left_end} {chr_right} {chr_right_start} {chr_right_end} {color}",
-                         chr_left        = slugify(&sd.chr_left),
-                         chr_left_start  = sd.chr_left_position,
-                         chr_left_end    = sd.chr_left_position + sd.length,
-                         chr_right       = slugify(&sd.chr_right),
-                         chr_right_start = sd.chr_right_position,
-                         chr_right_end   = sd.chr_right_position + sd.length,
-                         color           = if sd.reversed { "color=teal" } else { "color=orange"}
+            .map(|family|
+                 family
+                 .iter()
+                 .map(
+                     |sd|
+                     format!("{chr_left} {chr_left_start} {chr_left_end} {chr_right} {chr_right_start} {chr_right_end} {color}",
+                             chr_left        = slugify(&sd.chr_left),
+                             chr_left_start  = sd.chr_left_position,
+                             chr_left_end    = sd.chr_left_position + sd.length,
+                             chr_right       = slugify(&sd.chr_right),
+                             chr_right_start = sd.chr_right_position,
+                             chr_right_end   = sd.chr_right_position + sd.length,
+                             color           = if sd.reversed { "color=teal" } else { "color=orange"}
+                     )
                  )
             )
+            .flatten()
             .collect::<Vec<String>>()
             .join("\n");
-
 
         links
     }

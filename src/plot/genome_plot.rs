@@ -92,52 +92,46 @@ impl GenomePlotter {
         }
 
         // 2. Draw the SDs
-        for sd in &self.result.sds {
-            let color = if sd.reversed { &self.settings.color2 } else  { &self.settings.color1 };
-            let x: Box<dyn Fn(usize) -> f32> = match (sd.chr_left == sd.chr_right, sd.reversed) {
-                (true, false) => {
-                    Box::new(|x| chr_spacing - 3.0*chr_width/8.0 + chr_spacing*x as f32)
-                }
-                (true, true) => {
-                    Box::new(|x| chr_spacing - 1.0*chr_width/8.0 + chr_spacing*x as f32)
-                }
-                (false, false) => {
-                    Box::new(|x| chr_spacing + 1.0*chr_width/8.0 + chr_spacing*x as f32)
-                }
-                (false, true) => {
-                    Box::new(|x| chr_spacing + 3.0*chr_width/8.0 + chr_spacing*x as f32)
-                }
-            };
+        for family in &self.result.families {
+            for sd in family {
+                let color = if sd.reversed { &self.settings.color2 } else  { &self.settings.color1 };
+                let x: Box<dyn Fn(usize) -> f32> = match (sd.chr_left == sd.chr_right, sd.reversed) {
+                    (true,  false) => {Box::new(|x| chr_spacing - 3.0*chr_width/8.0 + chr_spacing*x as f32)}
+                    (true,  true)  => {Box::new(|x| chr_spacing - 1.0*chr_width/8.0 + chr_spacing*x as f32)}
+                    (false, false) => {Box::new(|x| chr_spacing + 1.0*chr_width/8.0 + chr_spacing*x as f32)}
+                    (false, true)  => {Box::new(|x| chr_spacing + 3.0*chr_width/8.0 + chr_spacing*x as f32)}
+                };
 
-            // left arm
-            let chr_left_index = self.result.strand1.find_chr_index(&sd.chr_left).unwrap();
-            let left = sd.chr_left_position;
-            let start = factor * left as f32;
-            let mut end = factor * (left + sd.length) as f32;
-            if start - end < threshold { end += threshold };
-            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
-                            x(chr_left_index),
-                            50.0 + start,
-                            x(chr_left_index),
-                            50.0 + end,
-                            color,
-                            chr_width/4.0,
-            );
+                // left arm
+                let chr_left_index = self.result.strand1.find_chr_index(&sd.chr_left).unwrap();
+                let left = sd.chr_left_position;
+                let start = factor * left as f32;
+                let mut end = factor * (left + sd.length) as f32;
+                if start - end < threshold { end += threshold };
+                svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
+                                x(chr_left_index),
+                                50.0 + start,
+                                x(chr_left_index),
+                                50.0 + end,
+                                color,
+                                chr_width/4.0,
+                );
 
-            // right arm
-            let chr_right_index = self.result.strand2.find_chr_index(&sd.chr_right).unwrap();
-            let right = sd.chr_right_position;
-            let start = factor * right as f32;
-            let mut end = factor * (right + sd.length) as f32;
-            if start - end < threshold { end += threshold };
-            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
-                            x(chr_right_index),
-                            50.0 + start,
-                            x(chr_right_index),
-                            50.0 + end,
-                            color,
-                            chr_width/4.0,
-            );
+                // right arm
+                let chr_right_index = self.result.strand2.find_chr_index(&sd.chr_right).unwrap();
+                let right = sd.chr_right_position;
+                let start = factor * right as f32;
+                let mut end = factor * (right + sd.length) as f32;
+                if start - end < threshold { end += threshold };
+                svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
+                                x(chr_right_index),
+                                50.0 + start,
+                                x(chr_right_index),
+                                50.0 + end,
+                                color,
+                                chr_width/4.0,
+                );
+            }
         }
 
         // 3. Label everything

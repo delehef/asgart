@@ -122,7 +122,7 @@ pub fn search_duplications(strand1: &[u8],
 ) -> Vec<ProtoSDsFamily> {
     fn try_extend_arms(arms: &[Arm], m: &Segment, e: i64, i: usize, ps: usize) -> Operation {
         for (j, a) in arms.iter().enumerate() {
-            if a.active && d_SS(&a.right, m) < e as i64 {
+            if a.active && d_SS(&a.right, m) < cmp::max(e, (0.1*a.left.len() as f64) as i64) as i64 {
                 return Operation::ExtendArm {i: j, l_end: i + ps, r_end: m.end}
             }
         }
@@ -143,9 +143,9 @@ pub fn search_duplications(strand1: &[u8],
         false
     }
 
-    let pb = ProgressBar::new((settings.end - settings.start) as u64);
-    pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [{elapsed}] {wide_bar} {percent}% (~{eta} remaining)"));
-    pb.set_draw_delta(10000);
+    // let pb = ProgressBar::new((settings.end - settings.start) as u64);
+    // pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [{elapsed}] {wide_bar} {percent}% (~{eta} remaining)"));
+    // pb.set_draw_delta(10000);
 
     let mut arms : Vec<Arm> = Vec::new();
     let mut i = settings.start;
@@ -156,7 +156,7 @@ pub fn search_duplications(strand1: &[u8],
 
     while i < settings.end - settings.probe_size {
         i += step_size; // TODO
-        pb.set_position(i as u64);
+        // pb.set_position(i as u64);
 
         if strand1[i] == b'N' { continue }
         let matches: Vec<Segment> = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
@@ -185,6 +185,7 @@ pub fn search_duplications(strand1: &[u8],
 
         let todo = matches
             .par_iter()
+            .with_min_len(8)
             .map(|m| try_extend_arms(&arms, m, settings.max_gap_size as i64, i, settings.probe_size) )
             .collect::<Vec<_>>();
 
@@ -233,23 +234,23 @@ pub fn search_duplications(strand1: &[u8],
         if !arms.is_empty() && arms.iter().all(|a| !a.active) {
             let family: ProtoSDsFamily = arms.iter()
                 .filter(|a| a.right.len() >= settings.min_duplication_length)
-                .map(|a| {
-                    ProtoSD {
-                        left: a.left.start,
-                        right: a.right.start,
-                        length: a.left.len(),
-                        identity: 0.,
-                        reversed: false,
-                        complemented: false,
-                    }})
-                .collect();
-            if !family.is_empty() { r.push(family); }
-            arms.clear();
+            .map(|a| {
+                ProtoSD {
+                    left: a.left.start,
+                    right: a.right.start,
+                    length: a.left.len(),
+                    identity: 0.,
+                    reversed: false,
+                    complemented: false,
+                }})
+            .collect();
+        if !family.is_empty() { r.push(family); }
+        arms.clear();
 
-            current_family_id += 1;
-        }
+        current_family_id += 1;
     }
-    pb.finish_and_clear();
+    }
+    // pb.finish_and_clear();
 
     r
 }

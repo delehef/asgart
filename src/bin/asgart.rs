@@ -10,7 +10,7 @@ extern crate asgart;
 extern crate rayon;
 
 use threadpool::ThreadPool;
-use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
+use indicatif::{ProgressBar, ProgressStyle, HumanDuration, MultiProgress};
 use console::style;
 use bio::io::fasta;
 use clap::{App, AppSettings};
@@ -133,125 +133,69 @@ impl SearchDuplications<'_> {
 impl<'a> Step for SearchDuplications<'a> {
     fn name(&self) -> &str { "Looking for proto-duplications" }
     fn run(&self, _input: Vec<ProtoSDsFamily>, _strand1: &Strand, _strand2: &Strand) -> Vec<ProtoSDsFamily> {
-        // let chunk_size = self.strand1.data.len() / self.settings.threads_count;
-        let thread_pool = ThreadPool::new(self.settings.threads_count);
         let (tx_monitor, rx_monitor) = mpsc::channel();
-        let (tx, rx) = mpsc::channel();
-        {
-            let mut progresses: Vec<Arc<AtomicUsize>> = Vec::with_capacity(self.chunks_to_process.len());
-            for (id, chunk) in self.chunks_to_process.iter().enumerate() {
-                // for id in 0..=num_tasks {
-                progresses.push(Arc::new(AtomicUsize::new(0)));
-                let my_tx = tx.clone();
-                let suffix_array = Arc::clone(&self.suffix_array);
-                let strand1 = Arc::clone(&self.strand1);
-                let strand2 = Arc::clone(&self.strand2);
-                let searcher = Arc::clone(&self.searcher);
-                let my_progress = Arc::clone(&progresses[id]);
+        let progresses = Arc::new((0..self.chunks_to_process.len()).map(|_| Arc::new(AtomicUsize::new(0))).collect::<Vec<_>>());
+        let total = self.strand1.data.len();
+        let monitor_thread = {
+            let progresses = Arc::clone(&progresses);
+            thread::spawn(move || {
+                let pb = ProgressBar::new(100);
+                pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [{elapsed}] {bar:50} {pos}% ({eta} remaining)"));
 
-                // let end = start + if id < num_tasks { chunk_size } else { chunk_overflow };
-                // let run_settings = RunSettings {start, end, .. self.settings.clone()};
-                let run_settings = RunSettings {start: chunk.0, end: chunk.0 + chunk.1, .. self.settings.clone()};
+                loop {
+                    thread::sleep(Duration::from_millis(500));
+                    match rx_monitor.try_recv() {
+                        Err(TryRecvError::Empty) => {
+                            pb.set_position((progresses.iter().map(|x| x.load(Ordering::Relaxed))
+                                             .fold(0, |ax, x| ax + x) as f64/total as f64 * 100.0) as u64);
+                        }
+                        _ => { pb.finish_and_clear(); break; }
+                    }
+                }
+            })};
 
-                thread_pool.execute(move || {
-                    my_tx.send(automaton::search_duplications(
-                        &strand1.data,
-                        &strand2.data,
-                        &suffix_array,
-                        &searcher,
-                        &my_progress,
-                        run_settings
-                    )).unwrap();
-                });
+        let results = self.chunks_to_process
+            .par_iter()
+            .enumerate()
+            .map(|(id, chunk)| {
+                automaton::search_duplications(
+                    &self.strand1.data, &self.strand2.data,
+                    &self.suffix_array, &self.searcher,
+                    &progresses[id], RunSettings {start: chunk.0, end: chunk.0 + chunk.1, .. self.settings.clone()}
+                )
+            })
+            .collect::<Vec<_>>();
+        let result =
+            results
+            .iter()
+            .fold(Vec::new(), |mut a, b| {
+                a.extend(b.iter()
+                         .map(|family|
+                              family
+                              .iter()
+                              .map(|sd|{
+                                  let left = if !self.settings.reverse {
+                                      sd.left
+                                  } else {
+                                      self.strand1.data.len() - sd.left - sd.length - 1
+                                  };
 
-                // start += chunk_size;
-            }
+                                  ProtoSD {
+                                      left:         left,
+                                      right:        sd.right,
+                                      length:       sd.length,
+                                      identity:     sd.identity,
+                                      reversed:     self.settings.reverse,
+                                      complemented: self.settings.complement,
+                                  }
+                              }
+                              ).collect::<ProtoSDsFamily>()));
+                a
+            });
 
-            let total = self.strand1.data.len();
-            // thread::spawn(move || {
-            //     let pb = ProgressBar::new(100);
-            //     pb.set_style(ProgressStyle::default_bar()
-            //                  .template("{spinner:.blue} [{elapsed}] {wide_bar} {pos}% ({eta} remaining)"));
-
-            //     loop {
-            //         thread::sleep(Duration::from_millis(100));
-            //         match rx_monitor.try_recv() {
-            //             Ok(_) |
-            //             Err(TryRecvError::Disconnected) => {
-            //                 pb.finish();
-            //                 break;
-            //             }
-            //             Err(TryRecvError::Empty) => {
-            //                 let mut current = 0;
-            //                 for x in &progresses {
-            //                     current += x.load(Ordering::Relaxed);
-            //                 }
-            //                 let percent = (current as f64 / total as f64 * 100.0) as u64;
-            //                 pb.set_position(percent);
-            //             }
-            //         }
-            //     }
-            // });
-        }
-        drop(tx);
-
-        let result = rx.iter().fold(Vec::new(), |mut a, b| {
-            a.extend(b.iter()
-
-                     // .map(|sd| {
-                     //     ProtoSD {
-                     //         left:         if !self.settings.reverse {sd.left} else {self.strand1.data.len() - sd.left - sd.length - 1},
-                     //         right:        sd.right,
-                     //         length:       sd.length,
-                     //         identity:     sd.identity,
-                     //         reversed:     self.settings.reverse,
-                     //         complemented: self.settings.complement,
-                     //     }})
-                     .map(|family|
-                          family.iter().map(|sd|
-                                            ProtoSD {
-                                                left:         if !self.settings.reverse {sd.left} else {self.strand1.data.len() - sd.left - sd.length - 1},
-                                                right:        sd.right,
-                                                length:       sd.length,
-                                                identity:     sd.identity,
-                                                reversed:     self.settings.reverse,
-                                                complemented: self.settings.complement,
-                                            }
-                          ).collect::<ProtoSDsFamily>())
-
-            );
-            a
-        });
         let _ = tx_monitor.send(());
-        thread::sleep(Duration::from_millis(500));
+        monitor_thread.join().unwrap();
         result
-
-
-
-
-
-        // let run_settings = RunSettings {start: 0, end: self.strand1.data.len(), .. self.settings.clone()};
-        // automaton::search_duplications(
-        //     &self.strand1.data,
-        //     &self.strand2.data,
-        //     &self.suffix_array,
-        //     &self.searcher,
-        //     &AtomicUsize::new(0),
-        //     run_settings
-        // )
-        //     .iter()
-        //     .map(|family|
-        //          family.iter().map(|sd|
-        //                            ProtoSD {
-        //                                left:         if !self.settings.reverse {sd.left} else {self.strand1.data.len() - sd.left - sd.length - 1},
-        //                                right:        sd.right,
-        //                                length:       sd.length,
-        //                                identity:     sd.identity,
-        //                                reversed:     self.settings.reverse,
-        //                                complemented: self.settings.complement,
-        //                            }
-        //          ).collect::<ProtoSDsFamily>()
-        //     ).collect::<Vec<ProtoSDsFamily>>()
     }
 }
 
@@ -377,8 +321,6 @@ fn prepare_data(strand1_file: &str,
     strand2.data.push(b'$');
 
     let to_process = swaths_to_process(&strand1.data);
-    println!("To process: {}/{} -- {:?}", strand1.data.len() - to_process.iter().fold(0, |ax, p| ax + p.1), strand1.data.len(), to_process);
-
 
     //
     // Build the suffix array
@@ -535,7 +477,6 @@ fn run() -> Result<()> {
 
         reverse:                bool,
         complement:             bool,
-        interlaced:             bool,
         trim:                   Vec<usize>,
 
         prefix:                 String,
@@ -543,7 +484,6 @@ fn run() -> Result<()> {
         out_format:             String,
         compute_score:          bool,
         threads_count:          usize,
-        chunk_size:             usize,
     }
 
     let yaml = load_yaml!("asgart.yaml");
@@ -567,7 +507,6 @@ fn run() -> Result<()> {
 
         reverse:                args.is_present("reverse"),
         complement:             args.is_present("complement"),
-        interlaced:             args.is_present("interlaced"),
         trim:                   values_t!(args, "trim", usize).unwrap_or_else(|_| Vec::new()),
 
         prefix:                 args.value_of("prefix").unwrap().to_owned(),
@@ -575,7 +514,6 @@ fn run() -> Result<()> {
         out_format:             args.value_of("out_format").unwrap().to_owned(),
         compute_score:          args.is_present("compute_score"),
         threads_count:          value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
-        chunk_size:             value_t!(args, "chunk_size", usize).unwrap(),
     };
 
     Logger::init(if args.is_present("verbose") {LevelFilter::Trace} else {LevelFilter::Info}).unwrap();
@@ -600,12 +538,10 @@ fn run() -> Result<()> {
     trace!("Output file              {}", &out_file);
     trace!("Reverse 2nd strand       {}", settings.reverse);
     trace!("Complement 2nd strand    {}", settings.complement);
-    trace!("Interlaced SD            {}", settings.interlaced);
     trace!("Skipping soft-masked     {}", settings.skip_masked);
     trace!("Min. length              {}", settings.min_duplication_length);
     trace!("Max. cardinality         {}", settings.max_cardinality);
     trace!("Threads count            {}", settings.threads_count);
-    trace!("Chunk size               {}", settings.chunk_size);
     if !settings.trim.is_empty() {
         trace!("Trimming                   {} → {}\n", settings.trim[0], settings.trim[1]);
     }
@@ -622,13 +558,11 @@ fn run() -> Result<()> {
 
             reverse:                settings.reverse,
             complement:             settings.complement,
-            interlaced:             settings.interlaced,
             skip_masked:            settings.skip_masked,
 
             start:                  0,
             end:                    0,
 
-            chunk_size:             settings.chunk_size,
             compute_score:          settings.compute_score,
             threads_count:          settings.threads_count,
             trim:                   if !settings.trim.is_empty() {
@@ -681,7 +615,6 @@ fn search_duplications(
         settings,
     )));
     if settings.compute_score {steps.push(Box::new(ComputeScore::new(settings.trim)));}
-    steps.push(Box::new(Sort{}));
     steps.push(Box::new(ReOrder{}));
     steps.push(Box::new(ReduceOverlap{}));
 

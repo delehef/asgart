@@ -143,10 +143,6 @@ pub fn search_duplications(strand1: &[u8],
         false
     }
 
-    // let pb = ProgressBar::new((settings.end - settings.start) as u64);
-    // pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [{elapsed}] {wide_bar} {percent}% (~{eta} remaining)"));
-    // pb.set_draw_delta(10000);
-
     let mut arms : Vec<Arm> = Vec::new();
     let mut i = settings.start;
     let mut r = Vec::new();
@@ -156,7 +152,7 @@ pub fn search_duplications(strand1: &[u8],
 
     while i < settings.end - settings.probe_size {
         i += step_size; // TODO
-        // pb.set_position(i as u64);
+        progress.store(cmp::min(i - settings.start, settings.end - settings.start), Ordering::Relaxed);
 
         if strand1[i] == b'N' { continue }
         let matches: Vec<Segment> = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
@@ -204,19 +200,19 @@ pub fn search_duplications(strand1: &[u8],
 
         todo.iter()
             .for_each(|op| {
-                match op {
-                    Operation::NewArm {i, m_start, m_end} => {
-                        arms.push(Arm{
-                            left: Segment{start: *i, end: *i + settings.probe_size, tag: 0},
-                            right: Segment{start: *m_start, end: *m_end, tag: 0},
-                            family_id: current_family_id,
-                            active: true, dirty: false,
-                            gap: 0
-                        })
+                    match op {
+                        Operation::NewArm {i, m_start, m_end} => {
+                            arms.push(Arm{
+                                left: Segment{start: *i, end: *i + settings.probe_size, tag: 0},
+                                right: Segment{start: *m_start, end: *m_end, tag: 0},
+                                family_id: current_family_id,
+                                active: true, dirty: false,
+                                gap: 0
+                            })
+                        }
+                        _ => {}
                     }
-                    _ => {}
-                }
-            });
+                });
 
         // Update the gaps of non-dirty arms
         arms.iter_mut()
@@ -250,7 +246,6 @@ pub fn search_duplications(strand1: &[u8],
         current_family_id += 1;
     }
     }
-    // pb.finish_and_clear();
 
     r
 }
@@ -328,16 +323,16 @@ pub fn search_duplications_old(strand1: &[u8],
                         SearchState::SparseGrow
                     } else {
                         if segments_to_segments_distance(&new_matches, &current_segments) <= settings.max_gap_size {
-                            if settings.interlaced {
-                                append_merge_segments(&mut current_segments,
-                                                      &new_matches,
-                                                      settings.max_gap_size,
-                                                      i);
-                            } else {
-                                merge_or_drop_segments(&mut current_segments,
+                            // if settings.interlaced {
+                            //     append_merge_segments(&mut current_segments,
+                            //                           &new_matches,
+                            //                           settings.max_gap_size,
+                            //                           i);
+                            // } else {
+                            merge_or_drop_segments(&mut current_segments,
                                                        &new_matches,
                                                        settings.max_gap_size);
-                            }
+                            // }
 
                             SearchState::Grow
                         } else if current_segments.is_empty() {
@@ -358,16 +353,16 @@ pub fn search_duplications_old(strand1: &[u8],
                     let new_matches = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size]);
                     if new_matches.len() < settings.max_cardinality
                         && segments_to_segments_distance(&new_matches, &current_segments) <= settings.max_gap_size {
-                            if settings.interlaced {
-                                append_merge_segments(&mut current_segments,
-                                                      &new_matches,
-                                                      settings.max_gap_size,
-                                                      i);
-                            } else {
-                                merge_or_drop_segments(&mut current_segments,
+                            // if settings.interlaced {
+                            //     append_merge_segments(&mut current_segments,
+                            //                           &new_matches,
+                            //                           settings.max_gap_size,
+                            //                           i);
+                            // } else {
+                            merge_or_drop_segments(&mut current_segments,
                                                        &new_matches,
                                                        settings.max_gap_size);
-                            }
+                            // }
                             gap = 0;
                             SearchState::Grow
                         } else {

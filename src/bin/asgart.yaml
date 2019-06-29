@@ -27,22 +27,18 @@ args:
         short: g
         default_value: "100"
         takes_value: true
-    - interlaced:
-        short: i
-        long: interlaced
-        help: Look for interlaced duplications (may drastically impair performances!)
 
     - reverse:
         short: R
         long: reverse
-        help: Reverse the second strand
+        help: Search for reversed duplications
     - complement:
         short: C
         long: complement
-        help: Complement the second strand
+        help: Search for complemented duplications
     - skip_masked:
-        long: skip-masked
         short: S
+        long: skip-masked
         help: ignore soft-masked repeated zones (lowercased regions)
     - trim:
         long: trim
@@ -56,7 +52,7 @@ args:
     - max_cardinality:
         long: max-cardinality
         help: maximal cardinality of duplications families
-        default_value: "1000"
+        default_value: "500"
         takes_value: true
     - prefix:
         long: prefix

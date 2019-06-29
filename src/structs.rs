@@ -21,7 +21,6 @@ pub struct RunSettings {
     pub complement:             bool,
     pub skip_masked:            bool,
 
-    pub interlaced:             bool,
     #[serde(skip_serializing)]
     #[serde(default)]
     pub start:                  usize,
@@ -32,9 +31,6 @@ pub struct RunSettings {
     #[serde(skip_serializing)]
     #[serde(default)]
     pub threads_count:          usize,
-    #[serde(skip_serializing)]
-    #[serde(default)]
-    pub chunk_size:             usize,
     #[serde(skip_serializing)]
     #[serde(default)]
     pub compute_score:          bool,

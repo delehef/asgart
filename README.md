@@ -101,7 +101,7 @@ where it was launched, following the following structure:
 {
         "strand1": {
                 "name":   first strand filename,
-                "length": FASTA file total content length,
+                "length": total length of the first strand,
                 "map": [
                         {
                                 "name":     FASTA fragment name,
@@ -113,7 +113,7 @@ where it was launched, following the following structure:
 
         "strand2": {
                 "name":   second strand filename,
-                "length": FASTA file total content length,
+                "length": total length of the second strand,
                 "map": [
                         {
                                 "name":     FASTA fragment name,
@@ -129,25 +129,27 @@ where it was launched, following the following structure:
                 "min_duplication_length": minimal length for a duplicon,
                 "max_cardinality":        maximal size of a family,
                 "skip_masked":            were masked nucleotides skipped?,
-                "interlaced":             were interlaced looked for?
+                "trim":                   the start and end position in the first strand if it was trimmed,
         },
 
-        "sds": [
-                {
-                        "global_left_position":  position of the left arm in the first strand,
-                        "global_right_position": position of the right arm in the second strand,
+        "families": [            # all families
+                        [        # a single family
+                            {    # a single duplicon in a family
+                                    "global_left_position":  position of the left arm in the first strand,
+                                    "global_right_position": position of the right arm in the second strand,
 
-                        "chr_left":              chromosomome in the first strand containing the left arm,
-                        "chr_right":             chromosomome in the second strand containing the right arm,
-                        "chr_left_position":     position of the left arm relative to its chromosome,
-                        "chr_right_position":    position of the right arm relative to its chromosome,
+                                    "chr_left":              chromosomome in the first strand containing the left arm,
+                                    "chr_right":             chromosomome in the second strand containing the right arm,
+                                    "chr_left_position":     position of the left arm relative to its chromosome,
+                                    "chr_right_position":    position of the right arm relative to its chromosome,
 
-                        "length":                length of the duplication (bp),
-                        "reversed":              true if the duplication is reversed, false otherwise,
-                        "complemented":          true if the duplication is complemented, false otherwise,
-                        "identity":              the distance between the two duplicons (0.0 if not computed)
-                },
-                ...
+                                    "length":                length of the duplication (bp),
+                                    "reversed":              true if the duplication is reversed, false otherwise,
+                                    "complemented":          true if the duplication is complemented, false otherwise,
+                                    "identity":              the distance between the two duplicons (0.0 if not computed)
+                            },
+                            ...
+                        ]
         ]
 }
 ```
@@ -177,11 +179,11 @@ results in a GFF3 file.
   - `--complement`/`-C` look for duplication which second arm is
     complemented
 
-  - `--max-cardinality` specifies the maximal count of members in a
-    duplication family (default: 1000)
-
   - `--skip-masked`/`-S` skip soft-masked zones, _i.e._ lowercased
     parts of the input files (default: no)
+
+  - `--max-cardinality` specifies the maximal count of members in a
+    duplication family (default: 500)
 
 ### Technical
 
@@ -246,16 +248,19 @@ graphs, flat graphs, genome graphs and Circos graphs.
   - `--filter-features DISTANCE` don't plot duplications that are
     farther away then `DISTANCE` bp from the features in the track.
 
-### Feature File Format
+### Features File Format
 
-The feature file format contains a list of lines with three values
-separated by semi-colons.
+Features files can be provided in two format. The first possibility is to use standard
+GFF3 files, the other possibility being a custom, denser format described below.
 
-1. The label of the feature.
+The custom format features file format is made of a list of lines, one per feature, with
+three semi-colons-separated values for each:
+
+1. The label of the feature;
 2. the start of the feaure. It may either be a single integer
    representing its absolute coordinate, or be of the form
    `NAME+OFFSET`, defining a start position at `OFFSET` from the start
-   of `NAME` chromosomes (from the input FASTA file).
+   of `NAME` chromosomes (from the input FASTA file);
 3. The length of the feaure in base pairs.
 
 Comment lines starts with a `#`.
@@ -313,12 +318,24 @@ placeholders to be manually replaced.
 
 `asgart-plot human_Y.json human_Y_RC.json circos --min-length 10000`
 
-
 # Update Log
+
+## v2.0
+
+- The ASGART automaton has been rewritten from scratch to take into account interlaced SDs at nearly no cost un
+computation time. For this reason, interlaced duplication families research is now the only mode.
+- ASGART will now remove large expanses of nucleotides to ignore (Ns and/or masked ones) in processed strands, thus
+slightly improving performances.
+- Taking advantage of these two new features, the parallelization system has been rewritten to (i) introduce
+parallelism at the scale of the automaton; and (ii) make use of the “natural” aforementioned breakpoints as delimiters for chunks to process in parallel. By doing so, it is guaranteed (i) that no duplication families that would be situated between two chunks will be missed; (ii) that ASGART will make use of available cores even when processing less chunks than authorized threads.
+- The JSON and GFF3 output formats have been modified to reflect the duplication families clustering. *Please note that they are thus incompatible with previous versions JSON files.*
+- Plotting utilities have been modified to reflect these changes.
+- The automaton will progressively grow the maximal gap size when extending large duplications, thus letting larger duplications arms be found in a less fragmented way.
+- Minor technical issues have been resolved: ASGART will correctly only use the `ID` field of FASTA files and not the subsequent informations; the progress bar does not glitch anymore.
 
 ## v1.5
 
-- New, *non-retrocompatible* JSON output format containing positions of the duplicons both globally in the strand and relative to the fragment they are on
+- New, *non-retrocompatible* JSON output format containing positions of the duplicons both globally in the strand and relative to the fragment they are situated on
 - `asgart-plot` can now superpose several files in a single plot
 - ASGART can optionally compute the Levenshtein distance between duplicons
 - User can set the chunking size for parallel processing (defaults to 1,000,000)

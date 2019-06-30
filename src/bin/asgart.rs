@@ -1,6 +1,5 @@
 #[macro_use] pub extern crate clap;
 #[macro_use] extern crate log;
-#[macro_use] extern crate human_panic;
 extern crate threadpool;
 extern crate indicatif;
 extern crate console;
@@ -607,8 +606,8 @@ fn search_duplications(
 
     let mut steps : Vec<Box<dyn Step>> = Vec::new();
     steps.push(Box::new(SearchDuplications::new(
-        strand1.clone(), // XXX clone?
-        strand2.clone(), // XXX
+        strand1.clone(),
+        strand2.clone(),
         &to_process,
         shared_suffix_array,
         shared_searcher,

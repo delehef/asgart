@@ -261,15 +261,16 @@ fn prepare_data(
     //
     // Read and map the FASTA files to process
     //
-    let (maps, mut strand, _) = strands_files
-        .iter()
-        .fold((Vec::new(), Vec::new(), 0), |(mut maps, mut strand, offset), file_name| {
-            let (map, new_strand) = read_fasta(file_name, skip_masked).unwrap();
-            let new_offset = offset + new_strand.len();
-            maps.extend(map.into_iter().map(|start| Start { position: start.position + offset, .. start }));
-            strand.extend(new_strand);
-            (maps, strand, new_offset)
-        });
+    let mut maps = Vec::new();
+    let mut strand = Vec::new();
+    let mut offset = 0;
+
+    for file_name in strands_files {
+        let (map, new_strand) = read_fasta(file_name, skip_masked).chain_err(|| format!("Unable to parse `{}`", file_name))?;
+        maps.extend(map.into_iter().map(|start| Start { position: start.position + offset, .. start }));
+        offset = offset + new_strand.len();
+        strand.extend(new_strand);
+    }
     info!("Parsed {} file{} containing a total of {} fragments",
           strands_files.len(), if strands_files.len() > 1 {"s"} else {""}, maps.len());
 
@@ -637,10 +638,9 @@ fn search_duplications(
 
 fn main() {
     if let Err(ref e) = run() {
-        println!("{} {}", style("Error: ").red(), e);
-        for e in e.iter().skip(1) {
-            println!("{}", e);
-        }
+        error!("{}", e);
+        e.iter().skip(1).for_each(|e| warn!("{}", e));
+
         if let Some(backtrace) = e.backtrace() {
             println!("backtrace: {:?}", backtrace);
         }

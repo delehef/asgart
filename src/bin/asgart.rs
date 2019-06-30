@@ -35,7 +35,7 @@ use asgart::exporters;
 use asgart::automaton;
 use asgart::searcher;
 use asgart::utils;
-use asgart::divsufsort::{SAIdx, SuffixArray, divsufsort64};
+use asgart::divsufsort::{SuffixArray, divsufsort64};
 
 
 trait Step {
@@ -347,7 +347,7 @@ fn read_fasta(filename: &str, skip_masked: bool) -> Result<(Vec<Start>, Vec<u8>)
     Ok((map, r))
 }
 
-pub fn r_divsufsort(dna: &[u8]) -> Vec<SAIdx> {
+pub fn r_divsufsort(dna: &[u8]) -> SuffixArray {
     let mut sa = Vec::with_capacity(dna.len());
     sa.resize(dna.len(), 0);
     unsafe {

@@ -35,7 +35,7 @@ use asgart::exporters;
 use asgart::automaton;
 use asgart::searcher;
 use asgart::utils;
-use asgart::divsufsort64;
+use asgart::divsufsort::{SAIdx, SuffixArray, divsufsort64};
 
 
 trait Step {
@@ -155,6 +155,7 @@ impl<'a> Step for SearchDuplications<'a> {
                     let mut needle = strand.data[chunk.0 .. chunk.0 + chunk.1].to_vec();
                     if self.settings.complement { needle = utils::complemented(&*needle); }
                     if self.settings.reverse { needle.reverse(); }
+
                     automaton::search_duplications(
                         &needle, chunk.0,
                         &strand.data, &self.suffix_array, &self.searcher,
@@ -194,10 +195,10 @@ impl<'a> Step for SearchDuplications<'a> {
 }
 
 type PreparedData = (
-    std::sync::Arc<Strand>,                // DNA strand to process
-    Vec<(usize, usize)>,                   // The areas that are not filled with Ns
-    std::sync::Arc<std::vec::Vec<i64>>,    // Suffix array
-    std::sync::Arc<searcher::Searcher>     // Searcher for the suffix array
+    Arc<Strand>,              // DNA strand to process
+    Vec<(usize, usize)>,      // The areas that are not filled with Ns
+    Arc<SuffixArray>,         // Suffix array
+    Arc<searcher::Searcher>   // Searcher for the suffix array
 );
 
 struct Strand {
@@ -345,11 +346,11 @@ fn read_fasta(filename: &str, skip_masked: bool) -> Result<(Vec<Start>, Vec<u8>)
     Ok((map, r))
 }
 
-pub fn r_divsufsort(dna: &[u8]) -> Vec<divsufsort64::idx> {
+pub fn r_divsufsort(dna: &[u8]) -> Vec<SAIdx> {
     let mut sa = Vec::with_capacity(dna.len());
     sa.resize(dna.len(), 0);
     unsafe {
-        divsufsort64::divsufsort64(dna.as_ptr(), sa.as_mut_ptr(), dna.len() as i64);
+        divsufsort64(dna.as_ptr(), sa.as_mut_ptr(), dna.len() as i64);
     }
     sa
 }

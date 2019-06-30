@@ -4,8 +4,9 @@ use std::collections::HashMap;
 use superslice::Ext;
 
 use structs::ALPHABET;
-use divsufsort64::*;
 use automaton::Segment;
+
+use divsufsort::*;
 
 pub struct Searcher {
     cache: HashMap<u64, (usize, usize)>,
@@ -93,27 +94,10 @@ pub fn ne_idx_fallback(one: &[u8], two: &[u8]) -> Option<usize> {
 
 impl Searcher {
     fn indexize(p: &[u8]) -> u64 {
-        // fn value(c: u8) -> u64 {
-        // match c {
-        //     b'A' => {0}
-        //     b'T' => {1}
-        //     b'G' => {2}
-        //     b'C' => {3}
-        //     b'N' => {4}
-        //     _    => {panic!("Unknown: {}", c)}
-        // }
-        // }
-
-        // let mut r: u64 = 0;
-        // for i in 0..CACHE_LEN {
-        // r = r | (value(p[i]) << (3*i));
-        // }
-        // r
-
         unsafe { mem::transmute::<[u8; 8], u64>([p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]]) }
     }
 
-    pub fn new(dna: &[u8], sa: &[idx], offset: usize) -> Searcher {
+    pub fn new(dna: &[u8], sa: &[SAIdx], offset: usize) -> Searcher {
         let mut s = Searcher { cache: HashMap::new(), offset };
 
         unsafe {
@@ -155,7 +139,7 @@ impl Searcher {
     }
 
 
-    pub fn search(&self, dna: &[u8], sa: &[idx], pattern: &[u8]) -> Vec<Segment> {
+    pub fn search(&self, dna: &[u8], sa: &[SAIdx], pattern: &[u8]) -> Vec<Segment> {
         #[inline]
         fn stringcmp(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
             // return unsafe { ne_idx_sse(a, b) };

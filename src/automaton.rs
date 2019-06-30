@@ -4,7 +4,7 @@ extern crate indicatif;
 use std::cmp;
 use std::fmt;
 
-use super::divsufsort64::*;
+use super::divsufsort::*;
 use super::structs::{RunSettings, ProtoSD, ProtoSDsFamily};
 use super::searcher::Searcher;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -59,7 +59,7 @@ enum Operation {
 
 pub fn search_duplications(
     needle: &[u8], needle_offset: usize,
-    strand: &[u8], sa: &[idx],
+    strand: &[u8], sa: &[SAIdx],
     searcher: &Searcher,
     progress: &AtomicUsize,
     settings: RunSettings

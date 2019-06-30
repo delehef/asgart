@@ -9,7 +9,7 @@ extern crate rayon;
 pub mod structs;
 pub mod logger;
 pub mod utils;
-pub mod divsufsort64;
+pub mod divsufsort;
 pub mod searcher;
 pub mod automaton;
 pub mod plot;

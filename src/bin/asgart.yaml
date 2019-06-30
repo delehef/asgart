@@ -6,7 +6,6 @@ args:
         required: true
         takes_value: true
         min_values: 1
-        index: 1
 
     - min_length:
         long: min-length

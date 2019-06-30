@@ -136,7 +136,7 @@ pub fn search_duplications(
 
         if arms.len() > 200 {
             arms.retain(|a| {
-                a.active || a.left.len() >= settings.min_duplication_length // TODO
+                a.active || a.left.len() >= settings.min_duplication_length || a.right.len() >= settings.min_duplication_length
             });
         }
 
@@ -148,7 +148,8 @@ pub fn search_duplications(
                     ProtoSD {
                         left: a.left.start,
                         right: a.right.start,
-                        length: a.right.len(),
+                        left_length: a.left.len(),
+                        right_length: a.right.len(),
                         identity: 0.,
                         reversed: false,
                         complemented: false,

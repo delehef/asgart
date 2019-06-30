@@ -12,8 +12,7 @@ file.
 
 # Why Should I Use ASGART?
 
-![A map of the Human genome long segmental
-duplications](screenshots/chord.png)
+![A map of the Human genome long segmental duplications](screenshots/chord.png)
 
 You should use ASGART if
 
@@ -67,7 +66,7 @@ Once the build is finished, you will find the binary in `target/release/`.
 First, let us take a look at a simple example:
 
 ```
-asgart seq.fasta seq.fasta
+asgart seq.fasta
 ```
 
 This command will look for duplications in the `seq.fasta` file, then
@@ -77,18 +76,17 @@ include gaps longer than 100bp in their arm-to-arm pairwise alignment.
 
 If you wish to look for reversed-complemented duplications, use the
 `-R` and `-C` options, that can be combined in `-RC`. And the `-v`
-option will give you more informations, as well as a visual overview
-of the progress.
+option will give you more informations as the progress goes on.
 
 ```
-asgart seq.fasta seq.fasta -RCv
+asgart -RCv seq.fasta
 ```
 
 ## Input
 
-As input, ASGART takes FASTA files containing the sequences within
-which to look for duplications. They can be either in the FASTA or
-multiFASTA format.
+As input, ASGART takes one or more FASTA files containing the
+sequences within which to look for duplications. They can be either in
+the FASTA or multiFASTA format.
 
 ## Output
 
@@ -99,21 +97,9 @@ where it was launched, following the following structure:
 
 ```
 {
-        "strand1": {
-                "name":   first strand filename,
-                "length": total length of the first strand,
-                "map": [
-                        {
-                                "name":     FASTA fragment name,
-                                "position": offset in the FASTA file,
-                                "length":   FASTA fragment length
-                        }
-                ]
-        },
-
-        "strand2": {
-                "name":   second strand filename,
-                "length": total length of the second strand,
+        "strand": {
+                "name":   the file(s) set by the user,
+                "length": total length of the dataset,
                 "map": [
                         {
                                 "name":     FASTA fragment name,
@@ -129,7 +115,7 @@ where it was launched, following the following structure:
                 "min_duplication_length": minimal length for a duplicon,
                 "max_cardinality":        maximal size of a family,
                 "skip_masked":            were masked nucleotides skipped?,
-                "trim":                   the start and end position in the first strand if it was trimmed,
+                "trim":                   the start and end position in the dataset if it was trimmed,
         },
 
         "families": [            # all families
@@ -140,10 +126,13 @@ where it was launched, following the following structure:
 
                                     "chr_left":              chromosomome in the first strand containing the left arm,
                                     "chr_right":             chromosomome in the second strand containing the right arm,
+
                                     "chr_left_position":     position of the left arm relative to its chromosome,
                                     "chr_right_position":    position of the right arm relative to its chromosome,
 
-                                    "length":                length of the duplication (bp),
+                                    "left_length":           length of the left arm of the duplicon (bp),
+                                    "right_length":          length of the right arm of the duplicon (bp),
+
                                     "reversed":              true if the duplication is reversed, false otherwise,
                                     "complemented":          true if the duplication is complemented, false otherwise,
                                     "identity":              the distance between the two duplicons (0.0 if not computed)
@@ -196,19 +185,19 @@ results in a GFF3 file.
     file name
 
   - `--format OUT_FORMAT` sets the output format. Default is `json`,
-    but can be set to gff2 or gff3
+    it can also be set to gff2 or gff3
 
   - `--threads COUNT` set the numbers of thread to use. Defaults to
     the number of cores abailable on the CPU
 
   - `--trim START END` run ASGART only on the specified area of the
-    first file
+    dataset
 
 # Plotting
 
 ASGART comes with a plotting tool, producing a visual overview of the
-duplications. Currently, four types of graphs are available: chord
-graphs, flat graphs, genome graphs and Circos graphs.
+duplications. Currently, four types of plots are available: chord
+plots, flat plots, genome plots and Circos plots.
 
 ## Quick Start
 
@@ -275,9 +264,9 @@ MYH14;19+50188186;122358
 Foo;123456789;1250
 ```
 
-## Chord Graphs
+## Chord Plots
 
-A chord graph represents duplications amongst a DNA fragment as arcs
+A chord plot represents duplications amongst a DNA fragment as arcs
 linking point on a circle figuring a fragment bend over itself. Their
 width is directly proportional to the length of the duplications they
 represent.
@@ -286,11 +275,11 @@ represent.
 
 `asgart-plot human_genome.json chord --out=flat.svg --min-length 20000`
 
-![Chord graph example](screenshots/chord.png)
+![Chord plot example](screenshots/chord.png)
 
-## Flat Graphs
+## Flat Plot
 
-Flat graphs are made of two superposed horizontal lines, representing
+Flat plots are made of two superposed horizontal lines, representing
 the two fragments analyzed by ASGART, with lines linking left and
 right parts of the duplications found, their width proportional to the
 length of the duplication.
@@ -299,20 +288,32 @@ length of the duplication.
 
 `asgart-plot human_Y.json flat --out=flat.svg --no-direct --no-uncomplemented --min-length 2000`
 
-![Flat graph example](screenshots/flat.png)
+## Genome Plot
 
-## Circos Graphs
+Genome plots draw one bar split in four lanes per fragment. The two
+leftmost lanes represente respectively the intrachromosomal direct and
+palindromic duplications families, and the two rightmost respectively
+the interchromosomal direct and palindromic duplications families.
 
-ASGART can generate files usable with the [Circos](http://circos.ca/) plotting tool.
-Although the most important files is arguably the `<out>.links` file (containing the
-duplicons to plot), ASGART also generates an `<out>.conf` file and an `<out>.karyotype`
-file, as to ensure a minimal start to be potentially later expanded according to your
-needs.
+### Example
 
-ASGART refers to files found in the Circos distribution. Thus, the `CIRCOS_ROOT`
-environment variable should be set to point at the root of the Circos distribution.
-Otherwise, ASGART will generate an `<out>.conf` file containing `{circos_root}`
-placeholders to be manually replaced.
+`asgart-plot human.json genome --min-length 10000`
+
+
+## Circos Plots
+
+ASGART can generate files that can be used as in input for the
+[Circos](http://circos.ca/) plotting tool. Although the most important
+files is arguably the `<out>.links` file (containing the duplicons to
+plot), ASGART also generates an `<out>.conf` file and an
+`<out>.karyotype` file, as to ensure a minimal working example to be
+later expanded and/or customized according to your needs.
+
+ASGART refers to files found in the Circos distribution. Thus, the
+`CIRCOS_ROOT` environment variable should be set to point at the root
+of the Circos distribution. Otherwise, ASGART will generate an
+`<out>.conf` file containing `{circos_root}` placeholders to be
+manually replaced.
 
 ### Example
 
@@ -322,6 +323,7 @@ placeholders to be manually replaced.
 
 ## v2.0
 
+- ASGART does not differentiate anymore between strand A and strand B, but simply works on an arbitrarily large set of files. Thus, the user *SHOULD ONLY PROVIDE EACH FILE ONCE*. Moreover, it is not necessarily to concatenate multiple input files in a single one anymore. This *breaking change* should give more flexbility to the users and potentially simplifies pipelines.
 - The ASGART automaton has been rewritten from scratch to take into account interlaced SDs at nearly no cost un
 computation time. For this reason, interlaced duplication families research is now the only mode.
 - ASGART will now remove large expanses of nucleotides to ignore (Ns and/or masked ones) in processed strands, thus
@@ -331,6 +333,7 @@ parallelism at the scale of the automaton; and (ii) make use of the â€œnaturalâ€
 - The JSON and GFF3 output formats have been modified to reflect the duplication families clustering. *Please note that they are thus incompatible with previous versions JSON files.*
 - Plotting utilities have been modified to reflect these changes.
 - The automaton will progressively grow the maximal gap size when extending large duplications, thus letting larger duplications arms be found in a less fragmented way.
+- The logging system has been improved to be more detailed and more coherent in its way to present informations.
 - Minor technical issues have been resolved: ASGART will correctly only use the `ID` field of FASTA files and not the subsequent informations; the progress bar does not glitch anymore.
 
 ## v1.5

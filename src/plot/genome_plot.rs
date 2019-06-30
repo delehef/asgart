@@ -35,10 +35,10 @@ impl GenomePlotter {
         let chr_spacing = 100.0;
         let chr_width = 40.0;
         let height_factor = 800.0;
-        let factor = 1.0/self.result.strand1.map.iter().map(|chr| chr.length).max().unwrap() as f32 * height_factor;
+        let factor = 1.0/self.result.strand.map.iter().map(|chr| chr.length).max().unwrap() as f32 * height_factor;
         let threshold = 0.1;
 
-        let width = chr_spacing as usize * (self.result.strand1.map.len() + 1);
+        let width = chr_spacing as usize * (self.result.strand.map.len() + 1);
         // height_factor + 50px top + 100px bot
         let height = height_factor + 50.0 + 100.0;
 
@@ -46,7 +46,7 @@ impl GenomePlotter {
         // 1. Draw the chromosomes
         // let regex_chr_name = Regex::new("(?:chromosome ?([0-9XYxyZWzw]{1,2}))|(?:chr ?([0-9XYxyZWzwA-Za-z]{1,2}))|(?:[^0-9XYxyZWzwA-Za-z]([0-9XYxyZWzw]{1,2})[^0-9XYxyZWzw.:|,a-zA-Z])")
         //     .expect("Unable to create regex");
-        for (i, chr) in self.result.strand1.map.iter().enumerate() {
+        for (i, chr) in self.result.strand.map.iter().enumerate() {
             // Chromosome bar
             svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#ccc' stroke-width='{}'/>\n",
                             chr_spacing + i as f32 * chr_spacing,
@@ -103,10 +103,10 @@ impl GenomePlotter {
                 };
 
                 // left arm
-                let chr_left_index = self.result.strand1.find_chr_index(&sd.chr_left).unwrap();
+                let chr_left_index = self.result.strand.find_chr_index(&sd.chr_left).unwrap();
                 let left = sd.chr_left_position;
                 let start = factor * left as f32;
-                let mut end = factor * (left + sd.length) as f32;
+                let mut end = factor * (left + sd.left_length) as f32;
                 if start - end < threshold { end += threshold };
                 svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
                                 x(chr_left_index),
@@ -118,10 +118,10 @@ impl GenomePlotter {
                 );
 
                 // right arm
-                let chr_right_index = self.result.strand2.find_chr_index(&sd.chr_right).unwrap();
+                let chr_right_index = self.result.strand.find_chr_index(&sd.chr_right).unwrap();
                 let right = sd.chr_right_position;
                 let start = factor * right as f32;
-                let mut end = factor * (right + sd.length) as f32;
+                let mut end = factor * (right + sd.right_length) as f32;
                 if start - end < threshold { end += threshold };
                 svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
                                 x(chr_right_index),

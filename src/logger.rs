@@ -42,10 +42,10 @@ impl log::Log for Logger {
                              format!("{} {}", "/!\\", record.args().to_string())
                          }
                          Level::Info => {
-                             format!("{}", record.args())
+                             format!("{} {}", "-> ", record.args())
                          }
                          Level::Trace => {
-                             format!("{} {}", " > ", record.args())
+                             format!("    {}", record.args())
                          }
                          Level::Debug => {
                              format!("{} {}", " . ", record.args().to_string())

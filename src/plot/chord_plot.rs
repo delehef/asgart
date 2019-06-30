@@ -100,11 +100,11 @@ impl ChordPlotter {
                 let (left, right) = (sd.global_left_position as i64, sd.global_right_position as i64);
 
                 let t11 = self.angle(left as f64);
-                let t12 = self.angle(left as f64 + sd.length as f64);
+                let t12 = self.angle(left as f64 + sd.left_length as f64);
                 let t1 = t11 + (t12 - t11)/2.0;
 
                 let t21 = self.angle(right as f64);
-                let t22 = self.angle(right as f64 + sd.length as f64);
+                let t22 = self.angle(right as f64 + sd.right_length as f64);
                 let t2 = t21 + (t22 - t21)/2.0;
 
                 let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi

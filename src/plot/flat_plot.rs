@@ -2,7 +2,6 @@ extern crate rand;
 
 use separator::Separatable;
 
-use std::cmp;
 use std::io::prelude::*;
 use std::fs::File;
 use ::plot::*;
@@ -165,9 +164,9 @@ impl FlatPlotter {
         for family in &self.result.families {
             for sd in family {
                 let left1 = (sd.global_left_position as f64)/self.max_length * self.width;
-                let left2 = (sd.global_left_position as f64 + sd.length as f64)/self.max_length * self.width;
+                let left2 = (sd.global_left_position as f64 + sd.left_length as f64)/self.max_length * self.width;
                 let right1 = (sd.global_right_position as f64)/self.max_length * self.width;
-                let right2 = (sd.global_right_position as f64 + sd.length as f64)/self.max_length * self.width;
+                let right2 = (sd.global_right_position as f64 + sd.right_length as f64)/self.max_length * self.width;
 
                 let color = if sd.reversed { &self.settings.color2 } else { &self.settings.color1 };
 
@@ -186,12 +185,13 @@ impl FlatPlotter {
                                 right1, self.height - CHR_WIDTH,
                                 color,
                                 color,
-                                &format!("{}bp\n{} → {}\n{} → {}",
-                                         sd.length.separated_string(),
+                                &format!("{}bp/{}bp\n{} → {}\n{} → {}",
+                                         sd.left_length.separated_string(),
+                                         sd.right_length.separated_string(),
                                          sd.global_left_position.separated_string(),
-                                         (sd.global_left_position + sd.length).separated_string(),
+                                         (sd.global_left_position + sd.left_length).separated_string(),
                                          sd.global_right_position.separated_string(),
-                                         (sd.global_right_position + sd.length).separated_string()
+                                         (sd.global_right_position + sd.right_length).separated_string()
                                 )
                 );
             }

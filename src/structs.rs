@@ -74,27 +74,30 @@ pub struct RunResult {
 pub struct ProtoSD {
     pub left: usize,
     pub right: usize,
-    pub length: usize,
+
+    pub left_length: usize,
+    pub right_length: usize,
+
     pub identity: f32,
     pub reversed: bool,
     pub complemented: bool,
 }
 impl ProtoSD {
     pub fn left_part(&self) -> (usize, usize) {
-        (self.left, self.length)
+        (self.left, self.left_length)
     }
 
     pub fn right_part(&self) -> (usize, usize) {
-        (self.right, self.length)
+        (self.right, self.right_length)
     }
 
     pub fn levenshtein(&self, strand: &[u8]) -> f64 {
         // TODO take into account R/C duplications
-        let left_arm  = &strand[self.left  ..= self.left + self.length];
-        let right_arm = &strand[self.right ..= self.right + self.length];
+        let left_arm  = &strand[self.left  ..= self.left + self.left_length];
+        let right_arm = &strand[self.right ..= self.right + self.right_length];
         let dist = f64::from(bio::alignment::distance::levenshtein(left_arm, right_arm));
 
-        100.0 * (1.0 - dist/(self.length as f64))
+        100.0 * (1.0 - dist/(std::cmp::max(self.left_length, self.right_length) as f64))
     }
 }
 pub type ProtoSDsFamily = Vec<ProtoSD>;
@@ -110,18 +113,20 @@ pub struct SD {
     pub chr_left_position: usize,
     pub chr_right_position: usize,
 
-    pub length: usize,
+    pub left_length: usize,
+    pub right_length: usize,
+
     pub identity: f32,
     pub reversed: bool,
     pub complemented: bool,
 }
 impl SD {
     pub fn left_part(&self) -> (usize, usize) {
-        (self.global_left_position, self.length)
+        (self.global_left_position, self.left_length)
     }
 
     pub fn right_part(&self) -> (usize, usize) {
-        (self.global_right_position, self.length)
+        (self.global_right_position, self.right_length)
     }
 }
 pub type SDsFamily = Vec<SD>;

@@ -168,7 +168,7 @@ impl<'a> Step for SearchDuplications<'a> {
                               .iter_mut()
                               .for_each(|proto_sd|
                                         if !self.settings.reverse { proto_sd.left += chunk.0 }
-                                        else { proto_sd.left = chunk.0 + chunk.1 - proto_sd.left - proto_sd.length }
+                                        else { proto_sd.left = chunk.0 + chunk.1 - proto_sd.left - proto_sd.left_length }
                               )
                     );
                 proto_sds_families
@@ -239,7 +239,7 @@ fn prepare_data(
         if count == 0 && r.is_empty() { r.push((trim_start, trim_end)); } // If everything is to process
 
         let r_length = r.iter().fold(0, |ax, c| ax + c.1);
-        info!("Processing {} chunks totalling {}bp to process, skipping {}bp out of {} ({}%): ",
+        info!("Processing {} chunks totalling {}bp to process, skipping {}bp out of {} ({}%)",
               r.len().separated_string(),
               r_length.separated_string(),
               (trim_end - trim_start - r_length).separated_string(),
@@ -304,7 +304,7 @@ fn prepare_data(
     trace!("Done.");
 
     Ok((
-        Arc::new(Strand{file_names: "TODO".to_owned(), data: strand, map: maps}),
+        Arc::new(Strand{file_names: strands_files.join(", "), data: strand, map: maps}),
         chunks_to_process,
         shared_suffix_array, shared_searcher
     ))
@@ -373,16 +373,17 @@ fn overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bo
 
 fn merge(x: &ProtoSD, y: &ProtoSD) -> ProtoSD {
     let new_left = cmp::min(x.left, y.left);
-    let lsize = cmp::max(x.left + x.length, y.left + y.length) - new_left;
+    let lsize = cmp::max(x.left + x.left_length, y.left + y.right_length) - new_left;
 
     let new_right = cmp::min(x.right, y.right);
-    let rsize = cmp::max(x.right + x.length, y.right + y.length) - new_right;
+    let rsize = cmp::max(x.right + x.left_length, y.right + y.right_length) - new_right;
 
 
     ProtoSD {
         left: new_left,
         right: new_right,
-        length: cmp::max(lsize, rsize),
+        left_length: lsize,
+        right_length: rsize,
         identity: 0.,
         reversed: x.reversed,
         complemented: x.complemented,
@@ -405,7 +406,8 @@ fn reduce_overlap(result: &[ProtoSD]) -> Vec<ProtoSD> {
                     subsegment(y.right_part(), x.right_part()) {
                         y.left = x.left;
                         y.right = x.right;
-                        y.length = x.length;
+                        y.left_length = x.left_length;
+                        y.right_length = x.right_length;
                         continue 'to_insert;
                     }
 
@@ -414,7 +416,8 @@ fn reduce_overlap(result: &[ProtoSD]) -> Vec<ProtoSD> {
                         let z = merge(x, y);
                         y.left = z.left;
                         y.right = z.right;
-                        y.length = z.length;
+                        y.left_length = z.left_length;
+                        y.right_length = z.right_length;
                         continue 'to_insert;
                     }
             }
@@ -542,11 +545,14 @@ fn run() -> Result<()> {
     )?;
 
     let exporter = match &settings.out_format[..] {
-            "json" => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
-        //     "gff2" => { Box::new(exporters::GFF2Exporter) as Box<dyn Exporter> }
-        //     "gff3" => { Box::new(exporters::GFF3Exporter) as Box<dyn Exporter> }
-            _      => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
-        };
+        "json"     => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
+        "gff2"     => { Box::new(exporters::GFF2Exporter) as Box<dyn Exporter> }
+        "gff3"     => { Box::new(exporters::GFF3Exporter) as Box<dyn Exporter> }
+        format @ _ => {
+            warn!("Unknown output format `{}`: using json instead", format);
+            Box::new(exporters::JSONExporter) as Box<dyn Exporter>
+        }
+    };
     let out_file_name = exporter.save(&result, &out_file)?;
     info!("{}", style(format!("Result written to {}", &out_file_name)).bold());
     Ok(())
@@ -592,9 +598,9 @@ fn search_duplications(
     );
 
     let strand = StrandResult {
-        name: "TODO".to_owned(), //strand1.file_name.to_owned(),
+        name:   strand.file_names.clone(),
         length: strand.map.iter().fold(0, |ax, chr| ax + chr.length),
-        map: strand.map.clone(),
+        map:    strand.map.clone(),
     };
 
     Ok(RunResult {
@@ -615,7 +621,9 @@ fn search_duplications(
                               chr_left_position: sd.left - strand.find_chr_by_pos(sd.left).position,
                               chr_right_position: sd.right - strand.find_chr_by_pos(sd.right).position,
 
-                              length: sd.length,
+                              left_length: sd.left_length,
+                              right_length: sd.right_length,
+
                               identity: sd.identity,
                               reversed: sd.reversed,
                               complemented: sd.complemented,

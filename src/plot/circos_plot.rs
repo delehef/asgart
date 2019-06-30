@@ -56,21 +56,11 @@ impl CircosPlotter {
             )
         }
 
-        let mut karyotype : String = self.result.strand1.map
+        self.result.strand.map
             .iter()
             .map(encode_chromosome)
             .collect::<Vec<String>>()
-            .join("\n");
-
-        if self.result.strand1.name != self.result.strand2.name {
-            karyotype += "\n";
-            karyotype += &self.result.strand2.map
-                .iter()
-                .map(encode_chromosome)
-                .collect::<Vec<String>>()
-                .join("\n");
-        }
-        karyotype
+            .join("\n")
     }
 
     fn plot_links(&self) -> String {
@@ -84,11 +74,11 @@ impl CircosPlotter {
                      format!("{chr_left} {chr_left_start} {chr_left_end} {chr_right} {chr_right_start} {chr_right_end} {color}",
                              chr_left        = slugify(&sd.chr_left),
                              chr_left_start  = sd.chr_left_position,
-                             chr_left_end    = sd.chr_left_position + sd.length,
+                             chr_left_end    = sd.chr_left_position + sd.left_length,
                              chr_right       = slugify(&sd.chr_right),
                              chr_right_start = sd.chr_right_position,
-                             chr_right_end   = sd.chr_right_position + sd.length,
-                             color           = if sd.reversed { "color=teal" } else { "color=orange"}
+                             chr_right_end   = sd.chr_right_position + sd.right_length,
+                             color           = if sd.reversed { "color=teal" } else { "color=orange" }
                      )
                  )
             )

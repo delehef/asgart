@@ -88,9 +88,10 @@ impl ProtoSD {
         (self.right, self.length)
     }
 
-    pub fn levenshtein(&self, trim: usize, strand1: &[u8], strand2: &[u8]) -> f64 {
-        let left_arm  = &strand1[self.left  ..= self.left + self.length];
-        let right_arm = &strand2[self.right - trim ..= self.right - trim + self.length];
+    pub fn levenshtein(&self, strand: &[u8]) -> f64 {
+        // TODO take into account R/C duplications
+        let left_arm  = &strand[self.left  ..= self.left + self.length];
+        let right_arm = &strand[self.right ..= self.right + self.length];
         let dist = f64::from(bio::alignment::distance::levenshtein(left_arm, right_arm));
 
         100.0 * (1.0 - dist/(self.length as f64))

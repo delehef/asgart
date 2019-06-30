@@ -63,46 +63,40 @@ impl Step for ReOrder {
 }
 }
 
-// struct Sort;
-// impl Step for Sort {
-//     fn name(&self) -> &str { "Sorting" }
-//     fn run(&self, mut input: Vec<ProtoSDsFamily>, _strand1: &Strand, _strand2: &Strand,) -> Vec<ProtoSDsFamily> {
-//         input
-//             .iter_mut()
-//             .for_each(|family| family.sort_by(|a, b| (a.left).cmp(&b.left)));
+struct Sort;
+impl Step for Sort {
+    fn name(&self) -> &str { "Sorting" }
+    fn run(&self, mut input: Vec<ProtoSDsFamily>, _strand: &Strand) -> Vec<ProtoSDsFamily> {
+        input.iter_mut()
+            .for_each(|family| family.sort_by(|a, b| (a.left).cmp(&b.left)));
+        input
+    }
+}
 
-//         input
-//     }
-// }
+struct ReduceOverlap;
+impl Step for ReduceOverlap {
+    fn name(&self) -> &str { "Reducing overlap" }
+    fn run(&self, mut input: Vec<ProtoSDsFamily>, _strand: &Strand) -> Vec<ProtoSDsFamily> {
+        input
+        .iter_mut()
+        .map(|family| reduce_overlap(&family))
+        .collect()
+    }
+}
 
-// struct ReduceOverlap;
-// impl Step for ReduceOverlap {
-//     fn name(&self) -> &str { "Reducing overlap" }
-//     fn run(&self, mut input: Vec<ProtoSDsFamily>, _strand1: &Strand, _strand2: &Strand,) -> Vec<ProtoSDsFamily> {
-//         input
-//             .iter_mut()
-//             .map(|family| reduce_overlap(&family))
-//             .collect()
-//     }
-// }
-
-// struct ComputeScore {trim: Option<(usize, usize)>,}
-// impl ComputeScore {
-//     fn new(trim: Option<(usize, usize)>) -> ComputeScore { ComputeScore { trim: trim.clone() }  }
-// }
-// impl Step for ComputeScore {
-//     fn name(&self) -> &str { "Computing Levenshtein distance" }
-//     fn run(&self, mut input: Vec<ProtoSDsFamily>, strand1: &Strand, strand2: &Strand) -> Vec<ProtoSDsFamily> {
-//         let (shift, _) = self.trim.unwrap_or((0, 0));
-//         input
-//             .par_iter_mut()
-//             .for_each(|family|
-//                       family
-//                       .iter_mut()
-//                       .for_each(|ref mut sd| sd.identity = sd.levenshtein(shift, &strand1.data, &strand2.data) as f32));
-//         input
-//     }
-// }
+struct ComputeScore;
+impl Step for ComputeScore {
+    fn name(&self) -> &str { "Computing Levenshtein distance" }
+    fn run(&self, mut input: Vec<ProtoSDsFamily>, strand: &Strand) -> Vec<ProtoSDsFamily> {
+        input
+            .par_iter_mut()
+            .for_each(|family|
+                      family
+                      .iter_mut()
+                      .for_each(|ref mut sd| sd.identity = sd.levenshtein(&strand.data) as f32));
+        input
+    }
+}
 
 struct SearchDuplications<'a> {
     chunks_to_process: &'a[(usize, usize)],
@@ -133,7 +127,7 @@ impl<'a> Step for SearchDuplications<'a> {
             let progresses = Arc::clone(&progresses);
             thread::spawn(move || {
                 let pb = ProgressBar::new(100);
-                pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [{elapsed}] {bar:50} {pos}% ({eta} remaining)"));
+                pb.set_style(ProgressStyle::default_bar().template("{spinner:.blue} [{elapsed}] {bar:50} {pos}% (~{eta} remaining)"));
 
                 loop {
                     thread::sleep(Duration::from_millis(500));
@@ -148,8 +142,7 @@ impl<'a> Step for SearchDuplications<'a> {
             })};
 
         let results = self.chunks_to_process
-        // .par_iter()
-            .iter()
+            .par_iter()
             .enumerate()
             .map(|(id, chunk)| {
                 let mut proto_sds_families = if !self.settings.reverse && !self.settings.complement {
@@ -174,22 +167,8 @@ impl<'a> Step for SearchDuplications<'a> {
                               proto_family
                               .iter_mut()
                               .for_each(|proto_sd|
-                                        {
-                                            if strand.data.len() < (chunk.0 + chunk.1 + proto_sd.left + proto_sd.length) {
-                                                dbg!(&proto_sd);
-                                                dbg!(strand.data.len());
-                                                dbg!(chunk.0);
-                                                dbg!(chunk.1);
-                                                dbg!(chunk.0 + chunk.1 + proto_sd.left + proto_sd.length);
-                                            } else {
-                                                if !self.settings.reverse {
-                                                    proto_sd.left += chunk.0
-                                                } else {
-                                                    proto_sd.left = chunk.0 + (chunk.1 - proto_sd.left - proto_sd.length)
-                                                    // proto_sd.left = (strand.data.len() - (chunk.0 + chunk.1) - (proto_sd.left + proto_sd.length))
-                                                }
-                                            }
-                                        }
+                                        if !self.settings.reverse { proto_sd.left += chunk.0 }
+                                        else { proto_sd.left = chunk.0 + chunk.1 - proto_sd.left - proto_sd.length }
                               )
                     );
                 proto_sds_families
@@ -202,29 +181,9 @@ impl<'a> Step for SearchDuplications<'a> {
                 a.extend(b.iter()
                          .map(|family|
                               family
-                              .iter()
-                              .map(|sd|{
-                                  // let left = if !self.settings.reverse {
-                                  //     sd.left
-                                  // } else {
-                                  //     if sd.left - sd.length >= strand.data.len() {
-                                  //         dbg!(sd);
-                                  //         1024
-                                  //     } else {
-                                  //         strand.data.len() - sd.left - sd.length
-                                  //     }
-                                  // };
-
-                                  ProtoSD {
-                                      left:         sd.left,
-                                      right:        sd.right,
-                                      length:       sd.length,
-                                      identity:     sd.identity,
-                                      reversed:     self.settings.reverse,
-                                      complemented: self.settings.complement,
-                                  }
-                              }
-                              ).collect::<ProtoSDsFamily>()));
+                              .into_iter()
+                              .map(|sd| ProtoSD {reversed: self.settings.reverse, complemented: self.settings.complement, .. *sd})
+                              .collect::<ProtoSDsFamily>()));
                 a
             });
 
@@ -248,7 +207,7 @@ struct Strand {
 }
 
 fn prepare_data(
-    strands_files: &[&str],
+    strands_files: &[String],
     skip_masked: bool,
     trim: Option<(usize, usize)>
 ) -> Result<PreparedData> {
@@ -276,7 +235,8 @@ fn prepare_data(
                 }
             }
         }
-        if count != 0 {r.push((start, count));} // Do not forget the currently-extended chunk
+        if count != 0 { r.push((start, count)); }                          // Do not forget the currently-extended chunk
+        if count == 0 && r.is_empty() { r.push((trim_start, trim_end)); } // If everything is to process
 
         let r_length = r.iter().fold(0, |ax, c| ax + c.1);
         info!("Processing {} chunks totalling {}bp to process, skipping {}bp out of {} ({}%): ",
@@ -303,9 +263,9 @@ fn prepare_data(
     let (maps, mut strand, _) = strands_files
         .iter()
         .fold((Vec::new(), Vec::new(), 0), |(mut maps, mut strand, offset), file_name| {
-            let (map, new_strand) = read_fasta(file_name, skip_masked).unwrap(); // TODO
+            let (map, new_strand) = read_fasta(file_name, skip_masked).unwrap();
             let new_offset = offset + new_strand.len();
-            maps.extend(map.iter().map(|start| Start { position: start.position + offset, .. start.clone()}));
+            maps.extend(map.into_iter().map(|start| Start { position: start.position + offset, .. start }));
             strand.extend(new_strand);
             (maps, strand, new_offset)
         });
@@ -478,7 +438,7 @@ fn reduce_overlap(result: &[ProtoSD]) -> Vec<ProtoSD> {
 fn run() -> Result<()> {
     // Those settings are only used to handily parse arguments
     struct Settings {
-        strand_file:           String,
+        strands_files:          Vec<String>,
         kmer_size:              usize,
         gap_size:               u32,
         min_duplication_length: usize,
@@ -507,7 +467,7 @@ fn run() -> Result<()> {
         .get_matches();
 
     let settings = Settings {
-        strand_file:            args.value_of("strand").unwrap().to_owned(),
+        strands_files:          args.values_of("strand").unwrap().map(|s| s.to_owned()).collect(),
         kmer_size:              value_t_or_exit!(args, "probe_size", usize),
         gap_size:               value_t_or_exit!(args, "max_gap", u32),
         min_duplication_length: value_t!(args, "min_length", usize).unwrap(),
@@ -527,10 +487,15 @@ fn run() -> Result<()> {
 
     Logger::init(if args.is_present("verbose") {LevelFilter::Trace} else {LevelFilter::Info}).unwrap();
 
+    let radix = (settings.strands_files
+                 .iter()
+                 .map(|n| path::Path::new(&n).file_stem().unwrap().to_str().unwrap().to_string())
+                 .collect::<Vec<String>>()).join("-");
+
     let out_file = if settings.out.is_empty() {
-        format!("{}{}-{}{}{}",
+        format!("{}{}{}{}{}",
                 &settings.prefix,
-                path::Path::new(&settings.strand_file).file_stem().unwrap().to_str().unwrap(),
+                radix,
                 if settings.reverse || settings.complement {"_"} else {""},
                 if settings.reverse {"R"} else {""},
                 if settings.complement {"C"} else {""},
@@ -539,23 +504,23 @@ fn run() -> Result<()> {
         settings.out
     };
 
-    info!("Strand file                {}", &settings.strand_file);
-    info!("K-mers size                {}", settings.kmer_size);
-    info!("Max gap size               {}", settings.gap_size);
-    info!("Output file                {}", &out_file);
-    info!("Reversed duplications      {}", settings.reverse);
-    info!("Complemented duplications  {}", settings.complement);
-    info!("Skipping soft-masked       {}", settings.skip_masked);
-    info!("Min. length                {}", settings.min_duplication_length);
-    info!("Max. cardinality           {}", settings.max_cardinality);
-    info!("Threads count              {}", settings.threads_count);
+    info!("Processing               {:?}", &settings.strands_files);
+    trace!("K-mers size                {}", settings.kmer_size);
+    trace!("Max gap size               {}", settings.gap_size);
+    trace!("Output file                {}", &out_file);
+    trace!("Reversed duplications      {}", settings.reverse);
+    trace!("Complemented duplications  {}", settings.complement);
+    trace!("Skipping soft-masked       {}", settings.skip_masked);
+    trace!("Min. length                {}", settings.min_duplication_length);
+    trace!("Max. cardinality           {}", settings.max_cardinality);
+    trace!("Threads count              {}", settings.threads_count);
     if !settings.trim.is_empty() {
-        info!("Trimming                   {} → {}", settings.trim[0], settings.trim[1]);
+        trace!("Trimming                   {} → {}", settings.trim[0], settings.trim[1]);
     }
 
 
     let result = search_duplications(
-        &settings.strand_file,
+        &settings.strands_files,
         RunSettings {
             probe_size:             settings.kmer_size,
             max_gap_size:           settings.gap_size + settings.kmer_size as u32,
@@ -589,7 +554,7 @@ fn run() -> Result<()> {
 
 
 fn search_duplications(
-    strand_file: &str,
+    strands_files: &[String],
     settings: RunSettings,
 ) -> Result<RunResult> {
 
@@ -598,7 +563,7 @@ fn search_duplications(
     info!("Preprocessing data");
     let (strand, to_process, shared_suffix_array, shared_searcher) =
         prepare_data(
-            &[strand_file],
+            strands_files,
             settings.skip_masked,
             settings.trim)?;
 
@@ -610,9 +575,9 @@ fn search_duplications(
         shared_suffix_array, shared_searcher,
         settings,
     )));
-    // if settings.compute_score {steps.push(Box::new(ComputeScore::new(settings.trim)));}
-    steps.push(Box::new(ReOrder{}));
-    // steps.push(Box::new(ReduceOverlap{}));
+    if settings.compute_score { steps.push(Box::new(ComputeScore{})); }
+    // steps.push(Box::new(ReOrder{}));
+    steps.push(Box::new(ReduceOverlap{}));
 
     let mut result = Vec::new();
     for (i, step) in steps.iter().enumerate() {
@@ -622,7 +587,7 @@ fn search_duplications(
 
     info!("{}",
           style(format!("{:?} processed in {}.",
-                        path::Path::new(strand_file).file_name().expect("Should never fail"),
+                        strands_files.join(", "),
                         HumanDuration(total.elapsed()))).green().bold()
     );
 

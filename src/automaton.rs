@@ -59,12 +59,9 @@ enum Operation {
 
 pub fn search_duplications(
     needle: &[u8], needle_offset: usize,
-    strand: &[u8],
-    sa: &[idx],
-
+    strand: &[u8], sa: &[idx],
     searcher: &Searcher,
     progress: &AtomicUsize,
-
     settings: RunSettings
 ) -> Vec<ProtoSDsFamily> {
     fn try_extend_arms(arms: &[Arm], m: &Segment, e: i64, i: usize, ps: usize) -> Operation {
@@ -78,7 +75,6 @@ pub fn search_duplications(
     }
 
     let mut arms : Vec<Arm> = Vec::new();
-    // let mut i = settings.start; // XXX TODO ?
     let mut i = 0;
     let mut r = Vec::new();
     let mut current_family_id = 1;
@@ -89,11 +85,12 @@ pub fn search_duplications(
         i += step_size;
         progress.store(i, Ordering::Relaxed);
 
-        if strand[i] == b'N' { continue }
-        let matches: Vec<Segment> = searcher.search(strand, sa, &needle[i..i + settings.probe_size])
+        if needle[i] == b'N' { continue }
+        let matches: Vec<Segment> = searcher.search(strand, sa, &needle[i .. i + settings.probe_size])
             .into_iter()
             .filter(|m| m.start != i)
-            .filter(|m| if !settings.reverse { m.start > i + needle_offset } else { m.start <= strand.len() - needle_offset - i })
+            .filter(|m| if !settings.reverse { m.start > i + needle_offset }
+                    else { m.start >= needle_offset + needle.len() - i })
             .collect();
         if matches.len() > settings.max_cardinality {continue}
 

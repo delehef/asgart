@@ -4,6 +4,8 @@ args:
     - strand:
         help: Strand, FASTA format
         required: true
+        takes_value: true
+        min_values: 1
         index: 1
 
     - min_length:

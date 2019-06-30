@@ -20,14 +20,12 @@ pub struct FlatPlotter {
 
 impl Plotter for FlatPlotter {
     fn new(settings: Settings, result: RunResult) -> FlatPlotter {
-        let length1 = result.strand1.length as i64;
-        let length2 = result.strand2.length as i64;
-
+        let length = result.strand.length as f64;
         FlatPlotter {
             result,
             settings,
 
-            max_length: cmp::max(length1, length2) as f64,
+            max_length: length,
             width: 1500.0,
             height: 230.0,
         }
@@ -57,7 +55,7 @@ impl FlatPlotter {
                 "#,
                         0,
                         CHR_WIDTH/2.0,
-                        self.result.strand1.length as f64/self.max_length*self.width,
+                        self.result.strand.length as f64/self.max_length*self.width,
                         CHR_WIDTH/2.0,
                         CHR_WIDTH
         );
@@ -68,7 +66,7 @@ impl FlatPlotter {
                 "#,
                         0,
                         self.height-CHR_WIDTH/2.0,
-                        self.result.strand2.length as f64/self.max_length*self.width,
+                        self.result.strand.length as f64/self.max_length*self.width,
                         self.height-CHR_WIDTH/2.0,
                         CHR_WIDTH
         );
@@ -135,7 +133,7 @@ impl FlatPlotter {
                 for position in &feature.positions {
                     let (start, end) = match *position {
                         FeaturePosition::Relative { ref chr, start, length} => {
-                            let chr = self.result.strand1.find_chr(&chr);
+                            let chr = self.result.strand.find_chr(&chr);
                             (chr.position + start, chr.position + start + length)
                         }
                         FeaturePosition::Absolute { start, length }         => { (start, start + length) }

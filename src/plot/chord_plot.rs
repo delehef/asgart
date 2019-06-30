@@ -28,7 +28,7 @@ pub struct ChordPlotter {
 
 impl Plotter for ChordPlotter {
     fn new(settings: Settings, result: RunResult) -> ChordPlotter {
-        let length = result.strand1.length as f64;
+        let length = result.strand.length as f64;
         ChordPlotter {
             result,
             settings,
@@ -49,7 +49,7 @@ impl Plotter for ChordPlotter {
 
 impl ChordPlotter {
     fn angle(&self, x: f64) -> f64 {
-        PI/2.0 - x / self.length * 2.0 * PI
+        -x / self.length * 2.0 * PI
     }
 
     fn cartesian(&self, t: f64, r: f64) -> (f64, f64) {
@@ -60,9 +60,12 @@ impl ChordPlotter {
         let (start_x, start_y) = self.cartesian(t1, radius);
         let (end_x, end_y) = self.cartesian(t2, radius);
 
-        let flag = if t2 - t1 <= 180.0 {"0"} else {"1"};
+        let large_flag = if t2 - t1 > PI/2.0 { 1 } else { 0 };
+        let sweep_flag = if t2 - t1 > 0.0 { 1 } else { 0 };
 
-        format!("M {} {} A {} {} {} {} {} {} {}", start_x, start_y, radius, radius, 0, flag, 1, end_x, end_y)
+        format!("M {} {} A {} {} {} {} {} {} {}",
+                start_x, start_y,
+                radius, radius, 0, large_flag, sweep_flag, end_x, end_y)
     }
 
 
@@ -70,7 +73,7 @@ impl ChordPlotter {
         let mut svg = String::new();
         svg += &format!("\n<g transform='translate({}, {})' >\n", 0, 0);
 
-        for chr in &self.result.strand1.map {
+        for chr in &self.result.strand.map {
             let t1 = self.angle(chr.position as f64) - INTER_RING_SPACING;
             let t2 = self.angle(chr.position as f64 + chr.length as f64) + INTER_RING_SPACING;
             let tt = t1 + (t2-t1)/2.0;
@@ -125,11 +128,10 @@ impl ChordPlotter {
                     ((x1, y1), (x2, y2), (cx, cy))
                 } else {
                     let tt = t1 + (t2-t1)/2.0;
-                    let rin = R + RING_WIDTH + RING_MARGIN;
-                    let rout = rin + OUT_CEILING;
-                    let (x1, y1) = self.cartesian(t1, rin);
-                    let (x2, y2) = self.cartesian(t2, rin);
-                    let (cx, cy) = self.cartesian(tt, rout);
+                    let rin = R*2.0/4.0;
+                    let (x1, y1) = self.cartesian(t1, R);
+                    let (x2, y2) = self.cartesian(t2, R);
+                    let (cx, cy) = self.cartesian(tt, rin);
                     ((x1, y1), (x2, y2), (cx, cy))
                 };
 
@@ -149,7 +151,7 @@ impl ChordPlotter {
                 for position in &feature.positions {
                     let (start, end) = match *position {
                         FeaturePosition::Relative { ref chr, start, length} => {
-                            let chr = self.result.strand1.find_chr(&chr);
+                            let chr = self.result.strand.find_chr(&chr);
                             (chr.position + start, chr.position + start + length)
                         }
                         FeaturePosition::Absolute { start, length }         => { (start, start + length) }

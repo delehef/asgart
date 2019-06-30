@@ -1,14 +1,10 @@
 name: asgart
 about: A Segmental duplications Gathering and Refinement Tool
 args:
-    - strand1:
-        help: First strand, FASTA format
+    - strand:
+        help: Strand, FASTA format
         required: true
         index: 1
-    - strand2:
-        help: Second strand, FASTA format
-        required: true
-        index: 2
 
     - min_length:
         long: min-length

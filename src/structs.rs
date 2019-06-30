@@ -23,13 +23,6 @@ pub struct RunSettings {
 
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub start:                  usize,
-    #[serde(skip_serializing)]
-    #[serde(default)]
-    pub end:                    usize,
-
-    #[serde(skip_serializing)]
-    #[serde(default)]
     pub threads_count:          usize,
     #[serde(skip_serializing)]
     #[serde(default)]
@@ -49,7 +42,6 @@ pub struct StrandResult {
     pub length: usize,
     pub map: Vec<Start>,
 }
-
 impl StrandResult {
     pub fn has_chr(&self, name: &str) -> bool {
         self.map.iter().any(|chr| chr.name == name)
@@ -72,8 +64,7 @@ impl StrandResult {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RunResult {
-    pub strand1: StrandResult,
-    pub strand2: StrandResult,
+    pub strand: StrandResult,
     pub settings: RunSettings,
     pub families: Vec<SDsFamily>,
 }

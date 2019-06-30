@@ -20,8 +20,8 @@ use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
-use asgart::plot::circos_plot::CircosPlotter;
-use asgart::plot::genome_plot::GenomePlotter;
+// use asgart::plot::circos_plot::CircosPlotter;
+// use asgart::plot::genome_plot::GenomePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
 
@@ -39,18 +39,16 @@ fn read_results(filenames: &[&str]) -> Result<RunResult> {
         .collect::<std::result::Result<Vec<RunResult>, _>>()?;
 
     for result in &results {
-        if result.strand1.name != results[0].strand1.name || result.strand2.name != results[0].strand2.name {
-            bail!(format!("trying to combine ASGART files containing different karyotypes: `{}/{}` and `{}/{}`",
-                          result.strand1.name, result.strand2.name,
-                          results[0].strand1.name, results[0].strand2.name
+        if result.strand.name != results[0].strand.name {
+            bail!(format!("trying to combine ASGART files containing different karyotypes: `{}` and `{}`",
+                          result.strand.name, results[0].strand.name,
             ));
         }
     }
 
     Ok(RunResult {
         settings: results[0].settings.clone(),
-        strand1:  results[0].strand1.clone(),
-        strand2:  results[0].strand2.clone(),
+        strand:   results[0].strand.clone(),
         families: results.iter().flat_map(|ref r| r.families.iter()).cloned().collect::<Vec<_>>(),
     })
 }
@@ -76,7 +74,7 @@ fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Featu
                                     for position in &feature.positions{
                                         let (start, length) = match *position {
                                             FeaturePosition::Relative { ref chr, start, length} => {
-                                                let chr = result.strand1.find_chr(&chr);
+                                                let chr = result.strand.find_chr(&chr);
                                                 (chr.position + start, length)
                                             }
                                             FeaturePosition::Absolute { start, length }         => {
@@ -116,7 +114,7 @@ fn filter_features_in_sds(result: &mut RunResult, features_families: &mut Vec<Ve
                           .any(|p| {
                               let (start, length) = match *p {
                                   FeaturePosition::Relative { ref chr, start, length} => {
-                                      let chr = result.strand1.find_chr(&chr);
+                                      let chr = result.strand.find_chr(&chr);
                                       (chr.position + start, length)
                                   }
                                   FeaturePosition::Absolute { start, length }         => { (start, length) }
@@ -204,14 +202,14 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
                 let chr = re.captures(v[1]).unwrap().get(1).unwrap().as_str();
                 let position = re.captures(v[1]).unwrap().get(2).unwrap().as_str().to_owned().parse::<usize>().unwrap();
                 // XXX Incorrect for non-endofeature runs
-                if !r.strand1.has_chr(chr) {
+                if !r.strand.has_chr(chr) {
                     bail!("Unable to find '{}'. Available: {}",
                           chr,
-                          r.strand1.map.iter().fold(String::new(), |mut s, chr| { s.push_str(&format!("'{}' ", chr.name)); s })
+                          r.strand.map.iter().fold(String::new(), |mut s, chr| { s.push_str(&format!("'{}' ", chr.name)); s })
                     );
                 }
-                if r.strand1.find_chr(chr).length < position {
-                    bail!("{} greater than {}'s length ({})", position, chr, r.strand1.find_chr(chr).length);
+                if r.strand.find_chr(chr).length < position {
+                    bail!("{} greater than {}'s length ({})", position, chr, r.strand.find_chr(chr).length);
                 }
                 FeaturePosition::Relative {
                     chr: chr.to_owned(),
@@ -316,8 +314,8 @@ fn run() -> Result<()> {
     match args.value_of("PLOT-TYPE") {
         Some("chord")   => ChordPlotter::new(settings, result).plot(),
         Some("flat")    => FlatPlotter::new(settings, result).plot(),
-        Some("genome")  => GenomePlotter::new(settings, result).plot(),
-        Some("circos")  => CircosPlotter::new(settings, result).plot(),
+        // Some("genome")  => GenomePlotter::new(settings, result).plot(),
+        // Some("circos")  => CircosPlotter::new(settings, result).plot(),
         // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
         _               => unreachable!(),
     }

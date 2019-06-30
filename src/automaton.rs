@@ -21,7 +21,7 @@ pub struct Segment {
 impl fmt::Debug for Segment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-               "S{{{}, {}}} ({})",
+               "S{{{} -> {}}} ({})",
                self.start,
                self.end,
                self.end - self.start)
@@ -57,18 +57,19 @@ enum Operation {
     NewArm {i: usize, m_start: usize, m_end: usize},
 }
 
-pub fn search_duplications(strand1: &[u8],
-                           strand2: &[u8],
-                           sa: &[idx],
+pub fn search_duplications(
+    needle: &[u8], needle_offset: usize,
+    strand: &[u8],
+    sa: &[idx],
 
-                           searcher: &Searcher,
-                           progress: &AtomicUsize,
+    searcher: &Searcher,
+    progress: &AtomicUsize,
 
-                           settings: RunSettings
+    settings: RunSettings
 ) -> Vec<ProtoSDsFamily> {
     fn try_extend_arms(arms: &[Arm], m: &Segment, e: i64, i: usize, ps: usize) -> Operation {
         for (j, a) in arms.iter().enumerate() {
-            if a.active && d_ss(&a.right, m) < cmp::max(e, (0.1*a.left.len() as f64) as i64) as i64 {
+            if a.active && d_ss(&a.right, m) < cmp::max(e, (0.1*a.left.len() as f64) as i64) as i64 && m.end > a.right.end {
                 return Operation::ExtendArm {i: j, l_end: i + ps, r_end: m.end}
             }
         }
@@ -77,40 +78,27 @@ pub fn search_duplications(strand1: &[u8],
     }
 
     let mut arms : Vec<Arm> = Vec::new();
-    let mut i = settings.start;
+    // let mut i = settings.start; // XXX TODO ?
+    let mut i = 0;
     let mut r = Vec::new();
     let mut current_family_id = 1;
     let step_size = settings.probe_size/2;
 
 
-    while i < settings.end - settings.probe_size {
-        i += step_size; // TODO
-        progress.store(cmp::min(i - settings.start, settings.end - settings.start), Ordering::Relaxed);
+    while i < needle.len() - settings.probe_size - step_size {
+        i += step_size;
+        progress.store(i, Ordering::Relaxed);
 
-        if strand1[i] == b'N' { continue }
-        let matches: Vec<Segment> = searcher.search(strand2, sa, &strand1[i..i + settings.probe_size])
+        if strand[i] == b'N' { continue }
+        let matches: Vec<Segment> = searcher.search(strand, sa, &needle[i..i + settings.probe_size])
             .into_iter()
             .filter(|m| m.start != i)
-            .filter(|m| if !settings.reverse { m.start > i } else { m.start <= strand2.len() - i })
+            .filter(|m| if !settings.reverse { m.start > i + needle_offset } else { m.start <= strand.len() - needle_offset - i })
             .collect();
         if matches.len() > settings.max_cardinality {continue}
 
         // Reset dirty bits of arms
         arms.iter_mut().for_each(|arm| arm.dirty = false);
-
-        // for m in matches {
-        //     // Try to extend existing arms...
-        //     if !old_try_extend_arms(&mut arms, &m, settings.max_gap_size as i64, i, settings.probe_size) {
-        //         // ...or create new arm
-        //         arms.push(Arm{
-        //             left: Segment{start: i, end: i + settings.probe_size, tag: 0},
-        //             right: Segment{start: m.start, end: m.end, tag: 0},
-        //             family_id: current_family_id,
-        //             active: true, dirty: false,
-        //             gap: 0
-        //         })
-        //     }
-        // }
 
         let todo = matches
             .par_iter()
@@ -163,11 +151,12 @@ pub fn search_duplications(strand1: &[u8],
                     ProtoSD {
                         left: a.left.start,
                         right: a.right.start,
-                        length: a.left.len(),
+                        length: a.right.len(),
                         identity: 0.,
                         reversed: false,
                         complemented: false,
-                    }}) .collect();
+                    }})
+                .collect();
             if !family.is_empty() { r.push(family); }
             arms.clear();
 

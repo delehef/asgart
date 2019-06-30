@@ -7,9 +7,10 @@ extern crate num_cpus;
 extern crate bio;
 extern crate asgart;
 extern crate rayon;
+extern crate separator;
 
-use threadpool::ThreadPool;
-use indicatif::{ProgressBar, ProgressStyle, HumanDuration, MultiProgress};
+use separator::Separatable;
+use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
 use console::style;
 use bio::io::fasta;
 use clap::{App, AppSettings};
@@ -219,8 +220,8 @@ fn prepare_data(strand1_file: &str,
                 skip_masked: bool,
                 trim: Option<(usize, usize)>)
                 -> Result<PreparedData> {
-    fn swaths_to_process(strand: &[u8]) -> Vec<(usize, usize)> {
-        let threshold = 10000;
+    fn find_chunks_to_process(strand: &[u8]) -> Vec<(usize, usize)> {
+        let threshold = 5000;
         let mut start = 0;
         let mut count = 0;
         let mut r = Vec::new();
@@ -244,18 +245,32 @@ fn prepare_data(strand1_file: &str,
             }
         }
 
+        let r_length = r.iter().fold(0, |ax, c| ax + c.1);
+        info!("{} chunks to process, ignoring {}bp out of {} ({}%): ",
+              r.len().separated_string(),
+              (strand.len() - r_length).separated_string(),
+              strand.len().separated_string(),
+              (((strand.len() as f64 - (r_length as f64))*100.0/strand.len() as f64) as i64).separated_string()
+        );
+        r.iter().for_each(|c| {
+            trace!("{:>12} -> {:>12}   {:>11} bp", c.0.separated_string(), (c.0 + c.1).separated_string(), c.1.separated_string());
+        });
+
+        // We want to process the large chunks first; so that as soon as they are finished,
+        // available threads can focus on processig the slower ones instead of fighting for automaton-level parallelism
+        r.sort_by_key(|c| c.1);
         r
     }
 
     //
     // Read and map the FASTA files to process
     //
-    let (map1, mut strand1) = read_fasta(strand1_file, skip_masked)?;
+    let (map1, strand1) = read_fasta(strand1_file, skip_masked)?;
     let (map2, strand2) = {
         let (map2, strand2) = if strand2_file != strand1_file {
             read_fasta(strand2_file, skip_masked)?
         } else {
-            trace!("Using same file for strands 1 & 2\n");
+            info!("Using same file for strands 1 & 2");
             (map1.clone(), strand1.clone())
         };
         (map2, strand2)
@@ -270,7 +285,7 @@ fn prepare_data(strand1_file: &str,
               stop,
               strand1_file,
               strand1.len());
-        warn!("Using {} instead of {}\n", strand1.len() - 1, stop);
+        warn!("Using {} instead of {}", strand1.len() - 1, stop);
         stop = strand1.len() - 1;
     }
     if stop <= shift {
@@ -319,21 +334,23 @@ fn prepare_data(strand1_file: &str,
     if reverse { strand1.data.reverse(); }
     strand2.data.push(b'$');
 
-    let to_process = swaths_to_process(&strand1.data);
+    let chunks_to_process = find_chunks_to_process(&strand1.data);
 
     //
     // Build the suffix array
     //
+    info!("Building suffix array");
     let suffix_array = r_divsufsort(&strand2.data);
 
     let shared_suffix_array = Arc::new(suffix_array);
     let shared_searcher = Arc::new(
         searcher::Searcher::new(&strand2.data.clone(), &Arc::clone(&shared_suffix_array), shift2)
     );
+    trace!("Done.");
 
     Ok((
         Arc::new(strand1), Arc::new(strand2),
-        to_process,
+        chunks_to_process,
         shared_suffix_array, shared_searcher
     ))
 }
@@ -355,7 +372,7 @@ fn read_fasta(filename: &str, skip_masked: bool) -> Result<(Vec<Start>, Vec<u8>)
             if ALPHABET_MASKED.contains(c) && skip_masked {
                 *c = b'N'
             } else if !(ALPHABET).contains(c) {
-                warn!("Undefined base `{}` replaced by `N`", std::char::from_u32(u32::from(*c)).unwrap());
+                trace!("Undefined base `{}` replaced by `N`", std::char::from_u32(u32::from(*c)).unwrap());
                 *c = b'N'
             }
         }
@@ -530,19 +547,19 @@ fn run() -> Result<()> {
         settings.out
     };
 
-    trace!("1st strand file          {}", &settings.strand1_file);
-    trace!("2nd strand file          {}", &settings.strand2_file);
-    trace!("K-mers size              {}", settings.kmer_size);
-    trace!("Max gap size             {}", settings.gap_size);
-    trace!("Output file              {}", &out_file);
-    trace!("Reverse 2nd strand       {}", settings.reverse);
-    trace!("Complement 2nd strand    {}", settings.complement);
-    trace!("Skipping soft-masked     {}", settings.skip_masked);
-    trace!("Min. length              {}", settings.min_duplication_length);
-    trace!("Max. cardinality         {}", settings.max_cardinality);
-    trace!("Threads count            {}", settings.threads_count);
+    info!("1st strand file          {}", &settings.strand1_file);
+    info!("2nd strand file          {}", &settings.strand2_file);
+    info!("K-mers size              {}", settings.kmer_size);
+    info!("Max gap size             {}", settings.gap_size);
+    info!("Output file              {}", &out_file);
+    info!("Reverse 2nd strand       {}", settings.reverse);
+    info!("Complement 2nd strand    {}", settings.complement);
+    info!("Skipping soft-masked     {}", settings.skip_masked);
+    info!("Min. length              {}", settings.min_duplication_length);
+    info!("Max. cardinality         {}", settings.max_cardinality);
+    info!("Threads count            {}", settings.threads_count);
     if !settings.trim.is_empty() {
-        trace!("Trimming                   {} → {}\n", settings.trim[0], settings.trim[1]);
+        info!("Trimming                   {} → {}", settings.trim[0], settings.trim[1]);
     }
 
 
@@ -592,7 +609,7 @@ fn search_duplications(
 
     let total = Instant::now();
 
-    info!("Building suffix array...");
+    info!("Preprocessing data");
     let (strand1, strand2, to_process, shared_suffix_array, shared_searcher) =
         prepare_data(
             strand1_file,

@@ -17,16 +17,16 @@ impl log::Log for Logger {
             println!("{}",
                      match record.level() {
                          Level::Error => {
-                             format!("{} {}", "✖".red(), record.args().to_string().red().bold())
+                             format!("{} {}", "×".red(), record.args().to_string().red().bold())
                          }
                          Level::Warn => {
                              format!("{} {}", "⚠".yellow(), record.args().to_string().yellow())
                          }
                          Level::Info => {
-                             format!("{}", record.args())
+                             format!("{} {}", "▷".cyan(), record.args())
                          }
                          Level::Trace => {
-                             format!("{} {}", "▷".cyan(), record.args())
+                             format!("    {}", record.args())
                          }
                          Level::Debug => {
                              format!("{} {}", "❖".blue(), record.args().to_string().blue())
@@ -36,19 +36,19 @@ impl log::Log for Logger {
             println!("{}",
                      match record.level() {
                          Level::Error => {
-                             format!("{} {}", "✖", record.args().to_string())
+                             format!("{} {}", " X ", record.args().to_string())
                          }
                          Level::Warn => {
-                             format!("{} {}", "⚠", record.args().to_string())
+                             format!("{} {}", "/!\\", record.args().to_string())
                          }
                          Level::Info => {
                              format!("{}", record.args())
                          }
                          Level::Trace => {
-                             format!("{} {}", "▷", record.args())
+                             format!("{} {}", " > ", record.args())
                          }
                          Level::Debug => {
-                             format!("{} {}", "❖", record.args().to_string())
+                             format!("{} {}", " . ", record.args().to_string())
                          }
                      });
         }

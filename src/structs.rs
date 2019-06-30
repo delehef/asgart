@@ -65,7 +65,7 @@ impl StrandResult {
     }
 
     pub fn find_chr_by_pos(&self, pos: usize) -> &Start {
-        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length).expect(&format!("No chr for {}", pos))
+        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length).unwrap_or_else(|| panic!("No chr for {}", pos))
     }
 }
 

@@ -46,7 +46,7 @@ pub struct ProtoProtoSD {
 struct Arm {
     left: Segment,
     right: Segment,
-    family_id: usize,
+    family_id: String,
     active: bool,
     dirty: bool,
     gap: usize,
@@ -58,6 +58,7 @@ enum Operation {
 }
 
 pub fn search_duplications(
+    id: usize,
     needle: &[u8], needle_offset: usize,
     strand: &[u8], sa: &[SAIdx],
     searcher: &Searcher,
@@ -119,7 +120,7 @@ pub fn search_duplications(
                     arms.push(Arm{
                         left: Segment{start: *i, end: *i + settings.probe_size, tag: 0},
                         right: Segment{start: *m_start, end: *m_end, tag: 0},
-                        family_id: current_family_id,
+                        family_id: format!("{}-{}", id, current_family_id),
                         active: true, dirty: false,
                         gap: 0
                     })

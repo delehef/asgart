@@ -145,23 +145,20 @@ impl<'a> Step for SearchDuplications<'a> {
             .par_iter()
             .enumerate()
             .map(|(id, chunk)| {
-                let mut proto_sds_families = if !self.settings.reverse && !self.settings.complement {
-                    automaton::search_duplications(
-                        &strand.data[chunk.0 .. chunk.0 + chunk.1], chunk.0,
-                        &strand.data, &self.suffix_array, &self.searcher,
-                        &progresses[id], self.settings.clone()
-                    )
+                let mut _needle;
+                let needle = if !self.settings.reverse && !self.settings.complement {
+                    &strand.data[chunk.0 .. chunk.0 + chunk.1]
                 } else {
-                    let mut needle = strand.data[chunk.0 .. chunk.0 + chunk.1].to_vec();
-                    if self.settings.complement { needle = utils::complemented(&*needle); }
-                    if self.settings.reverse { needle.reverse(); }
-
-                    automaton::search_duplications(
-                        &needle, chunk.0,
-                        &strand.data, &self.suffix_array, &self.searcher,
-                        &progresses[id], self.settings.clone()
-                    )
+                    _needle = strand.data[chunk.0 .. chunk.0 + chunk.1].to_vec();
+                    if self.settings.complement { _needle = utils::complemented(&_needle); }
+                    if self.settings.reverse { _needle.reverse(); }
+                    &_needle
                 };
+
+                let mut proto_sds_families = automaton::search_duplications(
+                    id, needle, chunk.0,
+                    &strand.data, &self.suffix_array, &self.searcher,
+                    &progresses[id], self.settings.clone());
                 proto_sds_families
                     .iter_mut()
                     .for_each(|proto_family|

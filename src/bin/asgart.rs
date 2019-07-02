@@ -120,7 +120,8 @@ impl<'a> Step for SearchDuplications<'a> {
         //
         // Build the suffix array
         //
-        info!("Building suffix array");
+        trace!("Building suffix array");
+        let sa_build_time = Instant::now();
         let shared_suffix_array = if let Some((start, end)) = self.trim {
             let mut sub_strand = strand.data[start .. end].to_vec();
             sub_strand.push(b'$');
@@ -131,7 +132,7 @@ impl<'a> Step for SearchDuplications<'a> {
             Arc::new(r_divsufsort(&strand.data))
         };
         let shared_searcher = Arc::new(searcher::Searcher::new(&strand.data, &Arc::clone(&shared_suffix_array), 0));
-        trace!("Done.");
+        trace!("Done in {}", HumanDuration(sa_build_time.elapsed()));
 
 
         //

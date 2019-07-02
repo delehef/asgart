@@ -330,6 +330,7 @@ computation time. For this reason, interlaced duplication families research is n
 slightly improving performances.
 - Taking advantage of these two new features, the parallelization system has been rewritten to (i) introduce
 parallelism at the scale of the automaton; and (ii) make use of the “natural” aforementioned breakpoints as delimiters for chunks to process in parallel. By doing so, it is guaranteed (i) that no duplication families that would be situated between two chunks will be missed; (ii) that ASGART will make use of available cores even when processing less chunks than authorized threads.
+- ASGART will now make use of the trimming feature to reduce memory consumption. The suffix array will be built only for the trimmed part, instead than for the whole input. The whole input will then be compared to the trimmed part, in contrary to what happened in version 1.x. Such an arrangement sacrifice some CPU power in exchange of a strongly reduced memory consumption when processing trimmed input. It can be used to process large sequences, by trimming them in several consecutive subsequences, then mergin the results later on.
 - The JSON and GFF3 output formats have been modified to reflect the duplication families clustering. *Please note that they are thus incompatible with previous versions JSON files.*
 - Plotting utilities have been modified to reflect these changes.
 - The automaton will progressively grow the maximal gap size when extending large duplications, thus letting larger duplications arms be found in a less fragmented way.

@@ -100,26 +100,41 @@ impl Step for ComputeScore {
 
 struct SearchDuplications<'a> {
     chunks_to_process: &'a[(usize, usize)],
-    suffix_array: std::sync::Arc<std::vec::Vec<i64>>,
-    searcher: std::sync::Arc<searcher::Searcher>,
+    trim: (usize, usize),
     settings: RunSettings,
 }
 impl SearchDuplications<'_> {
     fn new(
         chunks_to_process: &[(usize, usize)],
-        suffix_array: std::sync::Arc<std::vec::Vec<i64>>,
-        searcher: std::sync::Arc<searcher::Searcher>,
+        trim: (usize, usize),
         settings: RunSettings,
     ) -> SearchDuplications { SearchDuplications {
         chunks_to_process: chunks_to_process,
-        suffix_array: suffix_array,
-        searcher: searcher,
+        trim: trim,
         settings: settings.clone(),
     }}
 }
 impl<'a> Step for SearchDuplications<'a> {
     fn name(&self) -> &str { "Looking for proto-duplications" }
     fn run(&self, _input: Vec<ProtoSDsFamily>, strand: &Strand) -> Vec<ProtoSDsFamily> {
+        //
+        // Build the suffix array
+        //
+        info!("Building suffix array");
+        let mut sub_strand = strand.data[self.trim.0 .. self.trim.1].to_vec();
+        sub_strand.push(b'$');
+        let mut suffix_array = r_divsufsort(&sub_strand);
+        suffix_array.iter_mut().for_each(|x| *x += self.trim.0 as i64);
+        drop(sub_strand);
+        let shared_suffix_array = Arc::new(suffix_array);
+        let shared_searcher = Arc::new(
+            searcher::Searcher::new(&strand.data, &Arc::clone(&shared_suffix_array), 0)
+        );
+        println!("{:?}", &shared_suffix_array[0..10]);
+        trace!("Done.");
+
+
+
         let (tx_monitor, rx_monitor) = mpsc::channel();
         let progresses = Arc::new((0..self.chunks_to_process.len()).map(|_| Arc::new(AtomicUsize::new(0))).collect::<Vec<_>>());
         let total = self.chunks_to_process.iter().fold(0, |ax, c| ax + c.1);
@@ -157,7 +172,7 @@ impl<'a> Step for SearchDuplications<'a> {
 
                 let mut proto_sds_families = automaton::search_duplications(
                     id, needle, chunk.0,
-                    &strand.data, &self.suffix_array, &self.searcher,
+                    &strand.data, &shared_suffix_array.clone(), &shared_searcher.clone(),
                     &progresses[id], self.settings.clone());
                 proto_sds_families
                     .iter_mut()
@@ -192,10 +207,9 @@ impl<'a> Step for SearchDuplications<'a> {
 }
 
 type PreparedData = (
-    Arc<Strand>,              // DNA strand to process
-    Vec<(usize, usize)>,      // The areas that are not filled with Ns
-    Arc<SuffixArray>,         // Suffix array
-    Arc<searcher::Searcher>   // Searcher for the suffix array
+    Strand,               // DNA strand to process
+    (usize, usize),       // Trim
+    Vec<(usize, usize)>,  // The areas that are not filled with Ns
 );
 
 struct Strand {
@@ -209,13 +223,13 @@ fn prepare_data(
     skip_masked: bool,
     trim: Option<(usize, usize)>
 ) -> Result<PreparedData> {
-    fn find_chunks_to_process(strand: &[u8], (trim_start, trim_end): (usize, usize)) -> Vec<(usize, usize)> {
+    fn find_chunks_to_process(strand: &[u8]) -> Vec<(usize, usize)> {
         let threshold = 5000;
         let mut start = 0;
         let mut count = 0;
         let mut r = Vec::new();
 
-        for (i, n) in strand[trim_start..trim_end].iter().enumerate() {
+        for (i, n) in strand.iter().enumerate() {
             match n {
                 b'n' | b'N' => {
                     if count != 0 {
@@ -226,7 +240,7 @@ fn prepare_data(
                 _ => {
                     if count == 0 {
                         count = 1;
-                        start = trim_start + i;
+                        start = i;
                     } else {
                         count += 1;
                     }
@@ -234,15 +248,15 @@ fn prepare_data(
             }
         }
         if count != 0 { r.push((start, count)); }                          // Do not forget the currently-extended chunk
-        if count == 0 && r.is_empty() { r.push((trim_start, trim_end)); } // If everything is to process
+        if count == 0 && r.is_empty() { r.push((0, strand.len() - 1)); }  // If everything is to process
 
         let r_length = r.iter().fold(0, |ax, c| ax + c.1);
         info!("Processing {} chunks totalling {}bp to process, skipping {}bp out of {} ({}%)",
               r.len().separated_string(),
               r_length.separated_string(),
-              (trim_end - trim_start - r_length).separated_string(),
-              (trim_end - trim_start).separated_string(),
-              ((((trim_end - trim_start) as f64 - (r_length as f64))*100.0/strand.len() as f64) as i64).separated_string()
+              (strand.len() - r_length).separated_string(),
+              strand.len().separated_string(),
+              (((strand.len() as f64 - (r_length as f64))*100.0/strand.len() as f64) as i64).separated_string()
         );
         r.iter().for_each(|c| {
             trace!("{:>12} -> {:>12}   {:>11} bp", c.0.separated_string(), (c.0 + c.1).separated_string(), c.1.separated_string());
@@ -276,36 +290,20 @@ fn prepare_data(
     //
     let (shift, mut stop) = trim.unwrap_or((0, strand.len() - 1));
     if stop >= strand.len() {
-        warn!("Trimming: {} greater than total length ({}bp)",
-              stop,
-              strand.len());
+        warn!("Trimming: {} greater than total length ({}bp)", stop, strand.len());
         warn!("Using {} instead of {}", strand.len() - 1, stop);
         stop = strand.len() - 1;
     }
-    if stop <= shift {
-        return Err(format!("{} greater than {}", shift, stop).into());
-    }
-    let chunks_to_process = find_chunks_to_process(&strand, (shift, stop));
+    if stop <= shift { return Err(format!("{} greater than {}", shift, stop).into()); }
+    let chunks_to_process = find_chunks_to_process(&strand);
 
 
 
-    //
-    // Build the suffix array
-    //
-    info!("Building suffix array");
-    strand.push(b'$');
-    let suffix_array = r_divsufsort(&strand);
-
-    let shared_suffix_array = Arc::new(suffix_array);
-    let shared_searcher = Arc::new(
-        searcher::Searcher::new(&strand, &Arc::clone(&shared_suffix_array), 0)
-    );
-    trace!("Done.");
 
     Ok((
-        Arc::new(Strand{file_names: strands_files.join(", "), data: strand, map: maps}),
+        Strand{file_names: strands_files.join(", "), data: strand, map: maps},
+        (shift, stop),
         chunks_to_process,
-        shared_suffix_array, shared_searcher
     ))
 }
 
@@ -495,12 +493,13 @@ fn run() -> Result<()> {
                  .collect::<Vec<String>>()).join("-");
 
     let out_file = if settings.out.is_empty() {
-        format!("{}{}{}{}{}",
+        format!("{}{}{}{}{}{}",
                 &settings.prefix,
                 radix,
                 if settings.reverse || settings.complement {"_"} else {""},
                 if settings.reverse {"R"} else {""},
                 if settings.complement {"C"} else {""},
+                &(if !settings.trim.is_empty() { format!("_{}-{}", settings.trim[0], settings.trim[1]) } else {"".into()})
         )
     } else {
         settings.out
@@ -509,7 +508,6 @@ fn run() -> Result<()> {
     info!("Processing               {:?}", &settings.strands_files);
     trace!("K-mers size                {}", settings.kmer_size);
     trace!("Max gap size               {}", settings.gap_size);
-    trace!("Output file                {}", &out_file);
     trace!("Reversed duplications      {}", settings.reverse);
     trace!("Complemented duplications  {}", settings.complement);
     trace!("Skipping soft-masked       {}", settings.skip_masked);
@@ -566,18 +564,12 @@ fn search_duplications(
     let total = Instant::now();
 
     info!("Preprocessing data");
-    let (strand, to_process, shared_suffix_array, shared_searcher) =
-        prepare_data(
-            strands_files,
-            settings.skip_masked,
-            settings.trim)?;
-
-
+    let (mut strand, trim, to_process) = prepare_data(strands_files, settings.skip_masked, settings.trim)?;
 
     let mut steps : Vec<Box<dyn Step>> = Vec::new();
     steps.push(Box::new(SearchDuplications::new(
         &to_process,
-        shared_suffix_array, shared_searcher,
+        trim,
         settings,
     )));
     if settings.compute_score { steps.push(Box::new(ComputeScore{})); }
@@ -587,7 +579,7 @@ fn search_duplications(
     let mut result = Vec::new();
     for (i, step) in steps.iter().enumerate() {
         info!("{} {}...", style(format!("[{}/{}]", i + 1, steps.len())).blue().bold(), step.name());
-        result = step.run(result, &strand);
+        result = step.run(result, &mut strand);
     }
 
     info!("{}",

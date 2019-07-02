@@ -100,13 +100,13 @@ impl Step for ComputeScore {
 
 struct SearchDuplications<'a> {
     chunks_to_process: &'a[(usize, usize)],
-    trim: (usize, usize),
+    trim: Option<(usize, usize)>,
     settings: RunSettings,
 }
 impl SearchDuplications<'_> {
     fn new(
         chunks_to_process: &[(usize, usize)],
-        trim: (usize, usize),
+        trim: Option<(usize, usize)>,
         settings: RunSettings,
     ) -> SearchDuplications { SearchDuplications {
         chunks_to_process: chunks_to_process,
@@ -121,20 +121,22 @@ impl<'a> Step for SearchDuplications<'a> {
         // Build the suffix array
         //
         info!("Building suffix array");
-        let mut sub_strand = strand.data[self.trim.0 .. self.trim.1].to_vec();
-        sub_strand.push(b'$');
-        let mut suffix_array = r_divsufsort(&sub_strand);
-        suffix_array.iter_mut().for_each(|x| *x += self.trim.0 as i64);
-        drop(sub_strand);
-        let shared_suffix_array = Arc::new(suffix_array);
-        let shared_searcher = Arc::new(
-            searcher::Searcher::new(&strand.data, &Arc::clone(&shared_suffix_array), 0)
-        );
-        println!("{:?}", &shared_suffix_array[0..10]);
+        let shared_suffix_array = if let Some((start, end)) = self.trim {
+            let mut sub_strand = strand.data[start .. end].to_vec();
+            sub_strand.push(b'$');
+            let mut suffix_array = r_divsufsort(&sub_strand);
+            suffix_array.iter_mut().for_each(|x| *x += start as i64);
+            Arc::new(suffix_array)
+        } else {
+            Arc::new(r_divsufsort(&strand.data))
+        };
+        let shared_searcher = Arc::new(searcher::Searcher::new(&strand.data, &Arc::clone(&shared_suffix_array), 0));
         trace!("Done.");
 
 
-
+        //
+        // Set up th progress bar
+        //
         let (tx_monitor, rx_monitor) = mpsc::channel();
         let progresses = Arc::new((0..self.chunks_to_process.len()).map(|_| Arc::new(AtomicUsize::new(0))).collect::<Vec<_>>());
         let total = self.chunks_to_process.iter().fold(0, |ax, c| ax + c.1);
@@ -156,6 +158,10 @@ impl<'a> Step for SearchDuplications<'a> {
                 }
             })};
 
+
+        //
+        // And do the job
+        //
         let results = self.chunks_to_process
             .par_iter()
             .enumerate()
@@ -207,9 +213,9 @@ impl<'a> Step for SearchDuplications<'a> {
 }
 
 type PreparedData = (
-    Strand,               // DNA strand to process
-    (usize, usize),       // Trim
-    Vec<(usize, usize)>,  // The areas that are not filled with Ns
+    Option<(usize, usize)>,       // Trim
+    Vec<(usize, usize)>,          // The areas that are not filled with Ns
+    Strand,                       // DNA strand to process
 );
 
 struct Strand {
@@ -224,18 +230,25 @@ fn prepare_data(
     trim: Option<(usize, usize)>
 ) -> Result<PreparedData> {
     fn find_chunks_to_process(strand: &[u8]) -> Vec<(usize, usize)> {
+        fn count_n(strand: &[u8], start: usize) -> usize {strand.iter().skip(start).take_while(|x| **x == b'n' || **x == b'N').count()}
+
         let threshold = 5000;
         let mut start = 0;
         let mut count = 0;
-        let mut r = Vec::new();
-
-        for (i, n) in strand.iter().enumerate() {
+        let mut chunks = Vec::new();
+        let mut i = 0;
+        while i < strand.len() {
+            let n = strand[i];
             match n {
                 b'n' | b'N' => {
-                    if count != 0 {
-                        if count > threshold { r.push((start, count)) }
-                        count = 0
+                    let n_count = count_n(&strand, i);
+                    if n_count > threshold {
+                        if count > 0 { chunks.push((start, count)); count = 0; };
+                        start = i + n_count;
+                    } else {
+                        count += n_count;
                     }
+                    i += n_count;
                 }
                 _ => {
                     if count == 0 {
@@ -244,29 +257,26 @@ fn prepare_data(
                     } else {
                         count += 1;
                     }
+                    i += 1
                 }
             }
         }
-        if count != 0 { r.push((start, count)); }                          // Do not forget the currently-extended chunk
-        if count == 0 && r.is_empty() { r.push((0, strand.len() - 1)); }  // If everything is to process
 
-        let r_length = r.iter().fold(0, |ax, c| ax + c.1);
+
+
+        let chunks_length = chunks.iter().fold(0, |ax, c| ax + c.1);
         info!("Processing {} chunks totalling {}bp to process, skipping {}bp out of {} ({}%)",
-              r.len().separated_string(),
-              r_length.separated_string(),
-              (strand.len() - r_length).separated_string(),
+              chunks.len().separated_string(),
+              chunks_length.separated_string(),
+              (strand.len() - chunks_length).separated_string(),
               strand.len().separated_string(),
-              (((strand.len() as f64 - (r_length as f64))*100.0/strand.len() as f64) as i64).separated_string()
+              (((strand.len() as f64 - (chunks_length as f64))*100.0/strand.len() as f64) as i64).separated_string()
         );
-        r.iter().for_each(|c| {
+        chunks.iter().for_each(|c| {
             trace!("{:>12} -> {:>12}   {:>11} bp", c.0.separated_string(), (c.0 + c.1).separated_string(), c.1.separated_string());
         });
 
-        // We want to process the large chunks first; so that as soon as they are finished,
-        // available threads can focus on processig the slower ones instead of fighting for
-        // automaton-level parallelism
-        r.sort_by_key(|c| c.1);
-        r
+        chunks
     }
 
     //
@@ -284,26 +294,34 @@ fn prepare_data(
     }
     info!("Parsed {} file{} containing a total of {} fragments",
           strands_files.len(), if strands_files.len() > 1 {"s"} else {""}, maps.len());
-
-    //
-    // Ensure that shift & stop actually stay in the dataset
-    //
-    let (shift, mut stop) = trim.unwrap_or((0, strand.len() - 1));
-    if stop >= strand.len() {
-        warn!("Trimming: {} greater than total length ({}bp)", stop, strand.len());
-        warn!("Using {} instead of {}", strand.len() - 1, stop);
-        stop = strand.len() - 1;
-    }
-    if stop <= shift { return Err(format!("{} greater than {}", shift, stop).into()); }
     let chunks_to_process = find_chunks_to_process(&strand);
-
-
+    strand.push(b'$'); // For the SA construction
 
 
     Ok((
+        trim.and_then(|(shift, _stop)| {
+            //
+            // Ensure that shift & stop actually stay in the dataset
+            //
+            let mut stop = _stop;
+            if stop >= strand.len() {
+                warn!("Trimming: {} greater than total length ({}bp)", stop, strand.len());
+                warn!("Using {} instead of {}", strand.len() - 1, stop);
+                stop = strand.len() - 1;
+            }
+
+            if stop <= shift {
+                warn!("Trimming: {} greater than {}, skipping trimming", shift, stop);
+                None
+            } else if shift >= strand.len() {
+                warn!("Trimming: {} greater than total length ({}bp), skipping trimming", shift, strand.len());
+                None
+                } else {
+                    Some((shift, stop))
+                }
+            }),
+       chunks_to_process,
         Strand{file_names: strands_files.join(", "), data: strand, map: maps},
-        (shift, stop),
-        chunks_to_process,
     ))
 }
 
@@ -564,7 +582,7 @@ fn search_duplications(
     let total = Instant::now();
 
     info!("Preprocessing data");
-    let (mut strand, trim, to_process) = prepare_data(strands_files, settings.skip_masked, settings.trim)?;
+    let (trim, to_process, mut strand) = prepare_data(strands_files, settings.skip_masked, settings.trim)?;
 
     let mut steps : Vec<Box<dyn Step>> = Vec::new();
     steps.push(Box::new(SearchDuplications::new(

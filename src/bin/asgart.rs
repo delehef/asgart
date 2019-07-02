@@ -265,7 +265,7 @@ fn prepare_data(
 
 
         let chunks_length = chunks.iter().fold(0, |ax, c| ax + c.1);
-        info!("Processing {} chunks totalling {}bp to process, skipping {}bp out of {} ({}%)",
+        info!("Processing {} chunks totalling {}bp, skipping {}bp out of {} ({}%)",
               chunks.len().separated_string(),
               chunks_length.separated_string(),
               (strand.len() - chunks_length).separated_string(),

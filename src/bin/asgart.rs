@@ -533,6 +533,11 @@ fn run() -> Result<()> {
     }
 
 
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(settings.threads_count)
+        .build_global()
+        .expect("Unable to create thread pool");
+
     let result = search_duplications(
         &settings.strands_files,
         RunSettings {

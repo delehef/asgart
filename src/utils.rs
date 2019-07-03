@@ -26,3 +26,18 @@ pub fn slugify(x: &str) -> String {
         .replace(":", "_")
         .replace("|", "_")
 }
+
+pub fn make_out_filename(filename: Option<&str>, default: &str, extension: &str) -> std::path::PathBuf {
+    filename
+        .map(|f| {
+            let mut path = std::path::PathBuf::from(f);
+            if path.is_dir() { path.push(default); }
+            path.set_extension(extension);
+            path
+        })
+        .unwrap_or_else(|| {
+                 let mut new = std::path::PathBuf::from(default);
+                 new.set_extension(extension);
+                 new
+        })
+}

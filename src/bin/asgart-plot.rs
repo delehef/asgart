@@ -25,26 +25,6 @@ use asgart::plot::genome_plot::GenomePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
 
-fn read_results(filenames: &[&str]) -> Result<RunResult> {
-    let results = filenames
-        .iter()
-        .map(|filename| RunResult::from_file(filename))
-        .collect::<std::result::Result<Vec<RunResult>, _>>()?;
-
-    for result in &results {
-        if result.strand.name != results[0].strand.name {
-            bail!(format!("trying to combine ASGART files containing different karyotypes: `{}` and `{}`",
-                          result.strand.name, results[0].strand.name,
-            ));
-        }
-    }
-
-    Ok(RunResult {
-        settings: results[0].settings.clone(),
-        strand:   results[0].strand.clone(),
-        families: results.iter().flat_map(|ref r| r.families.iter()).cloned().collect::<Vec<_>>(),
-    })
-}
 
 fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {
     fn _overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
@@ -236,28 +216,17 @@ fn run() -> Result<()> {
         .get_matches();
 
     let json_files = args.values_of("FILE").unwrap().collect::<Vec<_>>();
-    let mut result = read_results(&json_files)?;
+    let mut result = RunResult::from_files(&json_files)?;
 
-    let out_file = args
-        .value_of("out")
-        .and_then(|f| {
-            let path = Path::new(f);
-            if path.is_dir() {
-                Some(path.join("out").to_str().unwrap().to_owned())
-            } else {
-                Some(f.to_owned())
-            }
-        })
-        .or(Some(Path::new(json_files[0]).file_stem().unwrap().to_str().unwrap().to_owned()))
-        .unwrap();
+    let out_file = asgart::utils::make_out_filename(args.value_of("out"), &json_files.join("-"), "");
 
     let features_tracks: Result<Vec<_>> = match args.values_of("features") {
         Some(x) => { x
-                     .map(|feature_track| read_feature_file(&result, feature_track))
-                     .collect()
-        }
-        None    => Ok(Vec::new())
-    };
+                        .map(|feature_track| read_feature_file(&result, feature_track))
+                        .collect()
+            }
+            None    => Ok(Vec::new())
+        };
     if let Err(e) = features_tracks {return Err(e);}
     let mut features_tracks = features_tracks.unwrap();
 
@@ -288,7 +257,7 @@ fn run() -> Result<()> {
     }
 
     let settings = Settings {
-        out_file:                out_file,
+        out_file:                out_file.to_str().unwrap().to_owned(),
 
         size:                    200.0,
         min_thickness:           0.1,

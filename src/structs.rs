@@ -80,6 +80,27 @@ impl RunResult {
         let _ = f.read_to_string(&mut s);
         serde_json::from_str(&s).chain_err(|| "Failed to parse JSON")
     }
+
+    pub fn from_files(filenames: &[&str]) -> Result<RunResult> {
+        let results = filenames
+            .iter()
+            .map(|filename| RunResult::from_file(filename))
+            .collect::<std::result::Result<Vec<RunResult>, _>>()?;
+
+        for result in &results {
+            if result.strand.name != results[0].strand.name {
+                bail!(format!("trying to combine ASGART files containing different karyotypes: `{}` and `{}`",
+                              result.strand.name, results[0].strand.name,
+                ));
+            }
+        }
+
+        Ok(RunResult {
+            settings: results[0].settings.clone(),
+            strand:   results[0].strand.clone(),
+            families: results.iter().flat_map(|ref r| r.families.iter()).cloned().collect::<Vec<_>>(),
+        })
+    }
 }
 
 

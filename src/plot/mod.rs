@@ -1,7 +1,5 @@
 extern crate regex;
 
-use std::path::PathBuf;
-
 use ::errors::*;
 use ::structs::*;
 

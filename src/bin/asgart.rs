@@ -519,19 +519,6 @@ fn run() -> Result<()> {
                  .map(|n| path::Path::new(&n).file_stem().unwrap().to_str().unwrap().to_string())
                  .collect::<Vec<String>>()).join("-");
 
-    let out_file = if settings.out.is_empty() {
-        format!("{}{}{}{}{}{}",
-                &settings.prefix,
-                radix,
-                if settings.reverse || settings.complement {"_"} else {""},
-                if settings.reverse {"R"} else {""},
-                if settings.complement {"C"} else {""},
-                &(if !settings.trim.is_empty() { format!("_{}-{}", settings.trim[0], settings.trim[1]) } else {"".into()})
-        )
-    } else {
-        settings.out
-    };
-
     info!("Processing {}", &settings.strands_files.join(", "));
     debug!("K-mers size                {}", settings.kmer_size);
     debug!("Max gap size               {}", settings.gap_size);
@@ -577,8 +564,25 @@ fn run() -> Result<()> {
             Box::new(exporters::JSONExporter) as Box<dyn Exporter>
         }
     };
-    let out_file_name = exporter.save(&result, &out_file)?;
-    info!("{}", style(format!("Result written to {}", &out_file_name)).bold());
+
+    let out_radix = if settings.out.is_empty() {
+        format!("{}{}{}{}{}{}",
+                &settings.prefix,
+                radix,
+                if settings.reverse || settings.complement {"_"} else {""},
+                if settings.reverse {"R"} else {""},
+                if settings.complement {"C"} else {""},
+                &(if !settings.trim.is_empty() { format!("_{}-{}", settings.trim[0], settings.trim[1]) } else {"".into()}))
+    } else {
+        settings.out
+    };
+
+    let out_filename = asgart::utils::make_out_filename(
+        Some(&out_radix),
+        "",
+        &settings.out_format).to_str().unwrap().to_owned();
+    exporter.save(&result, &out_filename)?;
+    info!("{}", style(format!("Result written to {}", &out_filename)).bold());
     Ok(())
 }
 

@@ -4,38 +4,33 @@ use structs::*;
 use std::io::Write;
 use ::errors::*;
 
-fn make_filename(basename: &str, ext: &str) -> String {
-    if basename.to_lowercase().ends_with(&format!(".{}", ext)) {
-        basename.to_owned()
-    } else {
-        format!("{}.{}", basename, ext)
-    }
-}
-
 pub trait Exporter {
-    fn save(&self, result: &RunResult, file_name: &str) -> Result<String>;
+    fn save(&self, result: &RunResult, file_name: &str) -> Result<()>;
 }
 
 pub struct JSONExporter;
 impl Exporter for JSONExporter {
-    fn save(&self, result: &RunResult, file_name: &str) -> Result<String> {
-        let file_name = make_filename(file_name, "json");
-        let mut out = File::create(&file_name).chain_err(|| format!("Unable to create `{}`", &file_name))?;
+    fn save(&self, result: &RunResult, file_name: &str) -> Result<()> {
+        let mut out = File::create(&file_name)
+            .chain_err(|| format!("Unable to create `{}`", file_name))?;
+
+
         let _ = writeln!(&mut out,
                          "{}",
                          serde_json::to_string_pretty(&result).chain_err(|| "Unable to serialize result into JSON")?
         ).chain_err(|| "Unable to write results");
 
-        Ok(file_name)
+        Ok(())
     }
 }
 
 
 pub struct GFF2Exporter;
 impl Exporter for GFF2Exporter {
-    fn save(&self, result: &RunResult, file_name: &str) -> Result<String> {
-        let file_name = make_filename(file_name, "gff2");
-        let mut out = File::create(&file_name).chain_err(|| format!("Unable to create `{}`", &file_name))?;
+    fn save(&self, result: &RunResult, file_name: &str) -> Result<()> {
+        let mut out = File::create(&file_name)
+            .chain_err(|| format!("Unable to create `{}`", &file_name))?;
+
         writeln!(&mut out, "track name=Duplications\tuseScore=1\tdescription=\"ASGART - {dataset}\"",
                  dataset = result.strand.name,
         ).chain_err(|| "Unable to write results")?;
@@ -62,7 +57,7 @@ impl Exporter for GFF2Exporter {
             writeln!(&mut out).chain_err(|| "Unable to write results")?;
         }
 
-        Ok(file_name)
+        Ok(())
     }
 }
 
@@ -70,9 +65,10 @@ impl Exporter for GFF2Exporter {
 
 pub struct GFF3Exporter;
 impl Exporter for GFF3Exporter {
-    fn save(&self, result: &RunResult, file_name: &str) -> Result<String> {
-        let file_name = make_filename(file_name, "gff3");
-        let mut out = File::create(&file_name).chain_err(|| format!("Unable to create `{}`", &file_name))?;
+    fn save(&self, result: &RunResult, file_name: &str) -> Result<()> {
+        let mut out = File::create(&file_name)
+            .chain_err(|| format!("Unable to create `{}`", &file_name))?;
+
         writeln!(&mut out, "##gff-version 3.2.1").chain_err(|| "Unable to write results")?;
         for chr in &result.strand.map {
             writeln!(
@@ -109,6 +105,6 @@ impl Exporter for GFF3Exporter {
             writeln!(&mut out).chain_err(|| "Unable to write results")?;
         }
 
-        Ok(file_name)
+        Ok(())
     }
 }

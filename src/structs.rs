@@ -56,7 +56,7 @@ impl StrandResult {
     }
 
     pub fn find_chr_by_pos(&self, pos: usize) -> Option<&Start> {
-        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length)
+        self.map.iter().find(|&chr| pos >= chr.position &&  pos < chr.position + chr.length)
     }
 }
 

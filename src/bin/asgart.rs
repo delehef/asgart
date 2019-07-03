@@ -592,7 +592,7 @@ fn search_duplications(
         settings,
     )));
     if settings.compute_score { steps.push(Box::new(ComputeScore{})); }
-    // steps.push(Box::new(ReOrder{}));
+    steps.push(Box::new(ReOrder{}));
     steps.push(Box::new(ReduceOverlap{}));
 
     let mut result = Vec::new();
@@ -622,14 +622,18 @@ fn search_duplications(
                  .map(|sd|
                       {
                           SD {
-                              chr_left: strand.find_chr_by_pos(sd.left).name.clone(),
-                              chr_right: strand.find_chr_by_pos(sd.right).name.clone(),
+                              chr_left: strand.find_chr_by_pos(sd.left)
+                                  .and_then(|c| Some(c.name.clone())).unwrap_or("unknown".to_string()),
+                              chr_right: strand.find_chr_by_pos(sd.right)
+                                  .and_then(|c| Some(c.name.clone())).unwrap_or("unknown".to_string()),
 
                               global_left_position: sd.left,
                               global_right_position: sd.right,
 
-                              chr_left_position: sd.left - strand.find_chr_by_pos(sd.left).position,
-                              chr_right_position: sd.right - strand.find_chr_by_pos(sd.right).position,
+                              chr_left_position: sd.left - strand.find_chr_by_pos(sd.left)
+                                  .and_then(|c| Some(c.position)).unwrap_or(0),
+                              chr_right_position: sd.right - strand.find_chr_by_pos(sd.right)
+                                  .and_then(|c| Some(c.position)).unwrap_or(0),
 
                               left_length: sd.left_length,
                               right_length: sd.right_length,

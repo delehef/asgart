@@ -232,7 +232,6 @@ fn prepare_data(
 ) -> Result<PreparedData> {
     fn find_chunks_to_process(strand: &[u8]) -> Vec<(usize, usize)> {
         fn count_n(strand: &[u8], start: usize) -> usize {strand.iter().skip(start).take_while(|x| **x == b'n' || **x == b'N').count()}
-
         let threshold = 5000;
         let mut start = 0;
         let mut count = 0;
@@ -262,8 +261,6 @@ fn prepare_data(
                 }
             }
         }
-
-
 
         let chunks_length = chunks.iter().fold(0, |ax, c| ax + c.1);
         info!("Processing {} chunks totalling {}bp, skipping {}bp out of {} ({}%)",
@@ -295,6 +292,12 @@ fn prepare_data(
     }
     info!("Parsed {} file{} containing a total of {} fragments",
           strands_files.len(), if strands_files.len() > 1 {"s"} else {""}, maps.len());
+    maps.iter().for_each(|s|
+                         trace!("{:>12}: {:>12} -> {:>12} ({:>11} bp)",
+                                s.name,
+                                s.position.separated_string(), (s.position + s.length).separated_string(),
+                                s.length.separated_string())
+    );
     let chunks_to_process = find_chunks_to_process(&strand);
     strand.push(b'$'); // For the SA construction
 
@@ -317,11 +320,11 @@ fn prepare_data(
             } else if shift >= strand.len() {
                 warn!("Trimming: {} greater than total length ({}bp), skipping trimming", shift, strand.len());
                 None
-                } else {
-                    Some((shift, stop))
-                }
-            }),
-       chunks_to_process,
+            } else {
+                Some((shift, stop))
+            }
+        }),
+        chunks_to_process,
         Strand{file_names: strands_files.join(", "), data: strand, map: maps},
     ))
 }
@@ -524,7 +527,7 @@ fn run() -> Result<()> {
         settings.out
     };
 
-    info!("Processing               {:?}", &settings.strands_files);
+    info!("Processing {}", &settings.strands_files.join(", "));
     trace!("K-mers size                {}", settings.kmer_size);
     trace!("Max gap size               {}", settings.gap_size);
     trace!("Reversed duplications      {}", settings.reverse);

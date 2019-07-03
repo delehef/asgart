@@ -293,7 +293,7 @@ fn prepare_data(
     info!("Parsed {} file{} containing a total of {} fragments",
           strands_files.len(), if strands_files.len() > 1 {"s"} else {""}, maps.len());
     maps.iter().for_each(|s|
-                         debug!("{:>20}: {:>15} -> {:>15}   ({:>15} bp)",
+                         debug!("{:>20}: {:>15}  --> {:>15}    {:>15} bp",
                                 s.name,
                                 s.position.separated_string(), (s.position + s.length).separated_string(),
                                 s.length.separated_string())
@@ -508,22 +508,10 @@ fn run() -> Result<()> {
     };
 
     Logger::init(match args.occurrences_of("verbose") {
-        0 => {
-            println!("No verbose");
-            LevelFilter::Info
-        },
-        1 => {
-            println!("1 verbose");
-            LevelFilter::Debug
-        }
-        2 => {
-            println!("2 verbose");
-            LevelFilter::Trace
-        }
-        _ => {
-            println!("many verbose");
-            LevelFilter::Trace
-        }
+        0 => { LevelFilter::Info }
+        1 => { LevelFilter::Debug }
+        2 => { LevelFilter::Trace }
+        _ => { LevelFilter::Trace }
     }).chain_err(|| "Unable to initialize logger")?;
 
     let radix = (settings.strands_files

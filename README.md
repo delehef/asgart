@@ -324,9 +324,11 @@ manually replaced.
 
 # Update Log
 
+_Please note that ASGART following the [semver](https://semver.org/) versioning scheme, an increase in the major version number reflects a non backward-compatible update._
+
 ## v2.0
 
-- ASGART does not differentiate anymore between strand A and strand B, but simply works on an arbitrarily large set of files. Thus, the user **SHOULD ONLY PROVIDE EACH FILE ONCE***. Moreover, it is not necessarily to concatenate multiple input files in a single one anymore. This **breaking change*** should give more flexbility to the users and potentially simplifies pipelines.
+- ASGART does not differentiate anymore between strand A and strand B, but simply works on an arbitrarily large set of files. Thus, the user **SHOULD ONLY PROVIDE EACH FILE ONCE**. Moreover, it is not necessarily to concatenate multiple input files in a single one anymore. This **breaking change** should give more flexbility to the users and potentially simplifies pipelines.
 - The ASGART automaton has been rewritten from scratch to take into account interlaced SDs at nearly no cost un
 computation time. For this reason, interlaced duplication families research is now the only mode.
 - ASGART will now remove large expanses of nucleotides to ignore (Ns and/or masked ones) in processed strands, thus

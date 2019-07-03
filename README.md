@@ -328,27 +328,64 @@ _Please note that ASGART following the [semver](https://semver.org/) versioning 
 
 ## v2.0
 
-- ASGART does not differentiate anymore between strand A and strand B, but simply works on an arbitrarily large set of files. Thus, the user **SHOULD ONLY PROVIDE EACH FILE ONCE**. Moreover, it is not necessarily to concatenate multiple input files in a single one anymore. This **breaking change** should give more flexbility to the users and potentially simplifies pipelines.
-- The ASGART automaton has been rewritten from scratch to take into account interlaced SDs at nearly no cost un
-computation time. For this reason, interlaced duplication families research is now the only mode.
-- ASGART will now remove large expanses of nucleotides to ignore (Ns and/or masked ones) in processed strands, thus
-slightly improving performances.
-- Taking advantage of these two new features, the parallelization system has been rewritten to (i) introduce
-parallelism at the scale of the automaton; and (ii) make use of the “natural” aforementioned breakpoints as delimiters for chunks to process in parallel. By doing so, it is guaranteed (i) that no duplication families that would be situated between two chunks will be missed; (ii) that ASGART will make use of available cores even when processing less chunks than authorized threads.
-- ASGART will now make use of the trimming feature to reduce memory consumption. The suffix array will be built only for the trimmed part, instead than for the whole input. The whole input will then be compared to the trimmed part, in contrary to what happened in version 1.x. Such an arrangement sacrifice some CPU power in exchange of a strongly reduced memory consumption when processing trimmed input. It can be used to process large sequences, by trimming them in several consecutive subsequences, then mergin the results later on.
-- The JSON and GFF3 output formats have been modified to reflect the duplication families clustering. *Please note that they are thus incompatible with previous versions JSON files.*
-- A new tool `asgart-concat` has been added to safely concatenate JSON files resulting from partial runs on the same dataset. Its intended use is to easily merge the results from multiple runs on the same dataset with different settings, e.g. direct & palindromic duplications or if the workload was divided in multiple sub-jobs using trimming.
+- ASGART does not differentiate anymore between strand A and strand B,
+  but simply works on an arbitrarily large set of files. Thus, the
+  user **SHOULD PROVIDE EACH FILE ONLY ONCE**. Moreover, it is not
+  necessarily to concatenate multiple input files in a single one
+  anymore. This **breaking change** should give more flexibility to
+  the users and potentially simplifies pipelines.
+- The ASGART automaton has been rewritten from scratch to take into
+  account interlaced SDs at nearly no cost in computation time. For
+  this reason, interlaced duplication families research is now the
+  only and default mode.
+- ASGART will now remove large expanses of nucleotides to ignore (Ns
+  and/or masked ones) in processed strands, thus slightly improving
+  performances.
+- Taking advantage of these new features, the parallelization system
+  has been rewritten to (i) introduce parallelism at the scale of the
+  automaton; and (ii) make use of the “natural” aforementioned
+  breakpoints as delimiters for chunks to process in parallel. By
+  doing so, it is guaranteed (i) that no duplication families that
+  would be situated between two chunks will be missed; (ii) that
+  ASGART will make use of available cores even when processing less
+  chunks than authorized threads.
+- ASGART will now make use of the trimming feature to reduce memory
+  consumption. The suffix array will be built only for the trimmed
+  part, instead than for the whole input. The whole input will then be
+  compared to the trimmed part, contrary to what happened in version
+  1.x. Such an arrangement sacrifice some CPU power in exchange of a
+  strongly reduced memory consumption when processing trimmed inputs.
+  It can be used to process large sequences by trimming them in
+  several consecutive subsequences, then mergin the results later on.
+- The JSON and GFF3 output formats have been modified to reflect the
+  duplication families clustering. *Please note that they are thus
+  incompatible with previous versions JSON files.*
+- A new tool `asgart-concat` has been added to safely concatenate JSON
+  files resulting from partial runs on the same dataset. Its intended
+  use is to easily merge the results from multiple runs on the same
+  dataset with different settings, e.g. direct & palindromic
+  duplications or if the workload was divided in multiple sub-jobs
+  using trimming.
 - Plotting utilities have been modified to reflect these changes.
-- The automaton will progressively grow the maximal gap size when extending large duplications, thus letting larger duplications arms be found in a less fragmented way.
-- The logging system has been improved to be more detailed and more coherent in its way to present informations.
-- Minor technical issues have been resolved: ASGART will correctly only use the `ID` field of FASTA files and not the subsequent informations; the progress bar does not glitch anymore.
+- The automaton will progressively grow the maximal gap size when
+  extending large duplications, thus letting larger duplications arms
+  be found in a less fragmented way.
+- The logging system has been improved to be more detailed and more
+  coherent in its way to present informations.
+- Minor technical issues have been resolved: ASGART will correctly
+  only use the `ID` field of FASTA files and not the subsequent
+  informations; the progress bar does not glitch anymore.
 
 ## v1.5
 
-- New, **non-retrocompatible** JSON output format containing positions of the duplicons both globally in the strand and relative to the fragment they are situated on
+- New, **non-retrocompatible** JSON output format containing positions
+  of the duplicons both globally in the strand and relative to the
+  fragment they are situated on
 - `asgart-plot` can now superpose several files in a single plot
-- ASGART can optionally compute the Levenshtein distance between duplicons
-- User can set the chunking size for parallel processing (defaults to 1,000,000)
+- ASGART can optionally compute the Levenshtein distance between
+  duplicons
+- User can set the chunking size for parallel processing (defaults to
+  1,000,000)
 - Improve output files naming
 - Fix a bug in post-processing
 - Fix several minor bugs in logging system

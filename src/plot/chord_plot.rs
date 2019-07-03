@@ -82,13 +82,15 @@ impl ChordPlotter {
             // Main chromosome bar
             svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='5' />\n",
                             self.arc(R + RING_WIDTH, t1, t2));
-            // Secondary chromosome bar
-            svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='1.5' />\n",
-                            self.arc(R + RING_WIDTH + OUT_CEILING * 0.7, t1, t2));
+            if self.result.strand.map.len() > 1 {
+                // Secondary chromosome bar
+                svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='1.5' />\n",
+                                self.arc(R + RING_WIDTH + OUT_CEILING * 0.7, t1, t2));
+            }
 
             // Chromosomes labels
             let r = R + RING_WIDTH + RING_MARGIN;
-            let (x, y) = self.cartesian(tt, r + 65.0);
+            let (x, y) = self.cartesian(tt, r + if self.result.strand.map.len() > 1 { 65. } else { 20. });
             svg += &format!("<text x='{}' y='{}' font-family='Helvetica' font-size='8' fill='#333' transform='rotate({}, {}, {})'>\n{}\n</text>\n",
                             x, y,
                             -tt/(2.0*PI)*360.0 + 90.0, x, y,
@@ -121,17 +123,18 @@ impl ChordPlotter {
                 };
 
 
-                let ((x1, y1), (x2, y2), (cx, cy)) = if sd.chr_left != sd.chr_right {
+                let ((x1, y1), (x2, y2), (cx, cy)) = if sd.chr_left != sd.chr_right || self.result.strand.map.len() == 1 {
                     let (x1, y1) = self.cartesian(t1, R);
                     let (x2, y2) = self.cartesian(t2, R);
                     let (cx, cy) = (CX, CY);
                     ((x1, y1), (x2, y2), (cx, cy))
                 } else {
                     let tt = t1 + (t2-t1)/2.0;
-                    let rin = R*2.0/4.0;
-                    let (x1, y1) = self.cartesian(t1, R);
-                    let (x2, y2) = self.cartesian(t2, R);
-                    let (cx, cy) = self.cartesian(tt, rin);
+                    let rin = R + RING_WIDTH + RING_MARGIN;
+                    let rout = rin + OUT_CEILING;
+                    let (x1, y1) = self.cartesian(t1, rin);
+                    let (cx, cy) = self.cartesian(tt, rout);
+                    let (x2, y2) = self.cartesian(t2, rin);
                     ((x1, y1), (x2, y2), (cx, cy))
                 };
 

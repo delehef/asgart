@@ -555,15 +555,6 @@ fn run() -> Result<()> {
         },
     )?;
 
-    let exporter = match &settings.out_format[..] {
-        "json"     => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
-        "gff2"     => { Box::new(exporters::GFF2Exporter) as Box<dyn Exporter> }
-        "gff3"     => { Box::new(exporters::GFF3Exporter) as Box<dyn Exporter> }
-        format @ _ => {
-            warn!("Unknown output format `{}`: using json instead", format);
-            Box::new(exporters::JSONExporter) as Box<dyn Exporter>
-        }
-    };
 
     let out_radix = if settings.out.is_empty() {
         format!("{}{}{}{}{}{}",
@@ -581,7 +572,17 @@ fn run() -> Result<()> {
         Some(&out_radix),
         "",
         &settings.out_format).to_str().unwrap().to_owned();
-    exporter.save(&result, &out_filename)?;
+    let mut out = std::fs::File::create(&out_filename).chain_err(|| format!("Unable to create `{}`", out_filename))?;
+    let exporter = match &settings.out_format[..] {
+        "json"     => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
+        "gff2"     => { Box::new(exporters::GFF2Exporter) as Box<dyn Exporter> }
+        "gff3"     => { Box::new(exporters::GFF3Exporter) as Box<dyn Exporter> }
+        format @ _ => {
+            warn!("Unknown output format `{}`: using json instead", format);
+            Box::new(exporters::JSONExporter) as Box<dyn Exporter>
+        }
+    };
+    exporter.save(&result, &mut out)?;
     info!("{}", style(format!("Result written to {}", &out_filename)).bold());
     Ok(())
 }

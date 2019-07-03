@@ -89,17 +89,19 @@ impl RunResult {
 
         for result in &results {
             if result.strand.name != results[0].strand.name {
-                bail!(format!("trying to combine ASGART files containing different karyotypes: `{}` and `{}`",
+                bail!(format!("Trying to combine ASGART files from different sources: `{}` and `{}`",
                               result.strand.name, results[0].strand.name,
                 ));
             }
         }
 
-        Ok(RunResult {
+        let r = RunResult {
             settings: results[0].settings.clone(),
             strand:   results[0].strand.clone(),
             families: results.iter().flat_map(|ref r| r.families.iter()).cloned().collect::<Vec<_>>(),
-        })
+        };
+
+        Ok(r)
     }
 }
 

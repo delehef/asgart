@@ -7,6 +7,7 @@ extern crate error_chain;
 extern crate regex;
 extern crate rand;
 extern crate bio;
+extern crate log;
 
 use error_chain::*;
 use regex::Regex;
@@ -24,6 +25,8 @@ use asgart::plot::circos_plot::CircosPlotter;
 use asgart::plot::genome_plot::GenomePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
+use asgart::logger::Logger;
+use log::LevelFilter;
 
 
 fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {
@@ -127,12 +130,12 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
             let start = l[3].parse::<usize>().unwrap();
             let end = l[4].parse::<usize>().unwrap();
 
-            let name = if l[8].contains("Name") {
+            let name = if l[8].contains("Name=") {
                 l[8]
                     .split(';')
                     .find(|cx| cx.contains("Name")).unwrap()
                     .split('=')
-                    .nth(1).unwrap()
+                    .nth(1).unwrap() // unwrap is safe because we check for "Name="
                     .to_string()
             } else {
                 l[8].to_owned()
@@ -146,9 +149,7 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
                     length: end - start,
                 }],
             } ;
-
             ax.push(feature);
-
             ax
         });
 
@@ -279,11 +280,10 @@ fn run() -> Result<()> {
 }
 
 fn main() {
+    Logger::init(LevelFilter::Info).expect("Unable to initialize logger");
     if let Err(ref e) = run() {
         println!("{} {}", "Error: ".red(), e);
-        for e in e.iter().skip(1) {
-            println!("{}", e);
-        }
+        for e in e.iter().skip(1) { println!("{}", e); }
         if let Some(backtrace) = e.backtrace() {
             println!("Backtrace: {:?}", backtrace);
         }

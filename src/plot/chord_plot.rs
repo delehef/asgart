@@ -61,7 +61,7 @@ impl ChordPlotter {
         let (end_x, end_y) = self.cartesian(t2, radius);
 
         let large_flag = if t2 - t1 > PI/2.0 { 1 } else { 0 };
-        let sweep_flag = if t2 - t1 > 0.0 { 1 } else { 0 };
+        let sweep_flag = if t2 - t1 > 0.0 { 0 } else { 1 };
 
         format!("M {} {} A {} {} {} {} {} {} {}",
                 start_x, start_y,

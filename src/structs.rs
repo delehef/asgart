@@ -1,3 +1,9 @@
+use std::io::prelude::*;
+use std::fs::File;
+use ::errors::*;
+
+
+
 pub const ALPHABET: [u8; 5] = [
     b'A', b'T', b'G', b'C', b'N'
 ];
@@ -66,6 +72,14 @@ pub struct RunResult {
     pub strand: StrandResult,
     pub settings: RunSettings,
     pub families: Vec<SDsFamily>,
+}
+impl RunResult {
+    pub fn from_file(filename: &str) -> Result<RunResult> {
+        let mut f = File::open(filename).chain_err(|| format!("Unable to open {}", filename))?;
+        let mut s = String::new();
+        let _ = f.read_to_string(&mut s);
+        serde_json::from_str(&s).chain_err(|| "Failed to parse JSON")
+    }
 }
 
 

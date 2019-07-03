@@ -10,8 +10,8 @@ extern crate bio;
 
 use error_chain::*;
 use regex::Regex;
-use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
 use clap::{App, AppSettings};
@@ -25,17 +25,10 @@ use asgart::plot::genome_plot::GenomePlotter;
 use asgart::errors::*;
 use std::collections::HashMap;
 
-fn read_result(filename: &str) -> Result<RunResult> {
-    let mut f = File::open(filename).chain_err(|| format!("Unable to open {}", filename))?;
-    let mut s = String::new();
-    let _ = f.read_to_string(&mut s);
-    serde_json::from_str(&s).chain_err(|| "Failed to parse JSON")
-}
-
 fn read_results(filenames: &[&str]) -> Result<RunResult> {
     let results = filenames
         .iter()
-        .map(|filename| read_result(filename))
+        .map(|filename| RunResult::from_file(filename))
         .collect::<std::result::Result<Vec<RunResult>, _>>()?;
 
     for result in &results {

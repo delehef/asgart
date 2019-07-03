@@ -81,7 +81,7 @@ impl RunResult {
         serde_json::from_str(&s).chain_err(|| "Failed to parse JSON")
     }
 
-    pub fn from_files(filenames: &[&str]) -> Result<RunResult> {
+    pub fn from_files(filenames: &[String]) -> Result<RunResult> {
         let results = filenames
             .iter()
             .map(|filename| RunResult::from_file(filename))

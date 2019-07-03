@@ -215,18 +215,18 @@ fn run() -> Result<()> {
         .setting(AppSettings::UnifiedHelpMessage)
         .get_matches();
 
-    let json_files = args.values_of("FILE").unwrap().collect::<Vec<_>>();
+    let json_files = values_t!(args, "FILE", String).unwrap();
     let mut result = RunResult::from_files(&json_files)?;
 
     let out_file = asgart::utils::make_out_filename(args.value_of("out"), &json_files.join("-"), "");
 
     let features_tracks: Result<Vec<_>> = match args.values_of("features") {
         Some(x) => { x
-                        .map(|feature_track| read_feature_file(&result, feature_track))
-                        .collect()
-            }
-            None    => Ok(Vec::new())
-        };
+                    .map(|feature_track| read_feature_file(&result, feature_track))
+                    .collect()
+        }
+        None    => Ok(Vec::new())
+    };
     if let Err(e) = features_tracks {return Err(e);}
     let mut features_tracks = features_tracks.unwrap();
 

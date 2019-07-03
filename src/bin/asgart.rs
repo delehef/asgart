@@ -293,7 +293,7 @@ fn prepare_data(
     info!("Parsed {} file{} containing a total of {} fragments",
           strands_files.len(), if strands_files.len() > 1 {"s"} else {""}, maps.len());
     maps.iter().for_each(|s|
-                         debug!("{:>12}: {:>12} -> {:>12} ({:>11} bp)",
+                         debug!("{:>20}: {:>15} -> {:>15}   ({:>15} bp)",
                                 s.name,
                                 s.position.separated_string(), (s.position + s.length).separated_string(),
                                 s.length.separated_string())

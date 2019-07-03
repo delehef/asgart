@@ -161,8 +161,6 @@ results in a GFF3 file.
     which a duplication is kept in the final result and not discarded
     (default: 1000)
 
-  - `-v`, `-vv`, `-vvv` increase verbosity level
-
   - `--reverse`/`-R` look for duplication which second arm is reversed
 
   - `--complement`/`-C` look for duplication which second arm is
@@ -177,6 +175,8 @@ results in a GFF3 file.
 ### Technical
 
   - `-h`, `--help` display an help screen
+
+  - `-v`, `-vv`, `-vvv` increase verbosity level
 
   - `--out FILENAME` specifies the file in which the results will be
     written
@@ -288,6 +288,8 @@ length of the duplication.
 
 `asgart-plot human_Y.json flat --out=flat.svg --no-direct --no-uncomplemented --min-length 2000`
 
+![Chord plot example](screenshots/flat.png)
+
 ## Genome Plot
 
 Genome plots draw one bar split in four lanes per fragment. The two
@@ -297,8 +299,9 @@ the interchromosomal direct and palindromic duplications families.
 
 ### Example
 
-`asgart-plot human.json genome --min-length 10000`
+`asgart-plot chr10-chrY.json genome --min-length 10000`
 
+![Chord plot example](screenshots/genome.png)
 
 ## Circos Plots
 
@@ -323,7 +326,7 @@ manually replaced.
 
 ## v2.0
 
-- ASGART does not differentiate anymore between strand A and strand B, but simply works on an arbitrarily large set of files. Thus, the user *SHOULD ONLY PROVIDE EACH FILE ONCE*. Moreover, it is not necessarily to concatenate multiple input files in a single one anymore. This *breaking change* should give more flexbility to the users and potentially simplifies pipelines.
+- ASGART does not differentiate anymore between strand A and strand B, but simply works on an arbitrarily large set of files. Thus, the user **SHOULD ONLY PROVIDE EACH FILE ONCE***. Moreover, it is not necessarily to concatenate multiple input files in a single one anymore. This **breaking change*** should give more flexbility to the users and potentially simplifies pipelines.
 - The ASGART automaton has been rewritten from scratch to take into account interlaced SDs at nearly no cost un
 computation time. For this reason, interlaced duplication families research is now the only mode.
 - ASGART will now remove large expanses of nucleotides to ignore (Ns and/or masked ones) in processed strands, thus
@@ -339,7 +342,7 @@ parallelism at the scale of the automaton; and (ii) make use of the â€œnaturalâ€
 
 ## v1.5
 
-- New, *non-retrocompatible* JSON output format containing positions of the duplicons both globally in the strand and relative to the fragment they are situated on
+- New, **non-retrocompatible** JSON output format containing positions of the duplicons both globally in the strand and relative to the fragment they are situated on
 - `asgart-plot` can now superpose several files in a single plot
 - ASGART can optionally compute the Levenshtein distance between duplicons
 - User can set the chunking size for parallel processing (defaults to 1,000,000)

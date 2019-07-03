@@ -161,7 +161,7 @@ results in a GFF3 file.
     which a duplication is kept in the final result and not discarded
     (default: 1000)
 
-  - `--verbose`/`-v` display mnore information and a progress bar
+  - `-v`, `-vv`, `-vvv` increase verbosity level
 
   - `--reverse`/`-R` look for duplication which second arm is reversed
 

@@ -120,7 +120,7 @@ impl<'a> Step for SearchDuplications<'a> {
         //
         // Build the suffix array
         //
-        trace!("Building suffix array");
+        debug!("Building suffix array");
         let sa_build_time = Instant::now();
         let shared_suffix_array = if let Some((start, end)) = self.trim {
             let mut sub_strand = strand.data[start .. end].to_vec();
@@ -132,7 +132,7 @@ impl<'a> Step for SearchDuplications<'a> {
             Arc::new(r_divsufsort(&strand.data))
         };
         let shared_searcher = Arc::new(searcher::Searcher::new(&strand.data, &Arc::clone(&shared_suffix_array), 0));
-        trace!("Done in {}", HumanDuration(sa_build_time.elapsed()));
+        debug!("Done in {}", HumanDuration(sa_build_time.elapsed()));
 
 
         //
@@ -293,7 +293,7 @@ fn prepare_data(
     info!("Parsed {} file{} containing a total of {} fragments",
           strands_files.len(), if strands_files.len() > 1 {"s"} else {""}, maps.len());
     maps.iter().for_each(|s|
-                         trace!("{:>12}: {:>12} -> {:>12} ({:>11} bp)",
+                         debug!("{:>12}: {:>12} -> {:>12} ({:>11} bp)",
                                 s.name,
                                 s.position.separated_string(), (s.position + s.length).separated_string(),
                                 s.length.separated_string())
@@ -507,7 +507,24 @@ fn run() -> Result<()> {
         threads_count:          value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
     };
 
-    Logger::init(if args.is_present("verbose") {LevelFilter::Trace} else {LevelFilter::Info}).unwrap();
+    Logger::init(match args.occurrences_of("verbose") {
+        0 => {
+            println!("No verbose");
+            LevelFilter::Info
+        },
+        1 => {
+            println!("1 verbose");
+            LevelFilter::Debug
+        }
+        2 => {
+            println!("2 verbose");
+            LevelFilter::Trace
+        }
+        _ => {
+            println!("many verbose");
+            LevelFilter::Trace
+        }
+    }).chain_err(|| "Unable to initialize logger")?;
 
     let radix = (settings.strands_files
                  .iter()
@@ -528,16 +545,16 @@ fn run() -> Result<()> {
     };
 
     info!("Processing {}", &settings.strands_files.join(", "));
-    trace!("K-mers size                {}", settings.kmer_size);
-    trace!("Max gap size               {}", settings.gap_size);
-    trace!("Reversed duplications      {}", settings.reverse);
-    trace!("Complemented duplications  {}", settings.complement);
-    trace!("Skipping soft-masked       {}", settings.skip_masked);
-    trace!("Min. length                {}", settings.min_duplication_length);
-    trace!("Max. cardinality           {}", settings.max_cardinality);
-    trace!("Threads count              {}", settings.threads_count);
+    debug!("K-mers size                {}", settings.kmer_size);
+    debug!("Max gap size               {}", settings.gap_size);
+    debug!("Reversed duplications      {}", settings.reverse);
+    debug!("Complemented duplications  {}", settings.complement);
+    debug!("Skipping soft-masked       {}", settings.skip_masked);
+    debug!("Min. length                {}", settings.min_duplication_length);
+    debug!("Max. cardinality           {}", settings.max_cardinality);
+    debug!("Threads count              {}", settings.threads_count);
     if !settings.trim.is_empty() {
-        trace!("Trimming                   {} → {}", settings.trim[0], settings.trim[1]);
+        debug!("Trimming                   {} → {}", settings.trim[0], settings.trim[1]);
     }
 
 
@@ -597,6 +614,7 @@ fn search_duplications(
     if settings.compute_score { steps.push(Box::new(ComputeScore{})); }
     steps.push(Box::new(ReOrder{}));
     steps.push(Box::new(ReduceOverlap{}));
+    steps.push(Box::new(Sort{}));
 
     let mut result = Vec::new();
     for (i, step) in steps.iter().enumerate() {

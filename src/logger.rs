@@ -25,10 +25,10 @@ impl log::Log for Logger {
                          Level::Info => {
                              format!("{} {}", "▷".cyan(), record.args())
                          }
-                         Level::Trace => {
+                         Level::Debug => {
                              format!("    {}", record.args())
                          }
-                         Level::Debug => {
+                         Level::Trace => {
                              format!("{} {}", "❖".blue(), record.args().to_string().blue())
                          }
                      });
@@ -44,10 +44,10 @@ impl log::Log for Logger {
                          Level::Info => {
                              format!("{} {}", "-> ", record.args())
                          }
-                         Level::Trace => {
+                         Level::Debug => {
                              format!("    {}", record.args())
                          }
-                         Level::Debug => {
+                         Level::Trace => {
                              format!("{} {}", " . ", record.args().to_string())
                          }
                      });

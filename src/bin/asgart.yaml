@@ -93,3 +93,4 @@ args:
         short: v
         long: verbose
         help: Display additional informations
+        multiple: true

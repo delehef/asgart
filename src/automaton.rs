@@ -57,6 +57,7 @@ enum Operation {
     NewArm {i: usize, m_start: usize, m_end: usize},
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn search_duplications(
     id: usize,
     needle: &[u8], needle_offset: usize,

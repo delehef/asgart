@@ -151,7 +151,7 @@ impl ChordPlotter {
                 for position in &feature.positions {
                     let (start, end) = match *position {
                         FeaturePosition::Relative { ref chr, start, length} => {
-                            let chr = self.result.strand.find_chr(&chr);
+                            let chr = self.result.strand.find_chr(&chr).unwrap_or_else(|| panic!("Unable to find fragment `{}`", chr));
                             (chr.position + start, chr.position + start + length)
                         }
                         FeaturePosition::Absolute { start, length }         => { (start, start + length) }

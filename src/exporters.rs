@@ -42,12 +42,11 @@ impl Exporter for GFF2Exporter {
         for (i, family) in result.families.iter().enumerate() {
             for (j, sd) in family.iter().enumerate() {
                 writeln!(&mut out,
-                         "{chr_left}\tASGART\tSD\t{left}\t{end}\t#{identity}\t#{reverse}\t.\tSD#{i}/{j}-{chr_left}",
+                         "{chr_left}\tASGART\tSD\t{left}\t{end}\t#{identity}\t+\t.\tSD#{i}/{j}-{chr_left}",
                          chr_left = str::replace(&sd.chr_left.trim(), " ", "_"),
                          left     = sd.chr_left_position,
                          end      = sd.chr_left_position + sd.left_length,
                          identity = sd.identity * 100.0,
-                         reverse  = "+",
                          i        = i, j = j
                 ).chain_err(|| "Unable to write results")?;
                 writeln!(&mut out,
@@ -60,7 +59,7 @@ impl Exporter for GFF2Exporter {
                          i         = i, j = j
                 ).chain_err(|| "Unable to write results")?;
             }
-            writeln!(&mut out, "").chain_err(|| "Unable to write results")?;
+            writeln!(&mut out).chain_err(|| "Unable to write results")?;
         }
 
         Ok(file_name)
@@ -89,12 +88,11 @@ impl Exporter for GFF3Exporter {
             for (j, sd) in family.iter().enumerate() {
                 writeln!(
                     &mut out,
-                    "{chr_left}\tASGART\tSD\t{left}\t{end}\t{identity}\t{reverse}\t.\tID=SD#{i}-{j};Name=SD#{i}-{j}",
+                    "{chr_left}\tASGART\tSD\t{left}\t{end}\t{identity}\t+\t.\tID=SD#{i}-{j};Name=SD#{i}-{j}",
                     chr_left  = str::replace(&sd.chr_left.trim(), " ", "_"),
                     left      = sd.chr_left_position + 1,
                     end       = sd.chr_left_position + sd.left_length + 1,
                     identity  = sd.identity,
-                    reverse   = "+",
                     i         = i, j = j
                 ).chain_err(|| "Unable to write results")?;
                 writeln!(
@@ -108,7 +106,7 @@ impl Exporter for GFF3Exporter {
                     i         = i, j = j
                 ).chain_err(|| "Unable to write results")?;
             }
-            writeln!(&mut out, "").chain_err(|| "Unable to write results")?;
+            writeln!(&mut out).chain_err(|| "Unable to write results")?;
         }
 
         Ok(file_name)

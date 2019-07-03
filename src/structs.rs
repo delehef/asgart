@@ -47,17 +47,16 @@ impl StrandResult {
         self.map.iter().any(|chr| chr.name == name)
     }
 
-    // TODO Actually use an error type like civilised humans
-    pub fn find_chr(&self, name: &str) -> &Start {
-        self.map.iter().find(|chr| chr.name == name).unwrap()
+    pub fn find_chr(&self, name: &str) -> Option<&Start>{
+        self.map.iter().find(|chr| chr.name == name)
     }
 
     pub fn find_chr_index(&self, name: &str) -> Option<usize> {
         self.map.iter().position(|chr| chr.name == name)
     }
 
-    pub fn find_chr_by_pos(&self, pos: usize) -> &Start {
-        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length).unwrap_or_else(|| panic!("No chr for {}", pos))
+    pub fn find_chr_by_pos(&self, pos: usize) -> Option<&Start> {
+        self.map.iter().find(|&chr| pos> chr.position &&  pos < chr.position + chr.length)
     }
 }
 

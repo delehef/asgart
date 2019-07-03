@@ -74,7 +74,7 @@ fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Featu
                                     for position in &feature.positions{
                                         let (start, length) = match *position {
                                             FeaturePosition::Relative { ref chr, start, length} => {
-                                                let chr = result.strand.find_chr(&chr);
+                                                let chr = result.strand.find_chr(&chr).expect(&format!("Unable to find fragment `{}`", chr));
                                                 (chr.position + start, length)
                                             }
                                             FeaturePosition::Absolute { start, length }         => {
@@ -114,7 +114,7 @@ fn filter_features_in_sds(result: &mut RunResult, features_families: &mut Vec<Ve
                           .any(|p| {
                               let (start, length) = match *p {
                                   FeaturePosition::Relative { ref chr, start, length} => {
-                                      let chr = result.strand.find_chr(&chr);
+                                      let chr = result.strand.find_chr(&chr).expect(&format!("Unable to find fragment `{}`", chr));
                                       (chr.position + start, length)
                                   }
                                   FeaturePosition::Absolute { start, length }         => { (start, length) }
@@ -199,20 +199,15 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
             let name = v[0].to_owned();
 
             let position = if re.is_match(v[1]) {
-                let chr = re.captures(v[1]).unwrap().get(1).unwrap().as_str();
+                let chr_name = re.captures(v[1]).unwrap().get(1).unwrap().as_str();
                 let position = re.captures(v[1]).unwrap().get(2).unwrap().as_str().to_owned().parse::<usize>().unwrap();
                 // XXX Incorrect for non-endofeature runs
-                if !r.strand.has_chr(chr) {
-                    bail!("Unable to find '{}'. Available: {}",
-                          chr,
-                          r.strand.map.iter().fold(String::new(), |mut s, chr| { s.push_str(&format!("'{}' ", chr.name)); s })
-                    );
-                }
-                if r.strand.find_chr(chr).length < position {
-                    bail!("{} greater than {}'s length ({})", position, chr, r.strand.find_chr(chr).length);
+                let chr = r.strand.find_chr(chr_name).expect(&format!("Unable to find fragment `{}`", chr_name));
+                if chr.length < position {
+                    bail!("{} greater than {} length ({})", position, chr.name, chr.length);
                 }
                 FeaturePosition::Relative {
-                    chr: chr.to_owned(),
+                    chr: chr.name.to_owned(),
                     start: position,
                     length: v[2].parse::<usize>().unwrap()
                 }

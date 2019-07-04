@@ -261,22 +261,11 @@ fn prepare_data(
                 }
             }
         }
-	if chunks.is_empty() { chunks.push((0, strand.len())) };
-
-        let chunks_length = chunks.iter().fold(0, |ax, c| ax + c.1);
-        info!("Processing {} chunks totalling {}bp, skipping {}bp out of {} ({}%)",
-              chunks.len().separated_string(),
-              chunks_length.separated_string(),
-              (strand.len() - chunks_length).separated_string(),
-              strand.len().separated_string(),
-              (((strand.len() as f64 - (chunks_length as f64))*100.0/strand.len() as f64) as i64).separated_string()
-        );
-        chunks.iter().for_each(|c| {
-            trace!("{:>12} -> {:>12}   {:>11} bp", c.0.separated_string(), (c.0 + c.1).separated_string(), c.1.separated_string());
-        });
+        if chunks.is_empty() { chunks.push((0, strand.len())) };
+        if count != 0 { chunks.push((start, count)) };
 
         chunks
-    }
+        }
 
     //
     // Read and map the FASTA files to process
@@ -289,8 +278,8 @@ fn prepare_data(
     for file_name in strands_files {
         let (map, new_strand) = read_fasta(file_name, skip_masked).chain_err(|| format!("Unable to parse `{}`", file_name))?;
         maps.extend(map.into_iter().map(|start| Start { position: start.position + offset, .. start }));
-        offset = offset + new_strand.len();
         chunks_to_process.extend(find_chunks_to_process(&new_strand).into_iter().map(|(start, length)| (start + offset, length)));
+        offset = offset + new_strand.len();
         strand.extend(new_strand);
     }
     info!("Parsed {} file{} containing a total of {} fragments",
@@ -301,6 +290,18 @@ fn prepare_data(
                                 s.position.separated_string(), (s.position + s.length).separated_string(),
                                 s.length.separated_string())
     );
+
+    let chunks_length = chunks_to_process.iter().fold(0, |ax, c| ax + c.1);
+    info!("Processing {} chunks totalling {}bp, skipping {}bp out of {} ({}%)",
+          chunks_to_process.len().separated_string(),
+          chunks_length.separated_string(),
+          (strand.len() - chunks_length).separated_string(),
+          strand.len().separated_string(),
+          (((strand.len() as f64 - (chunks_length as f64))*100.0/strand.len() as f64) as i64).separated_string()
+    );
+    chunks_to_process.iter().for_each(|c| {
+        trace!("{:>12} -> {:>12}   {:>11} bp", c.0.separated_string(), (c.0 + c.1).separated_string(), c.1.separated_string());
+    });
     //let chunks_to_process = find_chunks_to_process(&strand);
     strand.push(b'$'); // For the SA construction
 

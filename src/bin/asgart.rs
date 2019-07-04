@@ -261,6 +261,7 @@ fn prepare_data(
                 }
             }
         }
+	if chunks.is_empty() { chunks.push((0, strand.len())) };
 
         let chunks_length = chunks.iter().fold(0, |ax, c| ax + c.1);
         info!("Processing {} chunks totalling {}bp, skipping {}bp out of {} ({}%)",
@@ -283,11 +284,13 @@ fn prepare_data(
     let mut maps = Vec::new();
     let mut strand = Vec::new();
     let mut offset = 0;
+    let mut chunks_to_process = Vec::new();
 
     for file_name in strands_files {
         let (map, new_strand) = read_fasta(file_name, skip_masked).chain_err(|| format!("Unable to parse `{}`", file_name))?;
         maps.extend(map.into_iter().map(|start| Start { position: start.position + offset, .. start }));
         offset = offset + new_strand.len();
+        chunks_to_process.extend(find_chunks_to_process(&new_strand).into_iter().map(|(start, length)| (start + offset, length)));
         strand.extend(new_strand);
     }
     info!("Parsed {} file{} containing a total of {} fragments",
@@ -298,7 +301,7 @@ fn prepare_data(
                                 s.position.separated_string(), (s.position + s.length).separated_string(),
                                 s.length.separated_string())
     );
-    let chunks_to_process = find_chunks_to_process(&strand);
+    //let chunks_to_process = find_chunks_to_process(&strand);
     strand.push(b'$'); // For the SA construction
 
 

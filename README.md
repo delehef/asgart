@@ -326,6 +326,11 @@ manually replaced.
 
 _Please note that ASGART following the [semver](https://semver.org/) versioning scheme, an increase in the major version number reflects a non backward-compatible update._
 
+## v2.0.1
+
+- Fix a bug where a strand void of large N swaths would not be
+  processed.
+
 ## v2.0
 
 - ASGART does not differentiate anymore between strand A and strand B,

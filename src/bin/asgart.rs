@@ -566,13 +566,14 @@ fn run() -> Result<()> {
 
 
     let out_radix = if settings.out.is_empty() {
-        format!("{}{}{}{}{}{}",
+        format!("{}{}{}{}{}{}.{}",
                 &settings.prefix,
                 radix,
                 if settings.reverse || settings.complement {"_"} else {""},
                 if settings.reverse {"R"} else {""},
                 if settings.complement {"C"} else {""},
-                &(if !settings.trim.is_empty() { format!("_{}-{}", settings.trim[0], settings.trim[1]) } else {"".into()}))
+                &(if !settings.trim.is_empty() { format!("_{}-{}", settings.trim[0], settings.trim[1]) } else {"".into()}),
+                &settings.out_format)
     } else {
         settings.out
     };

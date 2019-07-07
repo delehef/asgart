@@ -261,8 +261,8 @@ fn prepare_data(
                 }
             }
         }
-        if chunks.is_empty() { chunks.push((0, strand.len())) };
         if count != 0 { chunks.push((start, count)) };
+        if chunks.is_empty() { chunks.push((0, strand.len())) };
 
         chunks
         }

@@ -140,9 +140,21 @@ impl ChordPlotter {
 
 
                 let path = format!("M {},{} Q {},{} {} {}", x1, y1, cx, cy, x2, y2);
-                svg += &format!(
-                    "<path d='{}' fill='none' stroke='{}' stroke-opacity='0.3' stroke-width='{}' class='sd'/>\n",
-                    path, color, width
+                svg += &format!(r#"
+                                <path
+                                d='{}' fill='none' stroke='{}' stroke-opacity='0.3' stroke-width='{}' class='sd'>
+                                <title>{}</title>
+                                </path>
+                                "#,
+                                path, color, width,
+                                &format!("{}bp/{}bp\n{} → {}\n{} → {}",
+                                         sd.left_length.separated_string(),
+                                         sd.right_length.separated_string(),
+                                         sd.global_left_position.separated_string(),
+                                         (sd.global_left_position + sd.left_length).separated_string(),
+                                         sd.global_right_position.separated_string(),
+                                         (sd.global_right_position + sd.right_length).separated_string()
+                                )
                 );
             }
         }
@@ -184,11 +196,11 @@ impl ChordPlotter {
         }
 
         svg += "</g>";
-        format!("<?xml version='1.0' encoding='iso-8859-1' standalone='no' ?> <!DOCTYPE svg \
-                     PUBLIC '-//W3C//DTD SVG 1.0//EN' \
-                     'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
-                     width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
-                     xmlns:xlink='http://www.w3.org/1999/xlink'> \
+        format!("<?xml version='1.0' encoding='UTF-8'  standalone='no' ?> <!DOCTYPE svg \
+                 PUBLIC '-//W3C//DTD SVG 1.0//EN' \
+                 'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
+                 width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
+                 xmlns:xlink='http://www.w3.org/1999/xlink'> \
 
                  <style type='text/css'> \
                  .sd:hover {{ stroke-opacity: 1.0; stroke: crimson; stroke-width: {}; }} \

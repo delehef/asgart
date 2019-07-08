@@ -4,6 +4,7 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::f64::consts::PI;
 use ::plot::*;
+use separator::Separatable;
 
 const R: f64 = 200.0;
 

@@ -62,6 +62,13 @@ args:
         number_of_values: 1
     - filter_features:
         long: filter-features
-        help: if present, don't plot features farther away than <filter-features> bp from duplicons.
+        help: if present, do not plot features farther away than <filter-features> bp from a duplicon.
         takes_value: true
         number_of_values: 1
+
+    - min_thickness:
+        long: min-thickness
+        help: set the minimal visual thickness for duplicons plotting
+        takes_value: true
+        number_of_values: 1
+        default_value: "0.1"

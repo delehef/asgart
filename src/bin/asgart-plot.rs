@@ -312,7 +312,7 @@ fn run() -> Result<()> {
         out_file:                out_file.to_str().unwrap().to_owned(),
 
         size:                    200.0,
-        min_thickness:           0.1,
+        min_thickness:           value_t!(args, "min_thickness", f64).unwrap(),
         color1:                  "#ff5b00".to_owned(),
         color2:                  "#00b2ae".to_owned(),
 

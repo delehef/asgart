@@ -16,6 +16,7 @@ args:
         help: Set output file name
         takes_value: true
         number_of_values: 1
+
     - min_length:
         long: min-length
         help: minimum length for a SD to be plot
@@ -42,15 +43,21 @@ args:
         long: no-complemented
         short: t
         help: filters out complemented duplications
+
     - features:
         long: features
         help: additional features tracks to plot
         multiple: true
         takes_value: true
         number_of_values: 1
-    - filter_duplications:
-        long: filter-duplications
-        help: if present, don't plot duplicons farther away than <filter-features> bp from features in track.
+    - filter_families:
+        long: filter-families
+        help: if present, do not plot duplication families farther away than <filter-families> bp from features in track.
+        takes_value: true
+        number_of_values: 1
+    - filter_duplicons:
+        long: filter-duplicons
+        help: if present, do not plot duplicons farther away than <filter-duplicons> bp from features in track.
         takes_value: true
         number_of_values: 1
     - filter_features:

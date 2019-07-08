@@ -29,7 +29,7 @@ use asgart::logger::Logger;
 use log::LevelFilter;
 
 
-fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {
+fn filter_families_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {
     fn _overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
         let xend = xstart + xlen;
         let yend = ystart + ylen;
@@ -38,7 +38,9 @@ fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Featu
             (ystart >= xstart && ystart <= xend)
     }
 
-    result.families = result.families.clone().into_iter()
+    result.families = result.families
+        .clone()
+        .into_iter()
         .filter(
             |family|
             family.iter()
@@ -69,6 +71,51 @@ fn filter_sds_in_features(result: &mut RunResult, features_families: &[Vec<Featu
                 })
         )
         .collect();
+}
+
+
+fn filter_duplicons_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {
+    fn _overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
+        let xend = xstart + xlen;
+        let yend = ystart + ylen;
+
+        (xstart >= ystart && xstart <= yend) ||
+            (ystart >= xstart && ystart <= xend)
+    }
+
+    let mut families = result.families.clone();
+    families
+        .iter_mut()
+        .for_each(
+            |family|
+            family
+                .retain(|sd| {
+                    features_families.iter()
+                        .any(|feature_family| {
+                            feature_family.iter()
+                                .any(|feature| {
+                                    for position in &feature.positions{
+                                        let (start, length) = match *position {
+                                            FeaturePosition::Relative { ref chr, start, length} => {
+                                                let chr = result.strand.find_chr(&chr).expect(&format!("Unable to find fragment `{}`", chr));
+                                                (chr.position + start, length)
+                                            }
+                                            FeaturePosition::Absolute { start, length }         => {
+                                                (start, length)
+                                            }
+                                        };
+                                        if _overlap(sd.left_part(), (start - threshold, length + 2*threshold))
+                                            || _overlap(sd.right_part(), (start - threshold, length + 2*threshold))
+                                        {
+                                            return true;
+                                        }
+                                    }
+                                    false
+                                })
+                        })
+                })
+        );
+    result.families = families;
 }
 
 fn filter_features_in_sds(result: &mut RunResult, features_families: &mut Vec<Vec<Feature>>, threshold: usize) {
@@ -250,9 +297,13 @@ fn run() -> Result<()> {
     let min_identity = value_t!(args, "min_identity", f32).unwrap();
     result.families.iter_mut().for_each(|family| family.retain(|sd| sd.identity >= min_identity));
 
-    if args.is_present("filter_duplications") {
-        filter_sds_in_features(&mut result, &features_tracks, value_t!(args, "filter_duplications", usize).unwrap());
+    if args.is_present("filter_families") {
+        filter_families_in_features(&mut result, &features_tracks, value_t!(args, "filter_families", usize).unwrap());
     }
+    if args.is_present("filter_duplicons") {
+        filter_duplicons_in_features(&mut result, &features_tracks, value_t!(args, "filter_duplicons", usize).unwrap());
+    }
+
     if args.is_present("filter_features") {
         filter_features_in_sds(&mut result, &mut features_tracks, value_t!(args, "filter_features", usize).unwrap());
     }

@@ -69,32 +69,6 @@ impl FlatPlotter {
                         self.height-CHR_WIDTH/2.0,
                         CHR_WIDTH
         );
-        // let centromere_start = 10316945.0;
-        // let centromere_end = 10544039.0;
-        // svg += &format!(r#"
-        //         <line
-        //         x1='{}' y1='{}' x2='{}' y2='{}'
-        //         stroke='#afafaf' stroke-width='{}'/>
-        //         "#,
-        //                 centromere_start as f64/self.max_length*self.width,
-        //                 CHR_WIDTH/2.0,
-        //                 centromere_end as f64/self.max_length*self.width,
-        //                 CHR_WIDTH/2.0,
-        //                 CHR_WIDTH
-        // );
-        // svg += &format!(r#"
-        //         <line
-        //         x1='{}' y1='{}' x2='{}' y2='{}'
-        //         stroke='#afafaf' stroke-width='{}'/>
-        //         "#,
-        //                 centromere_start as f64/self.max_length*self.width,
-        //                 self.height-CHR_WIDTH/2.0,
-        //                 centromere_end as f64/self.max_length*self.width,
-        //                 self.height-CHR_WIDTH/2.0,
-        //                 CHR_WIDTH
-        // );
-
-
 
         //
         // Ticks

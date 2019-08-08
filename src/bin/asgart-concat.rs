@@ -1,6 +1,6 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate clap;
-#[macro_use] extern crate asgart;
+extern crate asgart;
 
 use std::fs::File;
 
@@ -10,7 +10,6 @@ use asgart::exporters;
 use asgart::logger::Logger;
 use asgart::log::LevelFilter;
 
-use asgart::error_chain::*;
 use asgart::errors::*;
 
 fn main() {

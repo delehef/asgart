@@ -1,16 +1,16 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate clap;
-extern crate serde_json;
-extern crate asgart;
-extern crate error_chain;
+#[macro_use] extern crate asgart;
 
 use std::fs::File;
+
 use clap::{App, Arg, AppSettings};
 use asgart::exporters::Exporter;
 use asgart::exporters;
 use asgart::logger::Logger;
-use log::LevelFilter;
+use asgart::log::LevelFilter;
 
+use asgart::error_chain::*;
 use asgart::errors::*;
 
 fn main() {

@@ -1,32 +1,28 @@
-extern crate serde_json;
-extern crate colored;
-#[macro_use]
-extern crate clap;
+#[macro_use] pub extern crate clap;
 extern crate asgart;
-extern crate error_chain;
-extern crate regex;
-extern crate rand;
-extern crate bio;
-extern crate log;
 
-use error_chain::*;
-use regex::Regex;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
+use std::collections::HashMap;
+
 use clap::{App, AppSettings};
-use colored::Colorize;
+
+use asgart::colored::Colorize;
+use asgart::regex::Regex;
+use asgart::log::LevelFilter;
+use asgart::logger::Logger;
+use asgart::error_chain::*;
+use asgart::errors::*;
+
 use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
 use asgart::plot::circos_plot::CircosPlotter;
 use asgart::plot::genome_plot::GenomePlotter;
-use asgart::errors::*;
-use std::collections::HashMap;
-use asgart::logger::Logger;
-use log::LevelFilter;
+
 
 
 fn filter_families_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {

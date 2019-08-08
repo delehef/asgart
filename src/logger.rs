@@ -1,8 +1,5 @@
-extern crate colored;
-extern crate log;
-
-use self::log::{Record, Level, Metadata, SetLoggerError, LevelFilter};
-use self::colored::*;
+use ::log::{Record, Level, Metadata, SetLoggerError, LevelFilter};
+use ::colored::*;
 
 pub struct Logger {
 }

@@ -1,21 +1,13 @@
-#[macro_use] pub extern crate clap;
+#[macro_use] extern crate clap;
 #[macro_use] extern crate log;
-extern crate threadpool;
-extern crate indicatif;
-extern crate console;
-extern crate num_cpus;
-extern crate bio;
 extern crate asgart;
-extern crate rayon;
-extern crate separator;
 
-use separator::Separatable;
-use indicatif::{ProgressBar, ProgressStyle, HumanDuration};
-use console::style;
-use bio::io::fasta;
 use clap::{App, AppSettings};
-use log::LevelFilter;
-use rayon::prelude::*;
+
+use asgart::indicatif::{ProgressBar, ProgressStyle, HumanDuration};
+use asgart::separator::Separatable;
+use asgart::console::style;
+use asgart::rayon::prelude::*;
 
 use std::path;
 use std::thread;
@@ -29,6 +21,7 @@ use std::sync::mpsc::TryRecvError;
 
 use asgart::structs::*;
 use asgart::logger::Logger;
+use asgart::log::LevelFilter;
 use asgart::errors::*;
 use asgart::exporters::Exporter;
 use asgart::exporters;
@@ -59,8 +52,8 @@ impl Step for ReOrder {
                                   sd.right = tmp
                               }
                     )});
-    input
-}
+        input
+    }
 }
 
 struct Sort;
@@ -78,9 +71,9 @@ impl Step for ReduceOverlap {
     fn name(&self) -> &str { "Reducing overlap" }
     fn run(&self, mut input: Vec<ProtoSDsFamily>, _strand: &Strand) -> Vec<ProtoSDsFamily> {
         input
-        .iter_mut()
-        .map(|family| reduce_overlap(&family))
-        .collect()
+            .iter_mut()
+            .map(|family| reduce_overlap(&family))
+            .collect()
     }
 }
 
@@ -276,7 +269,7 @@ fn prepare_data(
     let mut chunks_to_process = Vec::new();
 
     for file_name in strands_files {
-        let (map, new_strand) = read_fasta(file_name, skip_masked).chain_err(|| format!("Unable to parse `{}`", file_name))?;
+        let (map, new_strand) = utils::read_fasta(file_name, skip_masked).chain_err(|| format!("Unable to parse `{}`", file_name))?;
         maps.extend(map.into_iter().map(|start| Start { position: start.position + offset, .. start }));
         chunks_to_process.extend(find_chunks_to_process(&new_strand).into_iter().map(|(start, length)| (start + offset, length)));
         offset = offset + new_strand.len();
@@ -331,41 +324,6 @@ fn prepare_data(
         chunks_to_process,
         Strand{file_names: strands_files.join(", "), data: strand, map: maps},
     ))
-}
-
-fn read_fasta(filename: &str, skip_masked: bool) -> Result<(Vec<Start>, Vec<u8>)> {
-    let mut map = Vec::new();
-    let mut r = Vec::new();
-
-    let reader = fasta::Reader::from_file(filename).chain_err(|| format!("Unable to open `{}`", filename))?;
-    let mut counter = 0;
-
-    for record in reader.records() {
-        let record = record.chain_err(|| format!("Unable to read {:?}: not a FASTA file", path::Path::new(filename).file_name().unwrap()))?;
-
-        let name = record.id().to_owned();
-        let mut seq = record.seq().to_vec();
-        if !skip_masked {seq = seq.to_ascii_uppercase();}
-        for c in &mut seq {
-            if ALPHABET_MASKED.contains(c) && skip_masked {
-                *c = b'N'
-            } else if !(ALPHABET).contains(c) {
-                trace!("Undefined base `{}` replaced by `N`", std::char::from_u32(u32::from(*c)).unwrap());
-                *c = b'N'
-            }
-        }
-
-        map.push(Start {
-            name: name,
-            position: counter,
-            length: seq.len(),
-        });
-        counter += seq.len();
-        r.append(&mut seq);
-    }
-
-
-    Ok((map, r))
 }
 
 pub fn r_divsufsort(dna: &[u8]) -> SuffixArray {

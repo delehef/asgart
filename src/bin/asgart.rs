@@ -223,6 +223,41 @@ fn prepare_data(
     skip_masked: bool,
     trim: Option<(usize, usize)>
 ) -> Result<PreparedData> {
+    fn read_fasta(filename: &str, skip_masked: bool) -> Result<(Vec<Start>, Vec<u8>)> {
+        let mut map = Vec::new();
+        let mut r = Vec::new();
+
+        let reader = bio::io::fasta::Reader::from_file(filename).chain_err(|| format!("Unable to open `{}`", filename))?;
+        let mut counter = 0;
+
+        for record in reader.records() {
+            let record = record.chain_err(|| format!("Unable to read {:?}: not a FASTA file", path::Path::new(filename).file_name().unwrap()))?;
+
+            let name = record.id().to_owned();
+            let mut seq = record.seq().to_vec();
+            if !skip_masked {seq = seq.to_ascii_uppercase();}
+            for c in &mut seq {
+                if ALPHABET_MASKED.contains(c) && skip_masked {
+                    *c = b'N'
+                } else if !(ALPHABET).contains(c) {
+                    trace!("Undefined base `{}` replaced by `N`", *c as char);
+                    *c = b'N'
+                }
+            }
+
+            map.push(Start {
+                name: name,
+                position: counter,
+                length: seq.len(),
+            });
+            counter += seq.len();
+            r.append(&mut seq);
+        }
+
+
+        Ok((map, r))
+    }
+
     fn find_chunks_to_process(strand: &[u8]) -> Vec<(usize, usize)> {
         fn count_n(strand: &[u8], start: usize) -> usize {strand.iter().skip(start).take_while(|x| **x == b'n' || **x == b'N').count()}
         let threshold = 5000;
@@ -269,7 +304,7 @@ fn prepare_data(
     let mut chunks_to_process = Vec::new();
 
     for file_name in strands_files {
-        let (map, new_strand) = utils::read_fasta(file_name, skip_masked).chain_err(|| format!("Unable to parse `{}`", file_name))?;
+        let (map, new_strand) = read_fasta(file_name, skip_masked).chain_err(|| format!("Unable to parse `{}`", file_name))?;
         maps.extend(map.into_iter().map(|start| Start { position: start.position + offset, .. start }));
         chunks_to_process.extend(find_chunks_to_process(&new_strand).into_iter().map(|(start, length)| (start + offset, length)));
         offset = offset + new_strand.len();

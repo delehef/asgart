@@ -1,9 +1,3 @@
-use ::bio::io::fasta;
-use std::path;
-use ::structs::*;
-use ::errors::*;
-
-
 pub fn complement_nucleotide(n: u8) -> u8 {
     match n {
         b'A' => b'T',
@@ -32,41 +26,6 @@ pub fn slugify(x: &str) -> String {
         .replace(" ", "_")
         .replace(":", "_")
         .replace("|", "_")
-}
-
-pub fn read_fasta(filename: &str, skip_masked: bool) -> Result<(Vec<Start>, Vec<u8>)> {
-    let mut map = Vec::new();
-    let mut r = Vec::new();
-
-    let reader = fasta::Reader::from_file(filename).chain_err(|| format!("Unable to open `{}`", filename))?;
-    let mut counter = 0;
-
-    for record in reader.records() {
-        let record = record.chain_err(|| format!("Unable to read {:?}: not a FASTA file", path::Path::new(filename).file_name().unwrap()))?;
-
-        let name = record.id().to_owned();
-        let mut seq = record.seq().to_vec();
-        if !skip_masked {seq = seq.to_ascii_uppercase();}
-        for c in &mut seq {
-            if ALPHABET_MASKED.contains(c) && skip_masked {
-                *c = b'N'
-            } else if !(ALPHABET).contains(c) {
-                trace!("Undefined base `{}` replaced by `N`", std::char::from_u32(u32::from(*c)).unwrap());
-                *c = b'N'
-            }
-        }
-
-        map.push(Start {
-            name: name,
-            position: counter,
-            length: seq.len(),
-        });
-        counter += seq.len();
-        r.append(&mut seq);
-    }
-
-
-    Ok((map, r))
 }
 
 

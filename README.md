@@ -326,7 +326,11 @@ manually replaced.
 
 _Please note that ASGART following the [semver](https://semver.org/) versioning scheme, an increase in the major version number reflects a non backward-compatible update._
 
-## v2.1
+## v2.0.1
+- Fix manifest file
+
+## v2.1.0
+
 - Ensure that multiple fragments in a mFASTA file are processed separately
 - Add a flag to specify the minimum width of a chord
 - Add filtering options

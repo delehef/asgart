@@ -358,9 +358,22 @@ fn prepare_data(
     let mut chunks_to_process = Vec::new();
 
     for file_name in strands_files {
-        let (map, new_strand) = read_fasta(file_name, skip_masked).chain_err(|| format!("Unable to parse `{}`", file_name))?;
-        maps.extend(map.into_iter().map(|start| Start { position: start.position + offset, .. start }));
-        chunks_to_process.extend(find_chunks_to_process(&new_strand).into_iter().map(|(start, length)| (start + offset, length)));
+        let (map, new_strand) = read_fasta(file_name, skip_masked)
+            .chain_err(|| format!("Unable to parse `{}`", file_name))?;
+
+        // We want to add each fragment separately to ensure that chunks are cutting between fragments
+        for chr in map.iter() {
+            chunks_to_process.extend(
+                find_chunks_to_process(&new_strand[chr.position..chr.position + chr.length])
+                    .into_iter()
+                    .map(|(start, length)| (chr.position + offset + start, length)),
+            );
+        }
+        maps.extend(map.into_iter().map(|start| Start {
+            position: start.position + offset,
+            ..start
+        }));
+
         offset = offset + new_strand.len();
         strand.extend(new_strand);
     }

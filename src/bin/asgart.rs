@@ -167,6 +167,7 @@ impl<'a> Step for SearchDuplications<'a> {
                             pb.set_position((progresses.iter().map(|x| x.load(Ordering::Relaxed))
                                              .fold(0, |ax, x| ax + x) as f64/total as f64 * 100.0) as u64);
                         }
+                        _ => { pb.finish_and_clear(); break; }
                     }
                 }
             })

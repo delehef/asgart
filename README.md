@@ -326,6 +326,13 @@ manually replaced.
 
 _Please note that ASGART following the [semver](https://semver.org/) versioning scheme, an increase in the major version number reflects a non backward-compatible update._
 
+## v2.1
+- Ensure that multiple fragments in a mFASTA file are processed separately
+- Add a flag to specify the minimum width of a chord
+- Add filtering options
+- Add tooltips to chord graphs
+- Fix output files naming scheme
+
 ## v2.0.2
 
 - Fix a bound-checking bug where the last chunk would not be processed.

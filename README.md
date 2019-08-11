@@ -326,7 +326,7 @@ manually replaced.
 
 _Please note that ASGART following the [semver](https://semver.org/) versioning scheme, an increase in the major version number reflects a non backward-compatible update._
 
-## v2.0.1
+## v2.1.1
 - Fix manifest file
 
 ## v2.1.0

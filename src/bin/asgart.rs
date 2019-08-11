@@ -164,10 +164,20 @@ impl<'a> Step for SearchDuplications<'a> {
                     thread::sleep(Duration::from_millis(500));
                     match rx_monitor.try_recv() {
                         Err(TryRecvError::Empty) => {
-                            pb.set_position((progresses.iter().map(|x| x.load(Ordering::Relaxed))
-                                             .fold(0, |ax, x| ax + x) as f64/total as f64 * 100.0) as u64);
+                            pb.set_position(
+                                (progresses
+                                    .iter()
+                                    .map(|x| x.load(Ordering::Relaxed))
+                                    .fold(0, |ax, x| ax + x)
+                                    as f64
+                                    / total as f64
+                                    * 100.0) as u64,
+                            );
                         }
-                        _ => { pb.finish_and_clear(); break; }
+                        _ => {
+                            pb.finish_and_clear();
+                            break;
+                        }
                     }
                 }
             })

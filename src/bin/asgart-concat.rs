@@ -19,8 +19,12 @@ fn main() {
     let x = run();
     if let Err(ref e) = x {
         error!("{}", e);
-        for e in e.iter().skip(1) { println!("{}", e); }
-        if let Some(backtrace) = e.backtrace() { println!("Backtrace: {:?}", backtrace); }
+        for e in e.iter().skip(1) {
+            println!("{}", e);
+        }
+        if let Some(backtrace) = e.backtrace() {
+            println!("Backtrace: {:?}", backtrace);
+        }
         std::process::exit(1);
     }
 }

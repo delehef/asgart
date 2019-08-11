@@ -1,4 +1,3 @@
-#[macro_use]
 pub extern crate log;
 #[macro_use]
 pub extern crate serde_derive;

@@ -174,8 +174,8 @@ fn read_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     let extension: &str = path.extension().unwrap().to_str().unwrap();
 
     match extension {
-        "gff3" => {read_gff3_feature_file(r, file)}
-        _      => {read_custom_feature_file(r, file)}
+        "gff3" => read_gff3_feature_file(r, file),
+        _ => read_custom_feature_file(r, file),
     }
 }
 

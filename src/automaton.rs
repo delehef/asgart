@@ -106,7 +106,9 @@ pub fn search_duplications(
         i += step_size;
         progress.store(i, Ordering::Relaxed);
 
-        if needle[i] == b'N' { continue; }
+        if needle[i] == b'N' {
+            continue;
+        }
         let matches: Vec<Segment> = searcher
             .search(strand, sa, &needle[i..i + settings.probe_size])
             .into_iter()
@@ -119,7 +121,9 @@ pub fn search_duplications(
                 }
             })
             .collect();
-        if matches.len() > settings.max_cardinality { continue; }
+        if matches.len() > settings.max_cardinality {
+            continue;
+        }
 
         // Reset dirty bits of arms
         arms.iter_mut().for_each(|arm| arm.dirty = false);
@@ -127,7 +131,15 @@ pub fn search_duplications(
         let todo = matches
             .par_iter()
             .with_min_len(8)
-            .map(|m| try_extend_arms(&arms, m, i64::from(settings.max_gap_size), i, settings.probe_size) )
+            .map(|m| {
+                try_extend_arms(
+                    &arms,
+                    m,
+                    i64::from(settings.max_gap_size),
+                    i,
+                    settings.probe_size,
+                )
+            })
             .collect::<Vec<_>>();
 
         todo.iter().for_each(|op| {

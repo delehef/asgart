@@ -92,7 +92,7 @@ impl RunResult {
         }
 
         let r = RunResult {
-            settings: results[0].settings.clone(),
+            settings: results[0].settings,
             strand: results[0].strand.clone(),
             families: results
                 .iter()

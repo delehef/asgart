@@ -1,4 +1,4 @@
-use ::plot::*;
+use plot::*;
 
 use std::fs::File;
 use std::io::Write;
@@ -10,17 +10,17 @@ pub struct GenomePlotter {
 
 impl Plotter for GenomePlotter {
     fn new(settings: Settings, result: RunResult) -> GenomePlotter {
-        GenomePlotter {
-            result,
-            settings,
-        }
+        GenomePlotter { result, settings }
     }
 
     fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_genome().as_bytes()))
-            .and_then(|_| { println!("Genome plot written to `{}`", &out_filename); Ok(()) })
+            .and_then(|_| {
+                println!("Genome plot written to `{}`", &out_filename);
+                Ok(())
+            })
             .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
 
         Ok(())
@@ -35,25 +35,34 @@ impl GenomePlotter {
         let chr_spacing = 100.0;
         let chr_width = 40.0;
         let height_factor = 800.0;
-        let factor = 1.0/self.result.strand.map.iter().map(|chr| chr.length).max().unwrap() as f32 * height_factor;
+        let factor = 1.0
+            / self
+                .result
+                .strand
+                .map
+                .iter()
+                .map(|chr| chr.length)
+                .max()
+                .unwrap() as f32
+            * height_factor;
         let threshold = 0.1;
 
         let width = chr_spacing as usize * (self.result.strand.map.len() + 1);
         // height_factor + 50px top + 100px bot
         let height = height_factor + 50.0 + 100.0;
 
-
         // 1. Draw the chromosomes
         // let regex_chr_name = Regex::new("(?:chromosome ?([0-9XYxyZWzw]{1,2}))|(?:chr ?([0-9XYxyZWzwA-Za-z]{1,2}))|(?:[^0-9XYxyZWzwA-Za-z]([0-9XYxyZWzw]{1,2})[^0-9XYxyZWzw.:|,a-zA-Z])")
         //     .expect("Unable to create regex");
         for (i, chr) in self.result.strand.map.iter().enumerate() {
             // Chromosome bar
-            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#ccc' stroke-width='{}'/>\n",
-                            chr_spacing + i as f32 * chr_spacing,
-                            50,
-                            chr_spacing + i as f32 * chr_spacing,
-                            50.0 + factor*chr.length as f32,
-                            chr_width,
+            svg += &format!(
+                "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#ccc' stroke-width='{}'/>\n",
+                chr_spacing + i as f32 * chr_spacing,
+                50,
+                chr_spacing + i as f32 * chr_spacing,
+                50.0 + factor * chr.length as f32,
+                chr_width,
             );
 
             // Central delimiter
@@ -80,26 +89,43 @@ impl GenomePlotter {
                             0.5,
             );
 
-
             // Label
             // let chr_name_cap = regex_chr_name.captures(&chr.name).expect("No matches");
             // let chr_name = chr_name_cap.get(1).unwrap().as_str();
-            svg += &format!("<text x='{}' y='{}' style='font-size: 11;'>{}</text>\n",
-                            chr_spacing + i as f32 * chr_spacing - 10.0,
-                            20 + (i%2) * 10,
-                            if chr.name.len() > 8 { &chr.name[0..3] } else { &chr.name },
+            svg += &format!(
+                "<text x='{}' y='{}' style='font-size: 11;'>{}</text>\n",
+                chr_spacing + i as f32 * chr_spacing - 10.0,
+                20 + (i % 2) * 10,
+                if chr.name.len() > 8 {
+                    &chr.name[0..3]
+                } else {
+                    &chr.name
+                },
             );
         }
 
         // 2. Draw the SDs
         for family in &self.result.families {
             for sd in family {
-                let color = if sd.reversed { &self.settings.color2 } else  { &self.settings.color1 };
-                let x: Box<dyn Fn(usize) -> f32> = match (sd.chr_left == sd.chr_right, sd.reversed) {
-                    (true,  false) => {Box::new(|x| chr_spacing - 3.0*chr_width/8.0 + chr_spacing*x as f32)}
-                    (true,  true)  => {Box::new(|x| chr_spacing - 1.0*chr_width/8.0 + chr_spacing*x as f32)}
-                    (false, false) => {Box::new(|x| chr_spacing + 1.0*chr_width/8.0 + chr_spacing*x as f32)}
-                    (false, true)  => {Box::new(|x| chr_spacing + 3.0*chr_width/8.0 + chr_spacing*x as f32)}
+                let color = if sd.reversed {
+                    &self.settings.color2
+                } else {
+                    &self.settings.color1
+                };
+                let x: Box<dyn Fn(usize) -> f32> = match (sd.chr_left == sd.chr_right, sd.reversed)
+                {
+                    (true, false) => {
+                        Box::new(|x| chr_spacing - 3.0 * chr_width / 8.0 + chr_spacing * x as f32)
+                    }
+                    (true, true) => {
+                        Box::new(|x| chr_spacing - 1.0 * chr_width / 8.0 + chr_spacing * x as f32)
+                    }
+                    (false, false) => {
+                        Box::new(|x| chr_spacing + 1.0 * chr_width / 8.0 + chr_spacing * x as f32)
+                    }
+                    (false, true) => {
+                        Box::new(|x| chr_spacing + 3.0 * chr_width / 8.0 + chr_spacing * x as f32)
+                    }
                 };
 
                 // left arm
@@ -107,14 +133,17 @@ impl GenomePlotter {
                 let left = sd.chr_left_position;
                 let start = factor * left as f32;
                 let mut end = factor * (left + sd.left_length) as f32;
-                if start - end < threshold { end += threshold };
-                svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
-                                x(chr_left_index),
-                                50.0 + start,
-                                x(chr_left_index),
-                                50.0 + end,
-                                color,
-                                chr_width/4.0,
+                if start - end < threshold {
+                    end += threshold
+                };
+                svg += &format!(
+                    "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
+                    x(chr_left_index),
+                    50.0 + start,
+                    x(chr_left_index),
+                    50.0 + end,
+                    color,
+                    chr_width / 4.0,
                 );
 
                 // right arm
@@ -122,14 +151,17 @@ impl GenomePlotter {
                 let right = sd.chr_right_position;
                 let start = factor * right as f32;
                 let mut end = factor * (right + sd.right_length) as f32;
-                if start - end < threshold { end += threshold };
-                svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
-                                x(chr_right_index),
-                                50.0 + start,
-                                x(chr_right_index),
-                                50.0 + end,
-                                color,
-                                chr_width/4.0,
+                if start - end < threshold {
+                    end += threshold
+                };
+                svg += &format!(
+                    "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
+                    x(chr_right_index),
+                    50.0 + start,
+                    x(chr_right_index),
+                    50.0 + end,
+                    color,
+                    chr_width / 4.0,
                 );
             }
         }

@@ -1,38 +1,32 @@
-use std::io::prelude::*;
+use errors::*;
 use std::fs::File;
-use ::errors::*;
+use std::io::prelude::*;
 
-
-
-pub const ALPHABET: [u8; 5] = [
-    b'A', b'T', b'G', b'C', b'N'
-];
-pub const ALPHABET_MASKED: [u8; 5] = [
-    b'a', b't', b'g', b'c', b'n'
-];
+pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
+pub const ALPHABET_MASKED: [u8; 5] = [b'a', b't', b'g', b'c', b'n'];
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct RunSettings {
-    pub probe_size:             usize,
-    pub max_gap_size:           u32,
+    pub probe_size: usize,
+    pub max_gap_size: u32,
     pub min_duplication_length: usize,
-    pub max_cardinality:        usize,
-    pub trim:                   Option<(usize, usize)>,
+    pub max_cardinality: usize,
+    pub trim: Option<(usize, usize)>,
 
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub reverse:                bool,
+    pub reverse: bool,
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub complement:             bool,
-    pub skip_masked:            bool,
+    pub complement: bool,
+    pub skip_masked: bool,
 
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub threads_count:          usize,
+    pub threads_count: usize,
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub compute_score:          bool,
+    pub compute_score: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -53,7 +47,7 @@ impl StrandResult {
         self.map.iter().any(|chr| chr.name == name)
     }
 
-    pub fn find_chr(&self, name: &str) -> Option<&Start>{
+    pub fn find_chr(&self, name: &str) -> Option<&Start> {
         self.map.iter().find(|chr| chr.name == name)
     }
 
@@ -62,10 +56,11 @@ impl StrandResult {
     }
 
     pub fn find_chr_by_pos(&self, pos: usize) -> Option<&Start> {
-        self.map.iter().find(|&chr| pos >= chr.position &&  pos < chr.position + chr.length)
+        self.map
+            .iter()
+            .find(|&chr| pos >= chr.position && pos < chr.position + chr.length)
     }
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RunResult {
@@ -89,22 +84,26 @@ impl RunResult {
 
         for result in &results {
             if result.strand.name != results[0].strand.name {
-                bail!(format!("Trying to combine ASGART files from different sources: `{}` and `{}`",
-                              result.strand.name, results[0].strand.name,
+                bail!(format!(
+                    "Trying to combine ASGART files from different sources: `{}` and `{}`",
+                    result.strand.name, results[0].strand.name,
                 ));
             }
         }
 
         let r = RunResult {
             settings: results[0].settings.clone(),
-            strand:   results[0].strand.clone(),
-            families: results.iter().flat_map(|ref r| r.families.iter()).cloned().collect::<Vec<_>>(),
+            strand: results[0].strand.clone(),
+            families: results
+                .iter()
+                .flat_map(|ref r| r.families.iter())
+                .cloned()
+                .collect::<Vec<_>>(),
         };
 
         Ok(r)
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProtoSD {
@@ -129,11 +128,11 @@ impl ProtoSD {
 
     pub fn levenshtein(&self, strand: &[u8]) -> f64 {
         // TODO take into account R/C duplications
-        let left_arm  = &strand[self.left  ..= self.left + self.left_length];
-        let right_arm = &strand[self.right ..= self.right + self.right_length];
+        let left_arm = &strand[self.left..=self.left + self.left_length];
+        let right_arm = &strand[self.right..=self.right + self.right_length];
         let dist = f64::from(bio::alignment::distance::levenshtein(left_arm, right_arm));
 
-        100.0 * (1.0 - dist/(std::cmp::max(self.left_length, self.right_length) as f64))
+        100.0 * (1.0 - dist / (std::cmp::max(self.left_length, self.right_length) as f64))
     }
 }
 pub type ProtoSDsFamily = Vec<ProtoSD>;

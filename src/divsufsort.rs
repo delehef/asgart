@@ -3,57 +3,60 @@
 #![allow(non_camel_case_types,
          non_upper_case_globals)]
 type sauchar_t = u8;
-type saint_t   = i32;
-type saidx_t   = i32;
+type saint_t = i32;
+type saidx_t = i32;
 type saidx64_t = i64;
 #[link(name = "divsufsort64", kind = "static")]
 extern "C" {
     pub fn divsufsort64(T: *const sauchar_t, SA: *mut saidx64_t, n: saidx64_t) -> saint_t;
     pub fn divsufsort64_version() -> *const ::std::os::raw::c_char;
-    pub fn sa_search64(T: *const sauchar_t,
-                       Tsize: saidx64_t,
-                       P: *const sauchar_t,
-                       Psize: saidx64_t,
-                       SA: *const saidx64_t,
-                       SAsize: saidx64_t,
-                       left: *mut saidx64_t)
-                       -> saidx64_t;
+    pub fn sa_search64(
+        T: *const sauchar_t,
+        Tsize: saidx64_t,
+        P: *const sauchar_t,
+        Psize: saidx64_t,
+        SA: *const saidx64_t,
+        SAsize: saidx64_t,
+        left: *mut saidx64_t,
+    ) -> saidx64_t;
 
-    pub fn sa_searchb64(T: *const sauchar_t,
-                        Tsize: saidx64_t,
-                        P: *const sauchar_t,
-                        Psize: saidx64_t,
-                        SA: *const saidx64_t,
-                        SAsize: saidx64_t,
-                        left: *mut saidx64_t,
-                        init_left: saidx64_t,
-                        init_right: saidx64_t)
-                        -> saidx64_t;
+    pub fn sa_searchb64(
+        T: *const sauchar_t,
+        Tsize: saidx64_t,
+        P: *const sauchar_t,
+        Psize: saidx64_t,
+        SA: *const saidx64_t,
+        SAsize: saidx64_t,
+        left: *mut saidx64_t,
+        init_left: saidx64_t,
+        init_right: saidx64_t,
+    ) -> saidx64_t;
 }
 
 extern "C" {
-    pub fn divsufsort(T: *const sauchar_t, SA: *mut saidx_t, n: saidx_t)
-                      -> saint_t;
+    pub fn divsufsort(T: *const sauchar_t, SA: *mut saidx_t, n: saidx_t) -> saint_t;
 
-    pub fn sa_search(T: *const sauchar_t,
-                     Tsize: saidx_t,
-                     P: *const sauchar_t,
-                     Psize: saidx_t,
-                     SA: *const saidx_t,
-                     SAsize: saidx_t,
-                     left: *mut saidx_t)
-                     -> saidx_t;
+    pub fn sa_search(
+        T: *const sauchar_t,
+        Tsize: saidx_t,
+        P: *const sauchar_t,
+        Psize: saidx_t,
+        SA: *const saidx_t,
+        SAsize: saidx_t,
+        left: *mut saidx_t,
+    ) -> saidx_t;
 
-    pub fn sa_searchb(T: *const sauchar_t,
-                      Tsize: saidx_t,
-                      P: *const sauchar_t,
-                      Psize: saidx_t,
-                      SA: *const saidx_t,
-                      SAsize: saidx_t,
-                      left: *mut saidx_t,
-                      init_left: saidx_t,
-                      init_right: saidx_t)
-                      -> saidx_t;
+    pub fn sa_searchb(
+        T: *const sauchar_t,
+        Tsize: saidx_t,
+        P: *const sauchar_t,
+        Psize: saidx_t,
+        SA: *const saidx_t,
+        SAsize: saidx_t,
+        left: *mut saidx_t,
+        init_left: saidx_t,
+        init_right: saidx_t,
+    ) -> saidx_t;
 }
 
 pub type SAIdx = saidx64_t;

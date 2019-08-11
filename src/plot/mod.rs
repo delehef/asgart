@@ -1,13 +1,13 @@
 extern crate regex;
 
-use ::errors::*;
-use ::structs::*;
+use errors::*;
+use structs::*;
 
 pub mod chord_plot;
 pub mod flat_plot;
 // pub mod eye_plot;
-pub mod genome_plot;
 pub mod circos_plot;
+pub mod genome_plot;
 
 pub struct Settings {
     pub out_file: String,
@@ -22,8 +22,15 @@ pub struct Settings {
 
 #[derive(Debug, Clone)]
 pub enum FeaturePosition {
-    Relative { chr: String, start: usize, length: usize },
-    Absolute { start: usize, length: usize }
+    Relative {
+        chr: String,
+        start: usize,
+        length: usize,
+    },
+    Absolute {
+        start: usize,
+        length: usize,
+    },
 }
 
 #[derive(Debug, Clone)]

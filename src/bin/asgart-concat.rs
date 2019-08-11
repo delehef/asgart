@@ -1,14 +1,16 @@
-#[macro_use] extern crate log;
-#[macro_use] extern crate clap;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate clap;
 extern crate asgart;
 
 use std::fs::File;
 
-use clap::{App, Arg, AppSettings};
-use asgart::exporters::Exporter;
 use asgart::exporters;
-use asgart::logger::Logger;
+use asgart::exporters::Exporter;
 use asgart::log::LevelFilter;
+use asgart::logger::Logger;
+use clap::{App, AppSettings, Arg};
 
 use asgart::errors::*;
 
@@ -54,19 +56,21 @@ fn run() -> Result<()> {
     let inputs = values_t!(args, "INPUT", String).unwrap();
     let format = value_t!(args, "format", String).unwrap_or("json".to_string());
     let mut out: Box<dyn std::io::Write> = if args.is_present("OUTPUT") {
-        let out_filename = asgart::utils::make_out_filename(args.value_of("OUTPUT"), "out", &format);
+        let out_filename =
+            asgart::utils::make_out_filename(args.value_of("OUTPUT"), "out", &format);
         Box::new(File::create(out_filename).expect(""))
     } else {
         Box::new(std::io::stdout())
     };
     let exporter = match &format[..] {
-        "json"     => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
-        "gff2"     => { Box::new(exporters::GFF2Exporter) as Box<dyn Exporter> }
-        "gff3"     => { Box::new(exporters::GFF3Exporter) as Box<dyn Exporter> }
+        "json" => Box::new(exporters::JSONExporter) as Box<dyn Exporter>,
+        "gff2" => Box::new(exporters::GFF2Exporter) as Box<dyn Exporter>,
+        "gff3" => Box::new(exporters::GFF3Exporter) as Box<dyn Exporter>,
         format @ _ => {
             warn!("Unknown output format `{}`: using json instead", format);
             Box::new(exporters::JSONExporter) as Box<dyn Exporter>
-        }};
+        }
+    };
 
     let results = asgart::structs::RunResult::from_files(&inputs)?;
     exporter.save(&results, &mut out)?;

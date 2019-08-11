@@ -1,8 +1,8 @@
-use ::plot::*;
-use ::utils::slugify;
+use plot::*;
+use utils::slugify;
 
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
 
 pub struct CircosPlotter {
     result: RunResult,
@@ -11,35 +11,49 @@ pub struct CircosPlotter {
 
 impl Plotter for CircosPlotter {
     fn new(settings: Settings, result: RunResult) -> CircosPlotter {
-        CircosPlotter {
-            result,
-            settings,
-        }
+        CircosPlotter { result, settings }
     }
 
     fn plot(&self) -> Result<()> {
         let prefix = self.settings.out_file.clone();
 
         let karyotype_filename = &format!("{}.karyotype", &prefix);
-        let links_filename     = &format!("{}.links", &prefix);
-        let config_filename    = &format!("{}.conf", &prefix);
+        let links_filename = &format!("{}.links", &prefix);
+        let config_filename = &format!("{}.conf", &prefix);
 
         File::create(karyotype_filename)
             .and_then(|mut f| f.write_all(self.plot_karyotype().as_bytes()))
-            .and_then(|_| { println!("Karyotype written to `{}`", &karyotype_filename); Ok(()) })
+            .and_then(|_| {
+                println!("Karyotype written to `{}`", &karyotype_filename);
+                Ok(())
+            })
             .chain_err(|| format!("Unable to write in `{}`", &karyotype_filename))?;
 
         File::create(links_filename)
             .and_then(|mut f| f.write_all(self.plot_links().as_bytes()))
-            .and_then(|_| { println!("Links written to `{}`", &links_filename); Ok(()) })
+            .and_then(|_| {
+                println!("Links written to `{}`", &links_filename);
+                Ok(())
+            })
             .chain_err(|| format!("Unable to write in `{}`", &links_filename))?;
 
         File::create(config_filename)
-            .and_then(|mut f| f.write_all(self.plot_config(karyotype_filename, links_filename).as_bytes()))
-            .and_then(|_| { println!("Config written to `{}`", &config_filename); Ok(()) })
+            .and_then(|mut f| {
+                f.write_all(
+                    self.plot_config(karyotype_filename, links_filename)
+                        .as_bytes(),
+                )
+            })
+            .and_then(|_| {
+                println!("Config written to `{}`", &config_filename);
+                Ok(())
+            })
             .chain_err(|| format!("Unable to write in `{}`", &config_filename))?;
 
-        println!("\nYou can now edit `{}` and/or run `circos {}` to generate the final plot.", config_filename, config_filename);
+        println!(
+            "\nYou can now edit `{}` and/or run `circos {}` to generate the final plot.",
+            config_filename, config_filename
+        );
         Ok(())
     }
 }
@@ -47,16 +61,19 @@ impl Plotter for CircosPlotter {
 impl CircosPlotter {
     fn plot_karyotype(&self) -> String {
         fn encode_chromosome(chr: &Start) -> String {
-            format!("chr - {id} {label} {start} {end} {color}",
-                    id    = slugify(&chr.name),
-                    label = slugify(&chr.name),
-                    start = 0,
-                    end   = chr.length,
-                    color = "grey"
+            format!(
+                "chr - {id} {label} {start} {end} {color}",
+                id = slugify(&chr.name),
+                label = slugify(&chr.name),
+                start = 0,
+                end = chr.length,
+                color = "grey"
             )
         }
 
-        self.result.strand.map
+        self.result
+            .strand
+            .map
             .iter()
             .map(encode_chromosome)
             .collect::<Vec<String>>()
@@ -171,5 +188,4 @@ format         = %d
                 }),
         )
     }
-
 }

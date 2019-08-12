@@ -421,7 +421,6 @@ fn prepare_data(
             c.1.separated_string()
         );
     });
-    //let chunks_to_process = find_chunks_to_process(&strand);
     strand.push(b'$'); // For the SA construction
 
     Ok((

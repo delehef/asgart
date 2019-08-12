@@ -102,6 +102,10 @@ pub fn search_duplications(
     let mut current_family_id = 1;
     let step_size = settings.probe_size / 2;
 
+    if needle.len() < settings.min_duplication_length {
+        return Vec::new();
+    }
+
     while i < needle.len() - settings.probe_size - step_size {
         i += step_size;
         progress.store(i, Ordering::Relaxed);

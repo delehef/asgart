@@ -2,7 +2,7 @@
 
 `asgart` (A Segmental duplications Gathering and Refinement Tool) is a
 multiplatform (GNU/Linux, macOS, Windows) tool designed to search for
-large duplications amongst one or two DNA strands.
+large similar zones amongst one or more DNA strands.
 
 
 ## Licensing
@@ -237,6 +237,12 @@ plots, flat plots, genome plots and Circos plots.
   - `--filter-features DISTANCE` don't plot duplications that are
     farther away then `DISTANCE` bp from the features in the track.
 
+  - `--colorize TYPE` set the method used to colorize the duplicons. Options are
+    `by-type` (different colors for direct and palindromic duplications); `by-position` (color
+    depends on the duplication position within the input file(s)); `by-fragment` (each
+    duplication is colorized according to its left-most duplicons); `none` (all are drawn in
+    medium grey).
+
 ### Features File Format
 
 Features files can be provided in two format. The first possibility is to use standard
@@ -324,7 +330,7 @@ manually replaced.
 
 # Update Log
 
-_Please note that ASGART following the [semver](https://semver.org/) versioning scheme, an increase in the major version number reflects a non backward-compatible update._
+_Please note that ASGART following the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
 ## v2.0.2
 

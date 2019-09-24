@@ -231,8 +231,16 @@ plots, flat plots, genome plots and Circos plots.
 
   - `--no-complemented` do not plot complemented duplications
 
+  - `--no-intra` do not plot intra-fragment duplications
+
+  - `--no-inter` do not plot inter-fragments duplications
+
   - `--features FILE` add an additional track containing features to
     plot alongside the duplications.
+
+  - `--restrict-fragments A B ...` only plots fragments whose names are given
+
+  - `--exclude-fragments A B ...` do not plot fragments whose names are given
 
   - `--filter-features DISTANCE` don't plot duplications that are
     farther away then `DISTANCE` bp from the features in the track.

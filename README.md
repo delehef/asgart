@@ -340,6 +340,14 @@ manually replaced.
 
 _Please note that ASGART following the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
+## v2.1.0
+
+- `asgart-concat` has been renamed to `asgart-cat`
+- `asgart-cat` now offers filtering options
+- `asgart-cat` now takes advantage of multi-cores CPU when possible
+- `asgart-plot` now offers more filtering options
+- `asgart-plot` now offer several algorithms to set duplicons colors
+
 ## v2.0.2
 
 - Fix a bound-checking bug where the last chunk would not be processed.

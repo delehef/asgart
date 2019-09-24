@@ -253,7 +253,7 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
 }
 
 fn run() -> Result<()> {
-    let yaml = load_yaml!("plot.yaml");
+    let yaml = load_yaml!("asgart-plot.yaml");
     let args = App::from_yaml(yaml)
         .version(crate_version!())
         .author(crate_authors!())

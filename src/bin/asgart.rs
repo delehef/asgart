@@ -6,7 +6,7 @@ extern crate console;
 extern crate num_cpus;
 extern crate bio;
 extern crate asgart;
-extern crate rayon;
+pub extern crate rayon;
 extern crate separator;
 
 use separator::Separatable;

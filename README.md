@@ -346,11 +346,11 @@ manually replaced.
 
 _Please note that ASGART following the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
-## v2.1.1
+## v2.2.1
 
 - Various minor refactoring & bug-fixes
 
-## v2.1.1
+## v2.2.0
 
 - `asgart-concat` has been renamed to `asgart-cat`
 - `asgart-cat` now offers filtering options
@@ -362,6 +362,7 @@ _Please note that ASGART following the [semver](https://semver.org/) versioning 
 - Various bug-fixes
 
 ## v2.1.1
+
 - Fix manifest file
 
 ## v2.1.0

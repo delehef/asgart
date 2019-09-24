@@ -1,7 +1,7 @@
+use errors::*;
 use serde_json;
-use structs::*;
 use std::io::Write;
-use ::errors::*;
+use structs::*;
 
 pub trait Exporter {
     fn save(&self, result: &RunResult, out: &mut dyn Write) -> Result<()>;
@@ -10,22 +10,27 @@ pub trait Exporter {
 pub struct JSONExporter;
 impl Exporter for JSONExporter {
     fn save(&self, result: &RunResult, out: &mut dyn Write) -> Result<()> {
-        let _ = writeln!(out,
-                         "{}",
-                         serde_json::to_string_pretty(&result).chain_err(|| "Unable to serialize result into JSON")?
-        ).chain_err(|| "Unable to write results");
+        let _ = writeln!(
+            out,
+            "{}",
+            serde_json::to_string_pretty(&result)
+                .chain_err(|| "Unable to serialize result into JSON")?
+        )
+        .chain_err(|| "Unable to write results");
 
         Ok(())
     }
 }
 
-
 pub struct GFF2Exporter;
 impl Exporter for GFF2Exporter {
     fn save(&self, result: &RunResult, out: &mut dyn Write) -> Result<()> {
-        writeln!(out, "track name=Duplications\tuseScore=1\tdescription=\"ASGART - {dataset}\"",
-                 dataset = result.strand.name,
-        ).chain_err(|| "Unable to write results")?;
+        writeln!(
+            out,
+            "track name=Duplications\tuseScore=1\tdescription=\"ASGART - {dataset}\"",
+            dataset = result.strand.name,
+        )
+        .chain_err(|| "Unable to write results")?;
         for (i, family) in result.families.iter().enumerate() {
             for (j, sd) in family.iter().enumerate() {
                 writeln!(out,
@@ -49,11 +54,9 @@ impl Exporter for GFF2Exporter {
             writeln!(out).chain_err(|| "Unable to write results")?;
         }
 
-    Ok(())
+        Ok(())
+    }
 }
-}
-
-
 
 pub struct GFF3Exporter;
 impl Exporter for GFF3Exporter {
@@ -64,9 +67,10 @@ impl Exporter for GFF3Exporter {
                 out,
                 "##sequence-region {name} {start} {end}",
                 name = &chr.name,
-                start  = chr.position + 1,
+                start = chr.position + 1,
                 end = chr.position + chr.length + 1,
-            ).chain_err(|| "Unable to write results")?;
+            )
+            .chain_err(|| "Unable to write results")?;
         }
 
         for (i, family) in result.families.iter().enumerate() {
@@ -94,6 +98,6 @@ impl Exporter for GFF3Exporter {
             writeln!(out).chain_err(|| "Unable to write results")?;
         }
 
-Ok(())
+        Ok(())
     }
 }

@@ -9,7 +9,6 @@ use asgart::log::LevelFilter;
 use asgart::exporters::Exporter;
 use asgart::exporters;
 use asgart::logger::Logger;
-use asgart::rayon::prelude::*;
 use asgart::errors::*;
 use asgart::structs::*;
 

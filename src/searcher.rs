@@ -1,10 +1,10 @@
-use std::mem;
 use std::collections::HashMap;
+use std::mem;
 
 use superslice::Ext;
 
-use structs::ALPHABET;
 use automaton::Segment;
+use structs::ALPHABET;
 
 use divsufsort::*;
 
@@ -98,7 +98,10 @@ impl Searcher {
     }
 
     pub fn new(dna: &[u8], sa: &[SAIdx], offset: usize) -> Searcher {
-        let mut s = Searcher { cache: HashMap::new(), offset };
+        let mut s = Searcher {
+            cache: HashMap::new(),
+            offset,
+        };
 
         unsafe {
             for a in &ALPHABET {
@@ -113,15 +116,17 @@ impl Searcher {
                                             let index = Searcher::indexize(&p);
                                             let (start, count): (usize, usize) = {
                                                 let mut out = 0;
-                                                let count = sa_searchb64(dna.as_ptr(),
-                                                                         dna.len() as i64,
-                                                                         p.as_ptr(),
-                                                                         p.len() as i64,
-                                                                         sa.as_ptr(),
-                                                                         sa.len() as i64,
-                                                                         &mut out,
-                                                                         0,
-                                                                         sa.len() as i64);
+                                                let count = sa_searchb64(
+                                                    dna.as_ptr(),
+                                                    dna.len() as i64,
+                                                    p.as_ptr(),
+                                                    p.len() as i64,
+                                                    sa.as_ptr(),
+                                                    sa.len() as i64,
+                                                    &mut out,
+                                                    0,
+                                                    sa.len() as i64,
+                                                );
                                                 (out as usize, count as usize)
                                             };
                                             s.cache.insert(index, (start, start + count));
@@ -138,7 +143,6 @@ impl Searcher {
         s
     }
 
-
     pub fn search(&self, dna: &[u8], sa: &[SAIdx], pattern: &[u8]) -> Vec<Segment> {
         #[inline]
         fn stringcmp(a: &[u8], b: &[u8]) -> std::cmp::Ordering {
@@ -150,27 +154,29 @@ impl Searcher {
         let index = Searcher::indexize(pattern);
 
         if !self.cache.contains_key(&index) {
-            panic!("Unable to find {} ({})",
-                   index,
-                   String::from_utf8(pattern[0..CACHE_LEN].to_vec()).unwrap());
+            panic!(
+                "Unable to find {} ({})",
+                index,
+                String::from_utf8(pattern[0..CACHE_LEN].to_vec()).unwrap()
+            );
         }
 
         let (lstart, rstart) = self.cache[&index];
-        let range = &sa[lstart..rstart]
-            .equal_range_by(|x| if *x as usize + pattern.len() > dna.len() {
+        let range = &sa[lstart..rstart].equal_range_by(|x| {
+            if *x as usize + pattern.len() > dna.len() {
                 std::cmp::Ordering::Less
             } else {
-                stringcmp(&dna[*x as usize .. *x as usize + pattern.len()], &pattern)
-            });
+                stringcmp(&dna[*x as usize..*x as usize + pattern.len()], &pattern)
+            }
+        });
 
-        sa[lstart + range.start .. lstart + range.end]
+        sa[lstart + range.start..lstart + range.end]
             .iter()
-            .map(|start|
-                 Segment {
-                     tag: 0,
-                     start: self.offset + *start as usize,
-                     end: self.offset + *start as usize + pattern.len(),
-                 })
+            .map(|start| Segment {
+                tag: 0,
+                start: self.offset + *start as usize,
+                end: self.offset + *start as usize + pattern.len(),
+            })
             .collect()
     }
 }

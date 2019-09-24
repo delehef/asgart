@@ -12,32 +12,40 @@ pub fn complement_nucleotide(n: u8) -> u8 {
         b'c' => b'g',
         b'n' => b'n',
 
-        _    => b'N'
+        _ => b'N',
     }
 }
 
 pub fn complemented(text: &[u8]) -> Vec<u8> {
-    text.iter().map(|x| complement_nucleotide(*x)).collect::<Vec<u8>>()
+    text.iter()
+        .map(|x| complement_nucleotide(*x))
+        .collect::<Vec<u8>>()
 }
 
 pub fn slugify(x: &str) -> String {
-    x .trim()
+    x.trim()
         .replace(" ", "_")
         .replace(":", "_")
         .replace("|", "_")
 }
 
-pub fn make_out_filename(filename: Option<&str>, default: &str, extension: &str) -> std::path::PathBuf {
+pub fn make_out_filename(
+    filename: Option<&str>,
+    default: &str,
+    extension: &str,
+) -> std::path::PathBuf {
     filename
         .map(|f| {
             let mut path = std::path::PathBuf::from(f);
-            if path.is_dir() { path.push(default); }
+            if path.is_dir() {
+                path.push(default);
+            }
             path.set_extension(extension);
             path
         })
         .unwrap_or_else(|| {
-                 let mut new = std::path::PathBuf::from(default);
-                 new.set_extension(extension);
-                 new
+            let mut new = std::path::PathBuf::from(default);
+            new.set_extension(extension);
+            new
         })
 }

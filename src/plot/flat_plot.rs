@@ -2,8 +2,8 @@ extern crate rand;
 use plot::*;
 use plot::colorizers::Colorizer;
 
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
 use separator::Separatable;
 
 const CHR_WIDTH: f64 = 4.0;
@@ -36,7 +36,10 @@ impl Plotter for FlatPlotter {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_flat().as_bytes()))
-            .and_then(|_| { println!("Flat plot written to `{}`", &out_filename); Ok(()) })
+            .and_then(|_| {
+                println!("Flat plot written to `{}`", &out_filename);
+                Ok(())
+            })
             .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
 
         Ok(())
@@ -115,26 +118,44 @@ impl FlatPlotter {
             for feature in features_family.iter() {
                 for position in &feature.positions {
                     let (start, end) = match *position {
-                        FeaturePosition::Relative { ref chr, start, length} => {
-                            let chr = self.result.strand.find_chr(&chr).unwrap_or_else(|| panic!("Unable to find fragment `{}`", chr));
+                        FeaturePosition::Relative {
+                            ref chr,
+                            start,
+                            length,
+                        } => {
+                            let chr = self
+                                .result
+                                .strand
+                                .find_chr(&chr)
+                                .unwrap_or_else(|| panic!("Unable to find fragment `{}`", chr));
                             (chr.position + start, chr.position + start + length)
                         }
-                        FeaturePosition::Absolute { start, length }         => { (start, start + length) }
+                        FeaturePosition::Absolute { start, length } => (start, start + length),
                     };
 
-                    let color = format!("#{:2X}{:2X}{:2X}", rand::random::<i8>(), rand::random::<i8>(), rand::random::<i8>());
-                    let x0 = start as f64/self.max_length * self.width;
-                    let x1 = end as f64/self.max_length * self.width;
+                    let color = format!(
+                        "#{:2X}{:2X}{:2X}",
+                        rand::random::<i8>(),
+                        rand::random::<i8>(),
+                        rand::random::<i8>()
+                    );
+                    let x0 = start as f64 / self.max_length * self.width;
+                    let x1 = end as f64 / self.max_length * self.width;
                     let x2 = x1 + 2.0;
                     let x3 = x0 - 2.0;
                     let font_size = 8.0;
 
-                    svg += &format!("<polygon points='{},{} {},{} {},{} {},{}' style='fill:{};'/>\n",
-                                    x0, self.height,
-                                    x1, self.height,
-                                    x2, self.height + 10.0,
-                                    x3, self.height + 10.0,
-                                    color
+                    svg += &format!(
+                        "<polygon points='{},{} {},{} {},{} {},{}' style='fill:{};'/>\n",
+                        x0,
+                        self.height,
+                        x1,
+                        self.height,
+                        x2,
+                        self.height + 10.0,
+                        x3,
+                        self.height + 10.0,
+                        color
                     );
 
                     svg += &format!("<text x='{}' y='{}' font-family='sans-serif' font-size='{}' style='writing-mode: tb;'>{}</text>",
@@ -143,7 +164,6 @@ impl FlatPlotter {
                 }
             }
         }
-
 
         for family in &self.result.families {
             for sd in family {
@@ -154,7 +174,8 @@ impl FlatPlotter {
 
                 let color = self.colorizer.color(sd);
 
-                svg += &format!(r#"
+                svg += &format!(
+                    r#"
                             <polygon
                             points='{},{} {},{} {},{} {},{}'
                             fill='{}' fill-opacity='0.5' stroke='{}' stroke-opacity='0.9'
@@ -163,23 +184,23 @@ impl FlatPlotter {
                             <title>{}</title>
                             </polygon>
                             "#,
-                                left1, CHR_WIDTH,
-                                if left2 - left1 < self.settings.min_thickness { left1 + self.settings.min_thickness} else { left2 }, CHR_WIDTH,
-                                if right2 - right1 < self.settings.min_thickness { right1 + self.settings.min_thickness} else { right2 }, self.height - CHR_WIDTH,
-                                right1, self.height - CHR_WIDTH,
-                                color,
-                                color,
-                                &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
-                                         &sd.chr_left,
-                                         sd.chr_left_position.separated_string(),
-                                         (sd.chr_left_position+sd.left_length).separated_string(),
-                                         sd.left_length.separated_string(),
+                    left1, CHR_WIDTH,
+                    if left2 - left1 < self.settings.min_thickness { left1 + self.settings.min_thickness} else { left2 }, CHR_WIDTH,
+                    if right2 - right1 < self.settings.min_thickness { right1 + self.settings.min_thickness} else { right2 }, self.height - CHR_WIDTH,
+                    right1, self.height - CHR_WIDTH,
+                    color,
+                    color,
+                    &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
+                             &sd.chr_left,
+                             sd.chr_left_position.separated_string(),
+                             (sd.chr_left_position+sd.left_length).separated_string(),
+                             sd.left_length.separated_string(),
 
-                                         &sd.chr_right,
-                                         sd.chr_right_position.separated_string(),
-                                         (sd.chr_right_position+sd.right_length).separated_string(),
-                                         sd.right_length.separated_string()
-                                )
+                             &sd.chr_right,
+                             sd.chr_right_position.separated_string(),
+                             (sd.chr_right_position+sd.right_length).separated_string(),
+                             sd.right_length.separated_string()
+                    )
                 );
             }
         }

@@ -238,18 +238,24 @@ plots, flat plots, genome plots and Circos plots.
   - `--features FILE` add an additional track containing features to
     plot alongside the duplications.
 
-  - `--restrict-fragments A B ...` only plots fragments whose names are given
+  - `--restrict-fragments A B ...` only plots fragments whose names
+    are given
 
-  - `--exclude-fragments A B ...` do not plot fragments whose names are given
+  - `--exclude-fragments A B ...` do not plot fragments whose names
+    are given
 
   - `--filter-features DISTANCE` don't plot duplications that are
     farther away then `DISTANCE` bp from the features in the track.
 
-  - `--colorize TYPE` set the method used to colorize the duplicons. Options are
-    `by-type` (different colors for direct and palindromic duplications); `by-position` (color
-    depends on the duplication position within the input file(s)); `by-fragment` (each
-    duplication is colorized according to its left-most duplicons); `none` (all are drawn in
-    medium grey).
+  - `--min-thickness` set the minimal graphical width of a duplicon
+    (default: 0.1)
+
+  - `--colorize TYPE` set the method used to colorize the duplicons.
+    Options are `by-type` (different colors for direct and palindromic
+    duplications); `by-position` (color depends on the duplication
+    position within the input file(s)); `by-fragment` (each
+    duplication is colorized according to its left-most duplicons);
+    `none` (all are drawn in medium grey).
 
 ### Features File Format
 
@@ -340,13 +346,31 @@ manually replaced.
 
 _Please note that ASGART following the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
-## v2.1.0
+## v2.1.1
+
+- Various minor refactoring & bug-fixes
+
+## v2.1.1
 
 - `asgart-concat` has been renamed to `asgart-cat`
 - `asgart-cat` now offers filtering options
 - `asgart-cat` now takes advantage of multi-cores CPU when possible
 - `asgart-plot` now offers more filtering options
+- `asgart-plot` now let the user customizes the minimal graphical
+  width of a duplicon with `--min-thickness`
 - `asgart-plot` now offer several algorithms to set duplicons colors
+- Various bug-fixes
+
+## v2.1.1
+- Fix manifest file
+
+## v2.1.0
+
+- Ensure that multiple fragments in a mFASTA file are processed separately
+- Add a flag to specify the minimum width of a chord
+- Add filtering options
+- Add tooltips to chord graphs
+- Fix output files naming scheme
 
 ## v2.0.2
 

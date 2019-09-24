@@ -46,7 +46,6 @@ impl GenomePlotter {
         // height_factor + 50px top + 100px bot
         let height = height_factor + 50.0 + 100.0;
 
-
         // 1. Draw the chromosomes
         for (i, chr) in self.result.strand.map.iter().enumerate() {
             // Chromosome bar
@@ -82,7 +81,6 @@ impl GenomePlotter {
                             50.0 + factor*chr.length as f64,
                             0.5,
             );
-
 
             // Label
             svg += &format!("<text x='{}' y='{}' style='font-size: 11;'>{}</text>\n",

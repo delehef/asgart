@@ -1,4 +1,6 @@
 extern crate regex;
+extern crate palette;
+extern crate rand;
 
 use ::errors::*;
 use ::structs::*;
@@ -8,6 +10,7 @@ pub mod flat_plot;
 // pub mod eye_plot;
 pub mod genome_plot;
 pub mod circos_plot;
+pub mod colorizers;
 
 pub struct Settings {
     pub out_file: String,
@@ -33,6 +36,6 @@ pub struct Feature {
 }
 
 pub trait Plotter {
-    fn new(settings: Settings, result: RunResult) -> Self;
+    fn new(settings: Settings, result: RunResult, colorizer: Box<dyn colorizers::Colorizer>) -> Self;
     fn plot(&self) -> Result<()>;
 }

@@ -1,9 +1,8 @@
-extern crate rand;
-
 use std::io::prelude::*;
 use std::fs::File;
 use std::f64::consts::PI;
-use ::plot::*;
+use plot::*;
+use plot::colorizers::Colorizer;
 use separator::Separatable;
 
 const R: f64 = 200.0;
@@ -23,16 +22,18 @@ const CY: f64 = TOTAL_WIDTH/2.0;
 pub struct ChordPlotter {
     result: RunResult,
     settings: Settings,
+    colorizer: Box<dyn Colorizer>,
 
     length: f64,
 }
 
 impl Plotter for ChordPlotter {
-    fn new(settings: Settings, result: RunResult) -> ChordPlotter {
+    fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> ChordPlotter {
         let length = result.strand.length as f64;
         ChordPlotter {
             result,
             settings,
+            colorizer,
             length,
         }
     }
@@ -41,7 +42,7 @@ impl Plotter for ChordPlotter {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_chord().as_bytes()))
-            .and_then(|_| { println!("Chord plot written to `{}`", &out_filename); Ok(()) })
+            .and_then(|_| { log::info!("Chord plot written to `{}`", &out_filename); Ok(()) })
             .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
 
         Ok(())
@@ -81,12 +82,16 @@ impl ChordPlotter {
 
 
             // Main chromosome bar
-            svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='5' />\n",
-                            self.arc(R + RING_WIDTH, t1, t2));
+            svg += &format!("<path d='{}' stroke='{}' fill='none' stroke-width='5' />\n",
+                            self.arc(R + RING_WIDTH, t1, t2),
+                            self.colorizer.color_fragment(&chr.name)
+            );
             if self.result.strand.map.len() > 1 {
                 // Secondary chromosome bar
-                svg += &format!("<path d='{}' stroke='#ccc' fill='none' stroke-width='1.5' />\n",
-                                self.arc(R + RING_WIDTH + OUT_CEILING * 0.7, t1, t2));
+                svg += &format!("<path d='{}' stroke='{}' fill='none' stroke-width='1.5' />\n",
+                                self.arc(R + RING_WIDTH + OUT_CEILING * 0.7, t1, t2),
+                                self.colorizer.color_fragment(&chr.name)
+                );
             }
 
             // Chromosomes labels
@@ -112,23 +117,14 @@ impl ChordPlotter {
 
                 let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
                 if width <= self.settings.min_thickness {width = self.settings.min_thickness};
+                let color = self.colorizer.color(&sd);
 
-                let color = if true {
-                    // Direction-based color
-                    if sd.reversed { &self.settings.color2 } else { &self.settings.color1 }
-                } else {
-                    // Position-based color
-                    // let color = Rgb::from_hsv(Hsv {hue: RgbHue::from_radians(t1 + 1.5 * PI), saturation: 0.9, value: 0.9});
-                    // format!("#{:x}{:x}{:x}", (color.red * 255.0) as u8, (color.green * 255.0) as u8, (color.blue * 255.0) as u8);
-                    "#000000"
-                };
-
-
-                let ((x1, y1), (x2, y2), (cx, cy)) = if sd.chr_left != sd.chr_right || self.result.strand.map.len() == 1 {
-                    let (x1, y1) = self.cartesian(t1, R);
-                    let (x2, y2) = self.cartesian(t2, R);
-                    let (cx, cy) = (CX, CY);
-                    ((x1, y1), (x2, y2), (cx, cy))
+                let ((x1, y1), (x2, y2), (cx, cy)) = if sd.chr_left != sd.chr_right
+                    || self.result.strand.map.len() == 1 {
+                        let (x1, y1) = self.cartesian(t1, R);
+                        let (x2, y2) = self.cartesian(t2, R);
+                        let (cx, cy) = (CX, CY);
+                        ((x1, y1), (x2, y2), (cx, cy))
                 } else {
                     let tt = t1 + (t2-t1)/2.0;
                     let rin = R + RING_WIDTH + RING_MARGIN;
@@ -148,13 +144,16 @@ impl ChordPlotter {
                                 </path>
                                 "#,
                                 path, color, width,
-                                &format!("{}bp/{}bp\n{} → {}\n{} → {}",
+                                &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
+                                         &sd.chr_left,
+                                         sd.chr_left_position.separated_string(),
+                                         (sd.chr_left_position+sd.left_length).separated_string(),
                                          sd.left_length.separated_string(),
-                                         sd.right_length.separated_string(),
-                                         sd.global_left_position.separated_string(),
-                                         (sd.global_left_position + sd.left_length).separated_string(),
-                                         sd.global_right_position.separated_string(),
-                                         (sd.global_right_position + sd.right_length).separated_string()
+
+                                         &sd.chr_right,
+                                         sd.chr_right_position.separated_string(),
+                                         (sd.chr_right_position+sd.right_length).separated_string(),
+                                         sd.right_length.separated_string()
                                 )
                 );
             }

@@ -16,6 +16,11 @@ args:
         help: Set output file name
         takes_value: true
         number_of_values: 1
+    - verbose:
+        short: v
+        long: verbose
+        help: Display additional informations
+        multiple: true
 
     - min_length:
         long: min-length
@@ -35,21 +40,35 @@ args:
         long: no-reversed
         short: r
         help: filters out reversed duplications
-    - no-uncomplemented:
-        long: no-uncomplemented
-        short: u
-        help: filters out non complemented duplications
     - no-complemented:
         long: no-complemented
         short: t
         help: filters out complemented duplications
+    - no-uncomplemented:
+        long: no-uncomplemented
+        short: u
+        help: filters out non complemented duplications
+    - no-inter:
+        long: no-inter
+        help: filters out inter-fragments duplications
+    - no-intra:
+        long: no-intra
+        help: filters out intra-fragments duplications
+    - restrict-fragments:
+        long: restrict-fragments
+        help: ignore all fragments that are not in the provided list
+        takes_value: true
+        min_values: 1
+    - exclude-fragments:
+        long: exclude-fragments
+        help: ignore all fragments in the list
+        takes_value: true
+        min_values: 1
 
     - features:
         long: features
         help: additional features tracks to plot
-        multiple: true
         takes_value: true
-        number_of_values: 1
     - filter_families:
         long: filter-families
         help: if present, do not plot duplication families farther away than <filter-families> bp from features in track.
@@ -72,3 +91,11 @@ args:
         takes_value: true
         number_of_values: 1
         default_value: "0.1"
+    - colorize:
+        long: colorize
+        short: C
+        help: How to colorize duplications
+        possible_values: ["by-type", "by-position", "by-fragment", "none"]
+        default_value: "by-type"
+        takes_value: true
+        number_of_values: 1

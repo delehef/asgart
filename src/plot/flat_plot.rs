@@ -1,16 +1,17 @@
 extern crate rand;
-
-use separator::Separatable;
+use plot::*;
+use plot::colorizers::Colorizer;
 
 use std::io::prelude::*;
 use std::fs::File;
-use ::plot::*;
+use separator::Separatable;
 
 const CHR_WIDTH: f64 = 4.0;
 
 pub struct FlatPlotter {
     result: RunResult,
     settings: Settings,
+    colorizer: Box<dyn Colorizer>,
 
     max_length: f64,
     width: f64,
@@ -18,11 +19,12 @@ pub struct FlatPlotter {
 }
 
 impl Plotter for FlatPlotter {
-    fn new(settings: Settings, result: RunResult) -> FlatPlotter {
+    fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> FlatPlotter {
         let length = result.strand.length as f64;
         FlatPlotter {
             result,
             settings,
+            colorizer,
 
             max_length: length,
             width: 1500.0,
@@ -44,58 +46,66 @@ impl Plotter for FlatPlotter {
 impl FlatPlotter {
     fn plot_flat(&self) -> String {
         let mut svg = String::new();
-        //
-        // Chromosomes
-        //
-        svg += &format!(r#"
-                <line
-                x1='{}' y1='{}' x2='{}' y2='{}'
-                stroke='#ccc' stroke-width='{}'/>
-                "#,
-                        0,
-                        CHR_WIDTH/2.0,
-                        self.result.strand.length as f64/self.max_length*self.width,
-                        CHR_WIDTH/2.0,
-                        CHR_WIDTH
-        );
-        svg += &format!(r#"
-                <line
-                x1='{}' y1='{}' x2='{}' y2='{}'
-                stroke='#ccc' stroke-width='{}'/>
-                "#,
-                        0,
-                        self.height-CHR_WIDTH/2.0,
-                        self.result.strand.length as f64/self.max_length*self.width,
-                        self.height-CHR_WIDTH/2.0,
-                        CHR_WIDTH
-        );
 
-        //
-        // Ticks
-        //
-        for i in 0..self.max_length as i64 {
-            if i % 1_000_000 == 0 {
-                let height = if i % 10_000_000 == 0 {
-                    self.height + 15.0
-                } else if i % 5_000_000 == 0 {
-                    self.height + 10.0
-                } else {
-                    self.height + 5.0
-                };
-                let x = i as f64/self.max_length*self.width;
+        let mut offset: i64 = 0;
+        for (j, chr) in self.result.strand.map.iter().enumerate() {
+            //
+            // Chromosomes
+            //
+            // Top bar
+            svg += &format!(
+                "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>",
+                offset as f64/self.max_length*self.width, CHR_WIDTH/2.0,
+                (offset + chr.length as i64) as f64/self.max_length*self.width,
+                CHR_WIDTH/2.0,
+                self.colorizer.color_fragment(&chr.name), CHR_WIDTH
+            );
+            // Bottom bar
+            svg += &format!(
+                "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>",
+                offset as f64/self.max_length*self.width, self.height-CHR_WIDTH/2.0,
+                (offset + chr.length as i64) as f64/self.max_length*self.width,
+                self.height-CHR_WIDTH/2.0,
+                self.colorizer.color_fragment(&chr.name), CHR_WIDTH
+            );
+            // Name
+            svg += &format!(
+                "<text x='{}' y='{}' font-family='Helvetica' font-size='12'>{}</text>",
+                offset as f64/self.max_length*self.width, self.height + 35.0, chr.name
+            );
 
-                svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#898989' stroke-width='1'/>",
-                                x, self.height,
-                                x, height
-                );
+            //
+            // Ticks
+            //
+            for i in 0..chr.length as i64 {
+                if i % 1_000_000 == 0 {
+                    let height = if i % 10_000_000 == 0 {
+                        self.height + 7.0
+                    } else if i % 5_000_000 == 0 {
+                        self.height + 5.0
+                    } else {
+                        self.height + 3.0
+                    };
+                    let x = (i + offset) as f64/self.max_length*self.width;
 
-                if i % 10_000_000 == 0 {
-                    svg += &format!("<text x='{}' y='{}' font-family='Helvetica' font-size='8'>{}Mb</text>",
-                                    x+4.0,
-                                    height,
-                                    i / 1_000_000);
+                    svg += &format!(
+                        "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#898989' stroke-width='1'/>",
+                        x, self.height,
+                        x, height
+                    );
+
+                    if i % 10_000_000 == 0 {
+                        svg += &format!(
+                            "<text x='{}' y='{}' font-family='Helvetica' font-size='8'>{}Mb</text>",
+                            x,
+                            self.height + 15.0 + ((j % 2) as f64)*5.0,
+                            i / 1_000_000
+                        );
+                    }
                 }
             }
+
+            offset += chr.length as i64;
         }
 
         //
@@ -142,7 +152,7 @@ impl FlatPlotter {
                 let right1 = (sd.global_right_position as f64)/self.max_length * self.width;
                 let right2 = (sd.global_right_position as f64 + sd.right_length as f64)/self.max_length * self.width;
 
-                let color = if sd.reversed { &self.settings.color2 } else { &self.settings.color1 };
+                let color = self.colorizer.color(sd);
 
                 svg += &format!(r#"
                             <polygon
@@ -159,13 +169,16 @@ impl FlatPlotter {
                                 right1, self.height - CHR_WIDTH,
                                 color,
                                 color,
-                                &format!("{}bp/{}bp\n{} → {}\n{} → {}",
+                                &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
+                                         &sd.chr_left,
+                                         sd.chr_left_position.separated_string(),
+                                         (sd.chr_left_position+sd.left_length).separated_string(),
                                          sd.left_length.separated_string(),
-                                         sd.right_length.separated_string(),
-                                         sd.global_left_position.separated_string(),
-                                         (sd.global_left_position + sd.left_length).separated_string(),
-                                         sd.global_right_position.separated_string(),
-                                         (sd.global_right_position + sd.right_length).separated_string()
+
+                                         &sd.chr_right,
+                                         sd.chr_right_position.separated_string(),
+                                         (sd.chr_right_position+sd.right_length).separated_string(),
+                                         sd.right_length.separated_string()
                                 )
                 );
             }
@@ -176,8 +189,8 @@ impl FlatPlotter {
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
                  width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
                  xmlns:xlink='http://www.w3.org/1999/xlink'>{}</svg>",
-                self.width,
-                self.height+300.0,
+                self.width+25.0,
+                self.height+40.0,
                 svg)
     }
 }

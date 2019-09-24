@@ -1,13 +1,11 @@
+#[macro_use] extern crate clap;
 extern crate serde_json;
 extern crate colored;
-#[macro_use]
-extern crate clap;
 extern crate asgart;
 extern crate error_chain;
 extern crate regex;
 extern crate rand;
 extern crate bio;
-extern crate log;
 
 use error_chain::*;
 use regex::Regex;
@@ -15,18 +13,21 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
+use std::collections::HashMap;
+
 use clap::{App, AppSettings};
 use colored::Colorize;
+
 use asgart::structs::*;
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
 use asgart::plot::flat_plot::FlatPlotter;
 use asgart::plot::circos_plot::CircosPlotter;
 use asgart::plot::genome_plot::GenomePlotter;
+use asgart::plot::colorizers::*;
 use asgart::errors::*;
-use std::collections::HashMap;
 use asgart::logger::Logger;
-use log::LevelFilter;
+use asgart::log::LevelFilter;
 
 
 fn filter_families_in_features(result: &mut RunResult, features_families: &[Vec<Feature>], threshold: usize) {
@@ -262,6 +263,12 @@ fn run() -> Result<()> {
         .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::UnifiedHelpMessage)
         .get_matches();
+    Logger::init(match args.occurrences_of("verbose") {
+        0 => { LevelFilter::Info }
+        1 => { LevelFilter::Debug }
+        2 => { LevelFilter::Trace }
+        _ => { LevelFilter::Trace }
+    }).chain_err(|| "Unable to initialize logger")?;
 
     let json_files = values_t!(args, "FILE", String).unwrap();
     let mut result = RunResult::from_files(&json_files)?;
@@ -279,18 +286,23 @@ fn run() -> Result<()> {
     let mut features_tracks = features_tracks.unwrap();
 
 
-    if args.is_present("no-direct") {
-        result.families.iter_mut().for_each(|family| family.retain(|sd| sd.reversed))
+    if args.is_present("no-direct") {result.remove_direct();}
+    if args.is_present("no-reversed") {result.remove_reversed();}
+    if args.is_present("no-uncomplemented") {result.remove_uncomplemented();}
+    if args.is_present("no-complemented") {result.remove_complemented();}
+    if args.is_present("no-inter") {result.remove_inter();}
+    if args.is_present("no-intra") {result.remove_intra();}
+    if args.is_present("restrict-fragments") {
+        let to_keep = values_t!(args, "restrict-fragments", String).unwrap();
+        log::info!("Restricting to fragments {:?}", &to_keep);
+        result.restrict_fragments(&to_keep);
     }
-    if args.is_present("no-reversed") {
-        result.families.iter_mut().for_each(|family| family.retain(|sd| !sd.reversed))
+    if args.is_present("exclude-fragments") {
+        let to_remove = &values_t!(args, "exclude-fragments", String).unwrap();
+        log::info!("Ignoring fragments {:?}", &to_remove);
+        result.exclude_fragments(&to_remove);
     }
-    if args.is_present("no-uncomplemented") {
-        result.families.iter_mut().for_each(|family| family.retain(|sd| sd.complemented))
-    }
-    if args.is_present("no-complemented") {
-        result.families.iter_mut().for_each(|family| family.retain(|sd| !sd.complemented))
-    }
+
 
     let min_length   = value_t!(args, "min_length", usize).unwrap();
     result.families.iter_mut().for_each(|family| family.retain(|sd| std::cmp::max(sd.left_length, sd.right_length) >= min_length));
@@ -298,14 +310,23 @@ fn run() -> Result<()> {
     result.families.iter_mut().for_each(|family| family.retain(|sd| sd.identity >= min_identity));
 
     if args.is_present("filter_families") {
-        filter_families_in_features(&mut result, &features_tracks, value_t!(args, "filter_families", usize).unwrap());
+        filter_families_in_features(
+            &mut result, &features_tracks,
+            value_t!(args, "filter_families", usize).unwrap()
+        );
     }
     if args.is_present("filter_duplicons") {
-        filter_duplicons_in_features(&mut result, &features_tracks, value_t!(args, "filter_duplicons", usize).unwrap());
+        filter_duplicons_in_features(
+            &mut result, &features_tracks,
+            value_t!(args, "filter_duplicons", usize).unwrap()
+        );
     }
 
     if args.is_present("filter_features") {
-        filter_features_in_sds(&mut result, &mut features_tracks, value_t!(args, "filter_features", usize).unwrap());
+        filter_features_in_sds(
+            &mut result, &mut features_tracks,
+            value_t!(args, "filter_features", usize).unwrap()
+        );
     }
 
     let settings = Settings {
@@ -320,18 +341,26 @@ fn run() -> Result<()> {
     };
 
 
-    match args.value_of("PLOT-TYPE") {
-        Some("chord")   => ChordPlotter::new(settings, result).plot(),
-        Some("flat")    => FlatPlotter::new(settings, result).plot(),
-        Some("genome")  => GenomePlotter::new(settings, result).plot(),
-        Some("circos")  => CircosPlotter::new(settings, result).plot(),
+    let colorizer = match args.value_of("colorize") {
+        Some("by-type")     => Box::new(TypeColorizer::new((1.0, 0.36, 0.0), (0.0, 0.70, 0.68))) as Box<dyn Colorizer>,
+        Some("by-position") => Box::new(PositionColorizer::new(&result)) as Box<dyn Colorizer>,
+        Some("by-fragment") => Box::new(FragmentColorizer::new(&result)) as Box<dyn Colorizer>,
+        Some("none")        => Box::new(TypeColorizer::new((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))) as Box<dyn Colorizer>,
+        _                   => unreachable!(),
+    } ;
+
+    let r = match args.value_of("PLOT-TYPE") {
+        Some("chord")   => ChordPlotter::new(settings, result, colorizer).plot(),
+        Some("flat")    => FlatPlotter::new(settings, result, colorizer).plot(),
+        Some("genome")  => GenomePlotter::new(settings, result, colorizer).plot(),
+        Some("circos")  => CircosPlotter::new(settings, result, colorizer).plot(),
         // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
         _               => unreachable!(),
-    }
+    };
+    r
 }
 
 fn main() {
-    Logger::init(LevelFilter::Info).expect("Unable to initialize logger");
     if let Err(ref e) = run() {
         println!("{} {}", "Error: ".red(), e);
         for e in e.iter().skip(1) { println!("{}", e); }

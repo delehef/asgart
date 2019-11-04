@@ -1,14 +1,14 @@
 # ASGART: A Large Duplications Finder
 
-`asgart` (A Segmental duplications Gathering and Refinement Tool) is a
-multiplatform (GNU/Linux, macOS, Windows) tool designed to search for
-large similar zones amongst one or more DNA strands.
+[ASGART is a multiplatform (GNU/Linux, macOS, Windows)](https://academic.oup.com/bioinformatics/article/34/16/2708/4948616) tool designed to search for large similar zones amongst one or more DNA sequences.
 
 
 ## Licensing
 
 Asgart is distributed under the GPLv3 license. Please see the LICENSE
 file.
+
+[How to cite?](https://scholar.google.com/scholar?hl=fr&as_sdt=0%2C5&q=asgart&btnG=#d=gs_cit&u=%2Fscholar%3Fq%3Dinfo%3AHI7UCO1nHU8J%3Ascholar.google.com%2F%26output%3Dcite%26scirp%3D2%26hl%3Dfr)
 
 # Why Should I Use ASGART?
 

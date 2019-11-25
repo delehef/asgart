@@ -1,14 +1,14 @@
 # ASGART: A Large Duplications Finder
 
-`asgart` (A Segmental duplications Gathering and Refinement Tool) is a
-multiplatform (GNU/Linux, macOS, Windows) tool designed to search for
-large duplications amongst one or two DNA strands.
+[ASGART is a multiplatform (GNU/Linux, macOS, Windows)](https://academic.oup.com/bioinformatics/article/34/16/2708/4948616) tool designed to search for large similar zones amongst one or more DNA sequences.
 
 
 ## Licensing
 
 Asgart is distributed under the GPLv3 license. Please see the LICENSE
 file.
+
+[How to cite?](https://scholar.google.com/scholar?hl=fr&as_sdt=0%2C5&q=asgart&btnG=#d=gs_cit&u=%2Fscholar%3Fq%3Dinfo%3AHI7UCO1nHU8J%3Ascholar.google.com%2F%26output%3Dcite%26scirp%3D2%26hl%3Dfr)
 
 # Why Should I Use ASGART?
 
@@ -231,11 +231,31 @@ plots, flat plots, genome plots and Circos plots.
 
   - `--no-complemented` do not plot complemented duplications
 
+  - `--no-intra` do not plot intra-fragment duplications
+
+  - `--no-inter` do not plot inter-fragments duplications
+
   - `--features FILE` add an additional track containing features to
     plot alongside the duplications.
 
+  - `--restrict-fragments A B ...` only plots fragments whose names
+    are given
+
+  - `--exclude-fragments A B ...` do not plot fragments whose names
+    are given
+
   - `--filter-features DISTANCE` don't plot duplications that are
     farther away then `DISTANCE` bp from the features in the track.
+
+  - `--min-thickness` set the minimal graphical width of a duplicon
+    (default: 0.1)
+
+  - `--colorize TYPE` set the method used to colorize the duplicons.
+    Options are `by-type` (different colors for direct and palindromic
+    duplications); `by-position` (color depends on the duplication
+    position within the input file(s)); `by-fragment` (each
+    duplication is colorized according to its left-most duplicons);
+    `none` (all are drawn in medium grey).
 
 ### Features File Format
 
@@ -324,9 +344,25 @@ manually replaced.
 
 # Update Log
 
-_Please note that ASGART following the [semver](https://semver.org/) versioning scheme, an increase in the major version number reflects a non backward-compatible update._
+_Please note that ASGART following the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
+
+## v2.2.1
+
+- Various minor refactoring & bug-fixes
+
+## v2.2.0
+
+- `asgart-concat` has been renamed to `asgart-cat`
+- `asgart-cat` now offers filtering options
+- `asgart-cat` now takes advantage of multi-cores CPU when possible
+- `asgart-plot` now offers more filtering options
+- `asgart-plot` now let the user customizes the minimal graphical
+  width of a duplicon with `--min-thickness`
+- `asgart-plot` now offer several algorithms to set duplicons colors
+- Various bug-fixes
 
 ## v2.1.1
+
 - Fix manifest file
 
 ## v2.1.0

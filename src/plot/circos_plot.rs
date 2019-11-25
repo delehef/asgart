@@ -1,5 +1,6 @@
 use plot::*;
-use utils::slugify;
+use plot::colorizers::Colorizer;
+use ::utils::slugify;
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -10,8 +11,11 @@ pub struct CircosPlotter {
 }
 
 impl Plotter for CircosPlotter {
-    fn new(settings: Settings, result: RunResult) -> CircosPlotter {
-        CircosPlotter { result, settings }
+    fn new(settings: Settings, result: RunResult, _x: Box<dyn Colorizer>) -> CircosPlotter {
+        CircosPlotter {
+            result,
+            settings,
+        }
     }
 
     fn plot(&self) -> Result<()> {
@@ -24,7 +28,7 @@ impl Plotter for CircosPlotter {
         File::create(karyotype_filename)
             .and_then(|mut f| f.write_all(self.plot_karyotype().as_bytes()))
             .and_then(|_| {
-                println!("Karyotype written to `{}`", &karyotype_filename);
+                log::info!("Karyotype written to `{}`", &karyotype_filename);
                 Ok(())
             })
             .chain_err(|| format!("Unable to write in `{}`", &karyotype_filename))?;
@@ -32,7 +36,7 @@ impl Plotter for CircosPlotter {
         File::create(links_filename)
             .and_then(|mut f| f.write_all(self.plot_links().as_bytes()))
             .and_then(|_| {
-                println!("Links written to `{}`", &links_filename);
+                log::info!("Links written to `{}`", &links_filename);
                 Ok(())
             })
             .chain_err(|| format!("Unable to write in `{}`", &links_filename))?;
@@ -45,7 +49,7 @@ impl Plotter for CircosPlotter {
                 )
             })
             .and_then(|_| {
-                println!("Config written to `{}`", &config_filename);
+                log::info!("Config written to `{}`", &config_filename);
                 Ok(())
             })
             .chain_err(|| format!("Unable to write in `{}`", &config_filename))?;
@@ -129,7 +133,6 @@ fill             = yes
 stroke_color     = dgrey
 stroke_thickness = 2p
 show_label       = yes
-# see etc/fonts.conf for list of font names
 label_font       = default
 label_radius     = dims(image,radius) - 60p
 label_size       = 30
@@ -183,7 +186,7 @@ format         = %d
                 karyotype_filename = karyotype_filename,
                 links_filename = links_filename,
                 circos_root = std::env::var("CIRCOS_ROOT").unwrap_or_else(|_| {
-                    eprintln!("CIRCOS_ROOT is not set - using a placeholder in config file.\nPlease set the CICRCOS_ROOT environment variable with the root of your Circos install.");
+                    log::error!("CIRCOS_ROOT is not set - using a placeholder in config file.\nPlease set the CICRCOS_ROOT environment variable with the root of your Circos install.");
                     "REPLACE_ME_WITH_CIRCOS_ROOT".to_string()
                 }),
         )

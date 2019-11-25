@@ -149,7 +149,7 @@ impl RunResult {
         self.families.retain(|f| !f.is_empty());
     }
 
-    pub fn max_family_size(&mut self, m: usize) {
+    pub fn max_family_members(&mut self, m: usize) {
         self.families.retain(|family| family.len() <= m)
     }
 

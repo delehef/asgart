@@ -64,6 +64,12 @@ fn run() -> Result<()> {
              .long("no-uncomplemented")
              .help("filters out uncomplemented duplications"))
 
+        .arg(Arg::with_name("max-family-members")
+             .short("M")
+             .long("max-family-members")
+             .help("Skip families with more duplicons than specified")
+             .takes_value(true))
+
         .arg(Arg::with_name("no-inter")
              .long("no-inter")
              .help("filters out inter-fragments duplications"))
@@ -118,6 +124,9 @@ fn run() -> Result<()> {
     if args.is_present("no-complemented") {results.remove_complemented();}
     if args.is_present("no-inter") {results.remove_inter();}
     if args.is_present("no-intra") {results.remove_intra();}
+    if args.is_present("max-family-members") {
+        results.max_family_members(value_t!(args, "max-family-members", usize).unwrap_or(100_000_000));
+    }
     if args.is_present("restrict-fragments") {
         results.restrict_fragments(&values_t!(args, "restrict-fragments", String).unwrap());
     }

@@ -74,34 +74,11 @@ fn run() -> Result<()> {
              .long("locations")
              .help("Where to find the original FASTA files; might take multiple values")
              .takes_value(true))
-        .arg(Arg::with_name("max-family-size")
-             .short("M")
-             .long("max-family-size")
-             .help("Skip families with more duplicons than specified")
-             .takes_value(true))
-        .arg(Arg::with_name("no-direct")
-             .short("d")
-             .long("no-direct")
-             .help("Skip direct families"))
-        .arg(Arg::with_name("no-reversed")
-             .short("r")
-             .long("no-reversed")
-             .help("Skip reversed families"))
-        .arg(Arg::with_name("no-uncomplemented")
-             .short("u")
-             .long("no-uncomplemented")
-             .help("Skip uncomplemented families"))
-        .arg(Arg::with_name("no-complemented")
-             .short("t")
-             .long("no-complemented")
-             .help("Skip complemented families"))
         .get_matches();
 
     let input = value_t!(args, "INPUT", String).unwrap();
     let prefix = value_t!(args, "prefix", String).unwrap_or("".to_string());
     let locations = values_t!(args, "locations", String).unwrap_or(vec!["".to_owned()]);
-    let max_family_len = value_t!(args, "max-family-size", usize).unwrap_or(100_000_000);
-    info!("Max. duplicons count: {}", max_family_len);
 
     info!("Reading {}...", &input);
     let result = asgart::structs::RunResult::from_files(&[input])?;
@@ -131,15 +108,9 @@ fn run() -> Result<()> {
 
     info!("Writing results...");
     for (i, family) in result.families.iter().enumerate() {
-        if family.len() > max_family_len {continue}
-
         let family_id = format!("family-{}", i);
         let out_file_name = format!("{}{}.fa", prefix, family_id);
         for (j, sd) in family.iter().enumerate() {
-            if args.is_present("no-direct") && !sd.reversed {continue};
-            if args.is_present("no-reversed") && sd.reversed {continue};
-            if args.is_present("no-uncomplemented") && !sd.complemented {continue};
-            if args.is_present("no-complemented") && sd.complemented {continue};
 
             let left_seq = strand[sd.global_left_position .. sd.global_left_position + sd.left_length].to_vec();
             let mut right_seq = strand[sd.global_right_position .. sd.global_right_position + sd.right_length].to_vec();

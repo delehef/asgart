@@ -625,7 +625,7 @@ fn run() -> Result<()> {
         .map(|n| {
             path::Path::new(&n)
                 .file_stem()
-                .unwrap()
+                .expect(&format!("Unable to parse {}", n))
                 .to_str()
                 .unwrap()
                 .to_string()

@@ -110,37 +110,47 @@ impl RunResult {
     pub fn remove_direct(&mut self) {
         self.families
             .iter_mut()
-            .for_each(|family| family.retain(|sd| sd.reversed))
+            .for_each(|family| family.retain(|sd| sd.reversed));
+        self.families.retain(|f| !f.is_empty());
     }
 
     pub fn remove_reversed(&mut self) {
         self.families
             .iter_mut()
-            .for_each(|family| family.retain(|sd| !sd.reversed))
+            .for_each(|family| family.retain(|sd| !sd.reversed));
+        self.families.retain(|f| !f.is_empty());
     }
 
     pub fn remove_uncomplemented(&mut self) {
         self.families
             .iter_mut()
-            .for_each(|family| family.retain(|sd| sd.complemented))
+            .for_each(|family| family.retain(|sd| sd.complemented));
+        self.families.retain(|f| !f.is_empty());
     }
 
     pub fn remove_complemented(&mut self) {
         self.families
             .iter_mut()
-            .for_each(|family| family.retain(|sd| !sd.complemented))
+            .for_each(|family| family.retain(|sd| !sd.complemented));
+        self.families.retain(|f| !f.is_empty());
     }
 
     pub fn remove_inter(&mut self) {
         self.families
             .iter_mut()
-            .for_each(|family| family.retain(|sd| sd.chr_left == sd.chr_right))
+            .for_each(|family| family.retain(|sd| sd.chr_left == sd.chr_right));
+        self.families.retain(|f| !f.is_empty());
     }
 
     pub fn remove_intra(&mut self) {
         self.families
             .iter_mut()
-            .for_each(|family| family.retain(|sd| sd.chr_left != sd.chr_right))
+            .for_each(|family| family.retain(|sd| sd.chr_left != sd.chr_right));
+        self.families.retain(|f| !f.is_empty());
+    }
+
+    pub fn max_family_size(&mut self, m: usize) {
+        self.families.retain(|family| family.len() <= m)
     }
 
     pub fn restrict_fragments<T: AsRef<str>>(&mut self, to_keep: &[T]) {

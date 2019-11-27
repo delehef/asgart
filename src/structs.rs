@@ -1,6 +1,7 @@
 use errors::*;
 use std::fs::File;
 use std::io::Read;
+use std::collections::HashMap;
 use ::rayon::prelude::*;
 
 
@@ -206,49 +207,52 @@ impl RunResult {
         let avg = lengths.iter().sum::<f64>()/n;
         let std = (1.0/(n - 1.0) * lengths.iter().map(|x| (x - avg).powf(2.0)).sum::<f64>()).sqrt();
 
-        let to_remove = self.strand.map
+        let mut to_flatten = self.strand.map
             .iter().cloned()
             .filter(|c| c.length as f64 <= avg + std)
-            .map(|c| c.name.clone())
-            .collect::<Vec<String>>();
+            .clone()
+            .collect::<Vec<_>>();
+        let to_flatten_len = to_flatten.iter().map(|c| c.length).sum::<usize>();
+        let mut to_keep = self.strand.map.iter()
+            .cloned()
+            .filter(|c| !to_flatten.iter().any(|r| c.name == r.name))
+            .collect::<Vec<_>>();
+        let to_keep_len = to_keep.iter().map(|c| c.length)
+            .sum::<usize>();
+
+        let mut i = 0;
+        for c in to_keep.iter_mut() {
+            c.position = i;
+            i += c.length;
+        }
+        for c in to_flatten.iter_mut() {
+            c.position = i;
+            i += c.length;
+        }
+
+        let to_flatten_positions = to_flatten.iter()
+            .map(|c| (c.name.clone(), c.position))
+            .collect::<HashMap<_, _>>();
+
+        self.strand.map = to_keep;
+        self.strand.map.push(Start{name: COLLAPSED_NAME.to_string(), position: to_keep_len+1, length: to_flatten_len});
 
         self.families
             .par_iter_mut()
             .for_each(|family|
                       family.iter_mut()
                       .for_each(|mut sd| {
-                          let left_match = to_remove.iter().any(|n| *n == sd.chr_left);
-                          let right_match = to_remove.iter().any(|n| *n == sd.chr_right);
+                          let left_match = to_flatten.iter().any(|n| *n.name == sd.chr_left);
+                          let right_match = to_flatten.iter().any(|n| *n.name == sd.chr_right);
                           if left_match {
                               sd.chr_left = COLLAPSED_NAME.to_string();
-                              sd.global_left_position = 0;
-                              sd.chr_left_position = 0;
-                              sd.left_length = 0;
+                              sd.chr_left_position = to_flatten_positions[&sd.chr_left];
                           }
                           if right_match {
                               sd.chr_right = COLLAPSED_NAME.to_string();
-                              sd.global_right_position = 0;
-                              sd.chr_right_position = 0;
-                              sd.right_length = 0;
-                          }}));
-
-        self.strand.map.retain(|c| !to_remove.iter().any(|n| *n == c.name));
-        self.strand.map.sort_by(|a, b| a.name.cmp(&b.name));
-        self.strand.map.push(Start{name: COLLAPSED_NAME.to_string(), position: 0, length: 0});
-        self.strand.length = self.strand.map.iter().map(|c| c.length).sum::<usize>();
-        let mut i = 0;
-        for c in self.strand.map.iter_mut() {
-            c.position = i;
-            i += c.length;
-        }
-        for f in self.families.iter_mut() {
-            for sd in f.iter_mut() {
-                sd.global_left_position = self.strand.find_chr(&sd.chr_left).unwrap().position
-                    + sd.chr_left_position;
-                sd.global_right_position = self.strand.find_chr(&sd.chr_right).unwrap().position
-                    + sd.chr_right_position;
-            }
-        }
+                              sd.chr_right_position = to_flatten_positions[&sd.chr_right];
+                          }
+                      }));
     }
 }
 

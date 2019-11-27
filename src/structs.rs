@@ -245,12 +245,12 @@ impl RunResult {
                           let left_match = to_flatten.iter().any(|n| *n.name == sd.chr_left);
                           let right_match = to_flatten.iter().any(|n| *n.name == sd.chr_right);
                           if left_match {
+                              sd.chr_left_position = to_flatten_positions[&sd.chr_left] + sd.chr_left_position;
                               sd.chr_left = COLLAPSED_NAME.to_string();
-                              sd.chr_left_position = to_flatten_positions[&sd.chr_left];
                           }
                           if right_match {
+                              sd.chr_right_position = to_flatten_positions[&sd.chr_right] + sd.chr_right_position;
                               sd.chr_right = COLLAPSED_NAME.to_string();
-                              sd.chr_right_position = to_flatten_positions[&sd.chr_right];
                           }
                       }));
     }

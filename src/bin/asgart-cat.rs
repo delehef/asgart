@@ -137,7 +137,7 @@ fn run() -> Result<()> {
         let before = results.strand.map.len();
         results.flatten();
         let after = results.strand.map.len();
-        log::info!("{} fragments collapsed", (before - after).separated_string());
+        // log::info!("{} fragments collapsed", (before - after).separated_string());
     }
 
     exporter.save(&results, &mut out)?;

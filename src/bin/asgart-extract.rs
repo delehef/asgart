@@ -4,15 +4,14 @@ extern crate log;
 extern crate clap;
 extern crate asgart;
 
-use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 
-use asgart::log::LevelFilter;
-use asgart::logger::Logger;
 use clap::{App, AppSettings, Arg};
 
+use asgart::log::LevelFilter;
+use asgart::logger::Logger;
 use asgart::errors::*;
 use asgart::utils;
 

@@ -139,7 +139,9 @@ impl RunResult {
     pub fn remove_inter(&mut self) {
         self.families
             .iter_mut()
-            .for_each(|family| family.retain(|sd| sd.chr_left == sd.chr_right));
+            .for_each(|family| family.retain(|sd| sd.chr_left == sd.chr_right
+                                             || sd.chr_left == COLLAPSED_NAME
+                                             || sd.chr_right == COLLAPSED_NAME));
         self.families.retain(|f| !f.is_empty());
     }
 
@@ -209,7 +211,7 @@ impl RunResult {
 
         let mut to_flatten = self.strand.map
             .iter().cloned()
-            .filter(|c| c.length as f64 <= avg + std)
+            .filter(|c| c.length as f64 <= avg + std && c.name.len() > 2) // Try not to remove normal but small scaffolds/chromosomes
             .clone()
             .collect::<Vec<_>>();
         let to_flatten_len = to_flatten.iter().map(|c| c.length).sum::<usize>();

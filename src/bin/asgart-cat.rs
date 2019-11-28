@@ -4,7 +4,6 @@ extern crate asgart;
 use std::fs::File;
 use clap::{App, Arg, AppSettings};
 
-use asgart::separator::Separatable;
 use asgart::log::LevelFilter;
 use asgart::exporters::Exporter;
 use asgart::exporters;
@@ -118,6 +117,7 @@ fn run() -> Result<()> {
 
     let mut results = RunResult::from_files(&inputs)?;
 
+    if args.is_present("flatten") {results.flatten();}
     if args.is_present("no-direct") {results.remove_direct();}
     if args.is_present("no-reversed") {results.remove_reversed();}
     if args.is_present("no-uncomplemented") {results.remove_uncomplemented();}
@@ -132,12 +132,6 @@ fn run() -> Result<()> {
     }
     if args.is_present("exclude-fragments") {
         results.exclude_fragments(&values_t!(args, "exclude-fragments", String).unwrap());
-    }
-    if args.is_present("flatten") {
-        let before = results.strand.map.len();
-        results.flatten();
-        let after = results.strand.map.len();
-        // log::info!("{} fragments collapsed", (before - after).separated_string());
     }
 
     exporter.save(&results, &mut out)?;

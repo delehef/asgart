@@ -7,6 +7,7 @@ extern crate asgart;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
+use std::process;
 
 use clap::{App, AppSettings, Arg};
 
@@ -95,7 +96,7 @@ fn run() -> Result<()> {
             Err(format!("Unable to find {} in the locations provided ({})", name, locations.join(", ")))
         })
         .collect::<std::result::Result<Vec<_>, _>>()
-        .unwrap_or_else(|msg| {error!("{}", msg); Vec::new()});
+        .unwrap_or_else(|msg| {error!("{}", msg); process::exit(1); Vec::new()});
 
     let mut strand = Vec::new();
     for strand_file in &strands_files {

@@ -109,15 +109,16 @@ fn run() -> Result<()> {
     for (i, family) in result.families.iter().enumerate() {
         let family_id = format!("family-{}", i);
         let out_file_name = format!("{}{}.fa", prefix, family_id);
+
         for (j, sd) in family.iter().enumerate() {
+            let mut file = OpenOptions::new().append(true).create(true).open(&out_file_name)
+                .chain_err(|| format!("Unable to write in `{}`", out_file_name))?;
 
             let left_seq = strand[sd.global_left_position .. sd.global_left_position + sd.left_length].to_vec();
             let mut right_seq = strand[sd.global_right_position .. sd.global_right_position + sd.right_length].to_vec();
             if sd.reversed {right_seq.reverse();}
             if sd.complemented {right_seq = utils::complemented(&right_seq);}
 
-            let mut file = OpenOptions::new().append(true).create(true).open(&out_file_name)
-                .chain_err(|| format!("Unable to write in `{}`", out_file_name))?;
             file.write_all(format!(">{} {}-{} duplicon-{}-1\n",
                                    sd.chr_left, sd.chr_left_position, sd.chr_left_position+sd.left_length , j).as_bytes())
                 .chain_err(|| "Unable to write in file.")?;

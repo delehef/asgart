@@ -76,6 +76,10 @@ fn run() -> Result<()> {
              .long("no-intra")
              .help("filters out intra-fragments duplications"))
 
+        .arg(Arg::with_name("min-length")
+             .long("min-length")
+             .help("filters duplicons shorter than the given argument"))
+
         .arg(Arg::with_name("flatten")
              .short("F")
              .long("flatten")
@@ -124,6 +128,13 @@ fn run() -> Result<()> {
     if args.is_present("no-complemented") {results.remove_complemented();}
     if args.is_present("no-inter") {results.remove_inter();}
     if args.is_present("no-intra") {results.remove_intra();}
+    if args.is_present("min-length") {
+        let min_length   = value_t!(args, "min_length", usize).unwrap();
+        results
+            .families
+            .iter_mut()
+            .for_each(|family| family.retain(|sd| std::cmp::max(sd.left_length, sd.right_length) >= min_length));
+    }
     if args.is_present("max-family-members") {
         results.max_family_members(value_t!(args, "max-family-members", usize).unwrap_or(100_000_000));
     }

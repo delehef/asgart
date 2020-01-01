@@ -1,6 +1,6 @@
 # ASGART: A Large Duplications Finder
 
-[ASGART is a multiplatform (GNU/Linux, macOS, Windows)](https://academic.oup.com/bioinformatics/article/34/16/2708/4948616) tool designed to search for large similar zones amongst one or more DNA sequences.
+[ASGART is a multiplatform (GNU/Linux, macOS, Windows)](https://academic.oup.com/bioinformatics/article/34/16/2708/4948616), efficient, tool designed to search for (> 1000bp) duplications amongst one or more DNA sequences, up to the genome scale.
 
 
 ## Licensing

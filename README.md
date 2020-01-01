@@ -16,8 +16,7 @@ file.
 
 You should use ASGART if
 
-- you want to find segmental duplications, either direct, reversed
-  and/or complement in a DNA sequence;
+- you want to find segmental duplications in one or more DNA sequences;
 
 - you want to find highly similar parts between sequences up to the
   genome scale;
@@ -41,7 +40,7 @@ Binaries for macOS are available [here](https://github.com/delehef/asgart/releas
 To build ASGART from sources, you need CMake, a C compiler and the
 [Rust compiler](https://www.rust-lang.org/en-US/install.html).
 
-Once these requirement are installed, clone the repository
+Once these requirement are satisfied, clone the repository and its submodule
 
 ```
 git clone https://github.com/delehef/asgart.git
@@ -50,13 +49,13 @@ git submodule init
 git submodule update
 ```
 
-You can then build ASGART by running the Rust building tool
+You can then build ASGART by running `cargo`, the Rust build tool
 
 ```
 cargo build --release
 ```
 
-Once the build is finished, you will find the binary in `target/release/`.
+Once the build is finished, you will find the binaries in `target/release/asgart-*`.
 
 
 # Usage
@@ -74,7 +73,7 @@ write them in a JSON file in the folder where it was launched. ASGART
 will probe using 20-mers, and guarantee that no duplication will
 include gaps longer than 100bp in their arm-to-arm pairwise alignment.
 
-If you wish to look for reversed-complemented duplications, use the
+If you wish to search reversed-complemented duplications, use the
 `-R` and `-C` options, that can be combined in `-RC`. And the `-v`
 option will give you more informations as the progress goes on.
 
@@ -84,16 +83,17 @@ asgart -RCv seq.fasta
 
 ## Input
 
-As input, ASGART takes one or more FASTA files containing the
+As input(s), ASGART takes one or more FASTA files containing the
 sequences within which to look for duplications. They can be either in
-the FASTA or multiFASTA format.
+the FASTA (one sequence per file) or multiFASTA (multiple sequencesper
+file) format.
 
 ## Output
 
 ### JSON
 
 By default, ASGART will write its result in a JSON file in the folder
-where it was launched, following the following structure:
+where it was launched, using the following structure:
 
 ```
 {
@@ -119,16 +119,16 @@ where it was launched, following the following structure:
         },
 
         "families": [            # all families
-                        [        # a single family
-                            {    # a single duplicon in a family
-                                    "global_left_position":  position of the left arm in the first strand,
-                                    "global_right_position": position of the right arm in the second strand,
+                        [        # one of these families
+                            {    # a duplicon in this family
+                                    "global_left_position":  position of the left arm in the input sequences,
+                                    "global_right_position": position of the right arm in the input sequences,
 
-                                    "chr_left":              chromosomome in the first strand containing the left arm,
-                                    "chr_right":             chromosomome in the second strand containing the right arm,
+                                    "chr_left":              fragment in the input containing the left arm,
+                                    "chr_right":             fragment in the input containing the right arm,
 
-                                    "chr_left_position":     position of the left arm relative to its chromosome,
-                                    "chr_right_position":    position of the right arm relative to its chromosome,
+                                    "chr_left_position":     position of the left arm relative to the start of its fragment,
+                                    "chr_right_position":    position of the right arm relative to the start of its fragment,
 
                                     "left_length":           length of the left arm of the duplicon (bp),
                                     "right_length":          length of the right arm of the duplicon (bp),
@@ -149,22 +149,24 @@ ASGART can also write its results in GFF2 or GFF3 files by using the
 `--format` option. For instance, use `--format gff3` to save the
 results in a GFF3 file.
 
+You can also use the `asgart-cat` companion tool to convert JSON results
+to GFF2 or GFF3 format.
+
 ## Options
 
 ### Functional
 
   - `--probe-size`/`-k` set the probing k-mers length (default: 20)
 
-  - `--gap-size`/`-g` set the maximal gap size in a duplicon (default: 100)
+  - `--gap-size`/`-g` set the maximal gap length in a duplicon (default: 100)
 
   - `--min-length SIZE` specifies the minimal length (in bp) over
     which a duplication is kept in the final result and not discarded
     (default: 1000)
 
-  - `--reverse`/`-R` look for duplication which second arm is reversed
+  - `--reverse`/`-R` look for reverse duplications
 
-  - `--complement`/`-C` look for duplication which second arm is
-    complemented
+  - `--complement`/`-C` look for complemented duplications
 
   - `--skip-masked`/`-S` skip soft-masked zones, _i.e._ lowercased
     parts of the input files (default: no)
@@ -178,19 +180,18 @@ results in a GFF3 file.
 
   - `-v`, `-vv`, `-vvv` increase verbosity level
 
-  - `--out FILENAME` specifies the file in which the results will be
-    written
+  - `--out FILENAME` specifies the file in which to write the results
 
-  - `--prefix NAME` defines a prefix to prepend to the standard out
+  - `--prefix NAME` defines a prefix to prepend to the standard output
     file name
 
   - `--format OUT_FORMAT` sets the output format. Default is `json`,
-    it can also be set to gff2 or gff3
+    it can also be set to `gff2` or `gff3`
 
   - `--threads COUNT` set the numbers of thread to use. Defaults to
     the number of cores abailable on the CPU
 
-  - `--trim START END` run ASGART only on the specified area of the
+  - `--trim START END` run ASGART only on the specified area (in bp) of the
     dataset
 
 # Plotting
@@ -259,18 +260,18 @@ plots, flat plots, genome plots and Circos plots.
 
 ### Features File Format
 
-Features files can be provided in two format. The first possibility is to use standard
-GFF3 files, the other possibility being a custom, denser format described below.
+Features files can be provided in two formats, either in GFF3 files, or using a custom,
+denser format described below.
 
 The custom format features file format is made of a list of lines, one per feature, with
 three semi-colons-separated values for each:
 
 1. The label of the feature;
-2. the start of the feaure. It may either be a single integer
+2. the start of the feature. It may either be a single integer
    representing its absolute coordinate, or be of the form
    `NAME+OFFSET`, defining a start position at `OFFSET` from the start
    of `NAME` chromosomes (from the input FASTA file);
-3. The length of the feaure in base pairs.
+3. The length of the feature in base pairs.
 
 Comment lines starts with a `#`.
 
@@ -287,9 +288,8 @@ Foo;123456789;1250
 ## Chord Plots
 
 A chord plot represents duplications amongst a DNA fragment as arcs
-linking point on a circle figuring a fragment bend over itself. Their
-width is directly proportional to the length of the duplications they
-represent.
+linking point on a circle figuring a fragment. Their width is directly
+proportional to the length of the duplicons they represent.
 
 ### Example
 
@@ -299,10 +299,10 @@ represent.
 
 ## Flat Plot
 
-Flat plots are made of two superposed horizontal lines, representing
-the two fragments analyzed by ASGART, with lines linking left and
-right parts of the duplications found, their width proportional to the
-length of the duplication.
+Flat plots are made of two superposed horizontal bars, representing
+the  concatenated fragments analyzed by ASGART, with lines linking left and
+right parts of the duplicons found, their width being proportional to the
+length of the duplicaton.
 
 ### Example
 
@@ -328,11 +328,11 @@ the interchromosomal direct and palindromic duplications families.
 ASGART can generate files that can be used as in input for the
 [Circos](http://circos.ca/) plotting tool. Although the most important
 files is arguably the `<out>.links` file (containing the duplicons to
-plot), ASGART also generates an `<out>.conf` file and an
-`<out>.karyotype` file, as to ensure a minimal working example to be
+plot), ASGART also generates minimal `<out>.conf` and
+`<out>.karyotype` files, as to ensure a minimal working example to be
 later expanded and/or customized according to your needs.
 
-ASGART refers to files found in the Circos distribution. Thus, the
+`asgart-plot` needs to refer to files found in the Circos distribution. Thus, the
 `CIRCOS_ROOT` environment variable should be set to point at the root
 of the Circos distribution. Otherwise, ASGART will generate an
 `<out>.conf` file containing `{circos_root}` placeholders to be
@@ -344,7 +344,7 @@ manually replaced.
 
 # Update Log
 
-_Please note that ASGART following the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
+_Please note that ASGART follows the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
 ## v2.2.1
 
@@ -389,12 +389,12 @@ _Please note that ASGART following the [semver](https://semver.org/) versioning 
   user **SHOULD PROVIDE EACH FILE ONLY ONCE**. Moreover, it is not
   necessarily to concatenate multiple input files in a single one
   anymore. This **breaking change** should give more flexibility to
-  the users and potentially simplifies pipelines.
-- The ASGART automaton has been rewritten from scratch to take into
+  the users and potentially simplifies pipeline design.
+- The ASGART automaton has been redesigned from scratch to take into
   account interlaced SDs at nearly no cost in computation time. For
   this reason, interlaced duplication families research is now the
   only and default mode.
-- ASGART will now remove large expanses of nucleotides to ignore (Ns
+- ASGART will now ignore large expanses of nucleotides to ignore (Ns
   and/or masked ones) in processed strands, thus slightly improving
   performances.
 - Taking advantage of these new features, the parallelization system
@@ -412,7 +412,7 @@ _Please note that ASGART following the [semver](https://semver.org/) versioning 
   1.x. Such an arrangement sacrifice some CPU power in exchange of a
   strongly reduced memory consumption when processing trimmed inputs.
   It can be used to process large sequences by trimming them in
-  several consecutive subsequences, then mergin the results later on.
+  several consecutive subsequences, then merging the results later on.
 - The JSON and GFF3 output formats have been modified to reflect the
   duplication families clustering. *Please note that they are thus
   incompatible with previous versions JSON files.*
@@ -441,7 +441,7 @@ _Please note that ASGART following the [semver](https://semver.org/) versioning 
 - ASGART can optionally compute the Levenshtein distance between
   duplicons
 - User can set the chunking size for parallel processing (defaults to
-  1,000,000)
+  1,000,000bp)
 - Improve output files naming
 - Fix a bug in post-processing
 - Fix several minor bugs in logging system

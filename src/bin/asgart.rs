@@ -573,7 +573,6 @@ fn run() -> Result<()> {
 
         prefix: String,
         out: String,
-        out_format: String,
         compute_score: bool,
         threads_count: usize,
     }
@@ -606,7 +605,6 @@ fn run() -> Result<()> {
 
         prefix: args.value_of("prefix").unwrap().to_owned(),
         out: args.value_of("out").unwrap_or("").to_owned(),
-        out_format: args.value_of("out_format").unwrap().to_owned(),
         compute_score: args.is_present("compute_score"),
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
     };
@@ -681,7 +679,7 @@ fn run() -> Result<()> {
 
     let out_radix = if settings.out.is_empty() {
         format!(
-            "{}{}{}{}{}{}.{}",
+            "{}{}{}{}{}{}.json",
             &settings.prefix,
             radix,
             if settings.reverse || settings.complement {
@@ -696,31 +694,21 @@ fn run() -> Result<()> {
             } else {
                 "".into()
             }),
-            &settings.out_format
         )
     } else {
         settings.out
     };
 
-    let out_filename = asgart::utils::make_out_filename(Some(&out_radix), "", &settings.out_format)
+    let out_filename = asgart::utils::make_out_filename(Some(&out_radix), "", "json")
         .to_str()
         .unwrap()
         .to_owned();
     let mut out = std::fs::File::create(&out_filename)
         .chain_err(|| format!("Unable to create `{}`", out_filename))?;
-    let exporter = match &settings.out_format[..] {
-        "json" => Box::new(exporters::JSONExporter) as Box<dyn Exporter>,
-        "gff2" => Box::new(exporters::GFF2Exporter) as Box<dyn Exporter>,
-        "gff3" => Box::new(exporters::GFF3Exporter) as Box<dyn Exporter>,
-        format @ _ => {
-            warn!("Unknown output format `{}`: using json instead", format);
-            Box::new(exporters::JSONExporter) as Box<dyn Exporter>
-        }
-    };
+    let exporter = Box::new(exporters::JSONExporter) as Box<dyn Exporter>;
     exporter.save(&result, &mut out)?;
-    info!(
-        "{}",
-        style(format!("Result written to {}", &out_filename)).bold()
+    info!("{}",
+          style(format!("Result written to {}", &out_filename)).bold()
     );
     Ok(())
 }

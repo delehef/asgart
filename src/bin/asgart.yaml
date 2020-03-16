@@ -62,16 +62,6 @@ args:
         help: set the output file name
         takes_value: true
         number_of_values: 1
-    - out_format:
-        long: format
-        help: set the output file format
-        takes_value: true
-        number_of_values: 1
-        default_value: "json"
-        possible_values:
-          - json
-          - gff2
-          - gff3
     - compute_score:
         long: compute-score
         help: |

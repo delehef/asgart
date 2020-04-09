@@ -330,7 +330,7 @@ manually replaced.
 
 `asgart-plot human_Y.json human_Y_RC.json circos --min-length 10000`
 
-# Update Log
+# Change Log
 
 _Please note that ASGART follows the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 

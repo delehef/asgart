@@ -24,14 +24,14 @@ fn main() {
 }
 
 fn run() -> Result<()> {
-    let args = App::new("ASGART concatenate")
+    let args = App::new("ASGART splice")
         .setting(AppSettings::ColoredHelp)
         .setting(AppSettings::ColorAuto)
         .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::UnifiedHelpMessage)
         .version(crate_version!())
         .author(crate_authors!())
-        .about("asgart-cat convert multiple input JSON files into a single one. Its main intended use is to merge together multiple files resulting from complementary runs on the same dataset, e.g. direct and palindromic duplications searches.\nIt also features some other functions to collapse, convert and filter data.")
+        .about("asgart-splice combines multiple ASGART JSON files into a single output file in the desired format.\nIt also features some other functions to collapse, convert and filter data.")
         .arg(Arg::with_name("INPUT")
              .help("Set the input file(s) to use")
              .required(true)

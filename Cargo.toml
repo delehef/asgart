@@ -19,7 +19,7 @@ palette      = "0.4"
 rand         = "0.6"
 rayon        = "1.*"
 regex        = "1.*"
-separator    = { git = "https://github.com/delehef/rust-separator.git" }
+thousands    = "0.2"
 serde        = "1.*"
 serde_derive = "1.*"
 serde_json   = "1.*"

@@ -1,9 +1,10 @@
 extern crate rand;
 
-use separator::Separatable;
 use std::f64::consts::PI;
 use std::fs::File;
 use std::io::prelude::*;
+
+use thousands::Separable;
 
 use plot::*;
 use plot::colorizers::Colorizer;
@@ -160,14 +161,14 @@ impl ChordPlotter {
                                 path, color, width,
                                 &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
                                          &sd.chr_left,
-                                         sd.chr_left_position.separated_string(),
-                                         (sd.chr_left_position+sd.left_length).separated_string(),
-                                         sd.left_length.separated_string(),
+                                         sd.chr_left_position.separate_with_spaces(),
+                                         (sd.chr_left_position+sd.left_length).separate_with_spaces(),
+                                         sd.left_length.separate_with_spaces(),
 
                                          &sd.chr_right,
-                                         sd.chr_right_position.separated_string(),
-                                         (sd.chr_right_position+sd.right_length).separated_string(),
-                                         sd.right_length.separated_string()
+                                         sd.chr_right_position.separate_with_spaces(),
+                                         (sd.chr_right_position+sd.right_length).separate_with_spaces(),
+                                         sd.right_length.separate_with_spaces()
                                 )
                 );
             }

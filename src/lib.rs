@@ -9,11 +9,11 @@ pub extern crate num_cpus;
 pub extern crate rand;
 pub extern crate rayon;
 pub extern crate regex;
-pub extern crate separator;
 pub extern crate serde;
 pub extern crate serde_json;
 pub extern crate superslice;
 pub extern crate threadpool;
+pub extern crate thousands;
 #[macro_use]
 pub extern crate error_chain;
 

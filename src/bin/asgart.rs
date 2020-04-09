@@ -9,7 +9,7 @@ use clap::{App, AppSettings};
 use asgart::console::style;
 use asgart::indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use asgart::rayon::prelude::*;
-use asgart::separator::Separatable;
+use asgart::thousands::Separable;
 
 use std::cmp;
 use std::path;
@@ -397,28 +397,28 @@ fn prepare_data(
         debug!(
             "{:>20}: {:>15}  --> {:>15}    {:>15} bp",
             s.name,
-            s.position.separated_string(),
-            (s.position + s.length).separated_string(),
-            s.length.separated_string()
+            s.position.separate_with_spaces(),
+            (s.position + s.length).separate_with_spaces(),
+            s.length.separate_with_spaces()
         )
     });
 
     let chunks_length = chunks_to_process.iter().fold(0, |ax, c| ax + c.1);
     info!(
         "Processing {} chunks totalling {}bp, skipping {}bp out of {} ({}%)",
-        chunks_to_process.len().separated_string(),
-        chunks_length.separated_string(),
-        (strand.len() - chunks_length).separated_string(),
-        strand.len().separated_string(),
+        chunks_to_process.len().separate_with_spaces(),
+        chunks_length.separate_with_spaces(),
+        (strand.len() - chunks_length).separate_with_spaces(),
+        strand.len().separate_with_spaces(),
         (((strand.len() as f64 - (chunks_length as f64)) * 100.0 / strand.len() as f64) as i64)
-            .separated_string()
+            .separate_with_spaces()
     );
     chunks_to_process.iter().for_each(|c| {
         trace!(
             "{:>12} -> {:>12}   {:>11} bp",
-            c.0.separated_string(),
-            (c.0 + c.1).separated_string(),
-            c.1.separated_string()
+            c.0.separate_with_spaces(),
+            (c.0 + c.1).separate_with_spaces(),
+            c.1.separate_with_spaces()
         );
     });
     strand.push(b'$'); // For the SA construction

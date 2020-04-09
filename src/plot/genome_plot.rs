@@ -4,7 +4,7 @@ use plot::colorizers::Colorizer;
 use std::fs::File;
 use std::io::Write;
 
-use separator::Separatable;
+use thousands::Separable;
 
 pub struct GenomePlotter {
     result: RunResult,
@@ -119,14 +119,14 @@ impl GenomePlotter {
                                     chr_width/4.0,
                                     &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
                                              &sd.chr_left,
-                                             sd.chr_left_position.separated_string(),
-                                             (sd.chr_left_position+sd.left_length).separated_string(),
-                                             sd.left_length.separated_string(),
+                                             sd.chr_left_position.separate_with_spaces(),
+                                             (sd.chr_left_position+sd.left_length).separate_with_spaces(),
+                                             sd.left_length.separate_with_spaces(),
 
                                              &sd.chr_right,
-                                             sd.chr_right_position.separated_string(),
-                                             (sd.chr_right_position+sd.right_length).separated_string(),
-                                             sd.right_length.separated_string()
+                                             sd.chr_right_position.separate_with_spaces(),
+                                             (sd.chr_right_position+sd.right_length).separate_with_spaces(),
+                                             sd.right_length.separate_with_spaces()
                                     )
                     );
                 }
@@ -149,14 +149,14 @@ impl GenomePlotter {
                                     chr_width/4.0,
                                     &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
                                              &sd.chr_left,
-                                             sd.chr_left_position.separated_string(),
-                                             (sd.chr_left_position+sd.left_length).separated_string(),
-                                             sd.left_length.separated_string(),
+                                             sd.chr_left_position.separate_with_spaces(),
+                                             (sd.chr_left_position+sd.left_length).separate_with_spaces(),
+                                             sd.left_length.separate_with_spaces(),
 
                                              &sd.chr_right,
-                                             sd.chr_right_position.separated_string(),
-                                             (sd.chr_right_position+sd.right_length).separated_string(),
-                                             sd.right_length.separated_string()
+                                             sd.chr_right_position.separate_with_spaces(),
+                                             (sd.chr_right_position+sd.right_length).separate_with_spaces(),
+                                             sd.right_length.separate_with_spaces()
                                     )
 
                     );

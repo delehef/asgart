@@ -21,7 +21,7 @@ impl TypeColorizer {
     }
 }
 impl Colorizer for TypeColorizer {
-    fn color_fragment(&self, name: &str) -> String {
+    fn color_fragment(&self, _name: &str) -> String {
         "#cccccc".to_owned()
     }
     fn color(&self, sd: &SD) -> String {
@@ -56,7 +56,7 @@ impl PositionColorizer {
     }
 }
 impl Colorizer for PositionColorizer {
-    fn color_fragment(&self, name: &str) -> String {
+    fn color_fragment(&self, _name: &str) -> String {
         "#cccccc".to_owned()
     }
     fn color(&self, sd: &SD) -> String {

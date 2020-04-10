@@ -23,7 +23,7 @@ use std::time::Instant;
 
 use asgart::automaton;
 use asgart::divsufsort::{divsufsort64, SuffixArray};
-use asgart::errors::*;
+use asgart::anyhow::{Result, Context};
 use asgart::exporters;
 use asgart::exporters::Exporter;
 use asgart::log::LevelFilter;
@@ -269,16 +269,11 @@ fn prepare_data(
         let mut r = Vec::new();
 
         let reader = bio::io::fasta::Reader::from_file(filename)
-            .chain_err(|| format!("Unable to open `{}`", filename))?;
+            .with_context(|| format!("Unable to read FASTA file `{}`", filename))?;
         let mut counter = 0;
 
         for record in reader.records() {
-            let record = record.chain_err(|| {
-                format!(
-                    "Unable to read {:?}: not a FASTA file",
-                    path::Path::new(filename).file_name().unwrap()
-                )
-            })?;
+            let record = record.context(format!("Unable to parse `{}`", filename))?;
 
             let name = record.id().to_owned();
             let mut seq = record.seq().to_vec();
@@ -369,7 +364,7 @@ fn prepare_data(
 
     for file_name in strands_files {
         let (map, new_strand) = read_fasta(file_name, skip_masked)
-            .chain_err(|| format!("Unable to parse `{}`", file_name))?;
+            .with_context(|| format!("Unable to parse `{}`", file_name))?;
 
         // We want to add each fragment separately to ensure that chunks are cutting between fragments
         for chr in map.iter() {
@@ -557,7 +552,7 @@ fn reduce_overlap(result: &[ProtoSD]) -> Vec<ProtoSD> {
     news
 }
 
-fn run() -> Result<()> {
+fn main() -> Result<()> {
     // Those settings are only used to handily parse arguments
     struct Settings {
         strands_files: Vec<String>,
@@ -615,7 +610,7 @@ fn run() -> Result<()> {
         2 => LevelFilter::Trace,
         _ => LevelFilter::Trace,
     })
-    .chain_err(|| "Unable to initialize logger")?;
+    .with_context(|| "Unable to initialize logger")?;
 
     let radix = (settings
         .strands_files
@@ -704,7 +699,7 @@ fn run() -> Result<()> {
         .unwrap()
         .to_owned();
     let mut out = std::fs::File::create(&out_filename)
-        .chain_err(|| format!("Unable to create `{}`", out_filename))?;
+        .with_context(|| format!("Unable to create `{}`", out_filename))?;
     let exporter = Box::new(exporters::JSONExporter) as Box<dyn Exporter>;
     exporter.save(&result, &mut out)?;
     info!("{}",
@@ -803,16 +798,4 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
             })
             .collect(),
     })
-}
-
-fn main() {
-    if let Err(ref e) = run() {
-        error!("{}", e);
-        e.iter().skip(1).for_each(|e| warn!("{}", e));
-
-        if let Some(backtrace) = e.backtrace() {
-            println!("backtrace: {:?}", backtrace);
-        }
-        std::process::exit(1);
-    }
 }

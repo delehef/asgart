@@ -8,22 +8,12 @@ use asgart::log::LevelFilter;
 use asgart::exporters::Exporter;
 use asgart::exporters;
 use asgart::logger::Logger;
-use asgart::errors::*;
+use asgart::anyhow::Result;
 use asgart::structs::*;
 
 
-fn main() {
+fn main() -> Result<()> {
     Logger::init(LevelFilter::Info).expect("Unable to initialize logger");
-    let x = run();
-    if let Err(ref e) = x {
-        log::error!("{}", e);
-        for e in e.iter().skip(1) { println!("{}", e); }
-        if let Some(backtrace) = e.backtrace() { println!("Backtrace: {:?}", backtrace); }
-        std::process::exit(1);
-    }
-}
-
-fn run() -> Result<()> {
     let args = App::new("ASGART splice")
         .setting(AppSettings::ColoredHelp)
         .setting(AppSettings::ColorAuto)

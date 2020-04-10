@@ -1,4 +1,4 @@
-use errors::*;
+use anyhow::{Result, Context, anyhow};
 use std::fs::File;
 use std::io::Read;
 use std::collections::HashMap;
@@ -74,10 +74,10 @@ pub struct RunResult {
 }
 impl RunResult {
     pub fn from_file(filename: &str) -> Result<RunResult> {
-        let mut f = File::open(filename).chain_err(|| format!("Unable to open {}", filename))?;
+        let mut f = File::open(filename).with_context(|| format!("Cannot read data from `{}`", filename))?;
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
-        serde_json::from_str(&s).chain_err(|| "Failed to parse JSON")
+        serde_json::from_str(&s).with_context(|| format!("Failed to parse JSON data from `{}`", filename))
     }
 
     pub fn from_files(filenames: &[String]) -> Result<RunResult> {
@@ -88,7 +88,7 @@ impl RunResult {
 
         for result in &results {
             if result.strand.name != results[0].strand.name {
-                bail!(format!(
+                return Err(anyhow!(
                     "Trying to combine ASGART files from different sources: `{}` and `{}`",
                     result.strand.name, results[0].strand.name,
                 ));

@@ -2,12 +2,10 @@
 extern crate serde_json;
 extern crate colored;
 extern crate asgart;
-extern crate error_chain;
 extern crate regex;
 extern crate rand;
 extern crate bio;
 
-use error_chain::*;
 use regex::Regex;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -16,7 +14,6 @@ use std::path::Path;
 use std::collections::HashMap;
 
 use clap::{App, AppSettings};
-use colored::Colorize;
 
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
@@ -24,7 +21,7 @@ use asgart::plot::flat_plot::FlatPlotter;
 use asgart::plot::circos_plot::CircosPlotter;
 use asgart::plot::genome_plot::GenomePlotter;
 use asgart::plot::colorizers::*;
-use asgart::errors::*;
+use asgart::anyhow::{Result, Context, anyhow};
 use asgart::logger::Logger;
 use asgart::log::LevelFilter;
 
@@ -186,7 +183,7 @@ fn read_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
 }
 
 fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
-    let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
+    let f = File::open(file).with_context(|| format!("Unable to open {}", file))?;
     let f = BufReader::new(f);
 
     let r = f
@@ -226,7 +223,7 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
 }
 
 fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
-    let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
+    let f = File::open(file).with_context(|| format!("Unable to open {}", file))?;
     let f = BufReader::new(f);
     let mut d = HashMap::new();
 
@@ -240,13 +237,13 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     {
         let v: Vec<&str> = line.split(';').collect();
         if v.len() != 3 {
-            bail!(
+            return Err(anyhow!(
                 "{}:L{} `{}`: incorrect format, expecting two members, found {}",
                 file,
                 i + 1,
                 line,
                 v.len()
-            );
+            ));
         }
         let name = v[0].to_owned();
 
@@ -267,12 +264,12 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
                 .find_chr(chr_name)
                 .expect(&format!("Unable to find fragment `{}`", chr_name));
             if chr.length < position {
-                bail!(
+                return Err(anyhow!(
                     "{} greater than {} length ({})",
                     position,
                     chr.name,
                     chr.length
-                );
+                ));
             }
             FeaturePosition::Relative {
                 chr: chr.name.to_owned(),
@@ -299,7 +296,7 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     Ok(features)
 }
 
-fn run() -> Result<()> {
+fn main() -> Result<()> {
     let yaml = load_yaml!("asgart-plot.yaml");
     let args = App::from_yaml(yaml)
         .version(crate_version!())
@@ -314,7 +311,7 @@ fn run() -> Result<()> {
         1 => { LevelFilter::Debug }
         2 => { LevelFilter::Trace }
         _ => { LevelFilter::Trace }
-    }).chain_err(|| "Unable to initialize logger")?;
+    }).with_context(|| "Unable to initialize logger")?;
 
     let json_files = values_t!(args, "FILE", String).unwrap();
     let mut result = RunResult::from_files(&json_files)?;
@@ -410,17 +407,4 @@ fn run() -> Result<()> {
         _               => unreachable!(),
     };
     r
-}
-
-fn main() {
-    if let Err(ref e) = run() {
-        println!("{} {}", "Error: ".red(), e);
-        for e in e.iter().skip(1) {
-            println!("{}", e);
-        }
-        if let Some(backtrace) = e.backtrace() {
-            println!("Backtrace: {:?}", backtrace);
-        }
-        std::process::exit(1);
-    }
 }

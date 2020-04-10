@@ -48,7 +48,7 @@ impl Plotter for ChordPlotter {
                 log::info!("Chord plot written to `{}`", &out_filename);
                 Ok(())
             })
-            .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
+            .with_context(|| format!("Failed to save plot to `{}`", &out_filename))?;
 
         Ok(())
     }

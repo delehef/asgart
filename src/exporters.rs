@@ -1,4 +1,4 @@
-use errors::*;
+use anyhow::{Context, Result};
 use serde_json;
 use std::io::Write;
 use structs::*;
@@ -14,9 +14,9 @@ impl Exporter for JSONExporter {
             out,
             "{}",
             serde_json::to_string_pretty(&result)
-                .chain_err(|| "Unable to serialize result into JSON")?
+                .context("Unable to serialize result into JSON")?
         )
-        .chain_err(|| "Unable to write results");
+        .context("Unable to write results");
 
         Ok(())
     }
@@ -30,7 +30,7 @@ impl Exporter for GFF2Exporter {
             "track name=Duplications\tuseScore=1\tdescription=\"ASGART - {dataset}\"",
             dataset = result.strand.name,
         )
-        .chain_err(|| "Unable to write results")?;
+        .context("Unable to write results")?;
         for (i, family) in result.families.iter().enumerate() {
             for (j, sd) in family.iter().enumerate() {
                 writeln!(out,
@@ -40,7 +40,7 @@ impl Exporter for GFF2Exporter {
                          end      = sd.chr_left_position + sd.left_length,
                          identity = sd.identity * 100.0,
                          i        = i, j = j
-                ).chain_err(|| "Unable to write results")?;
+                ).context("Unable to write results")?;
                 writeln!(out,
                          "{chr_right}\tASGART\tSD\t{right}\t{end}\t#{identity}\t#{reverse}\t.\tSD#{i}/{j}-{chr_right}",
                          chr_right = str::replace(&sd.chr_right.trim(), " ", "_"),
@@ -49,9 +49,9 @@ impl Exporter for GFF2Exporter {
                          identity  = sd.identity * 100.0,
                          reverse   = if sd.reversed { "-" } else { "+" },
                          i         = i, j = j
-                ).chain_err(|| "Unable to write results")?;
+                ).context("Unable to write results")?;
             }
-            writeln!(out).chain_err(|| "Unable to write results")?;
+            writeln!(out).context("Unable to write results")?;
         }
 
         Ok(())
@@ -61,7 +61,7 @@ impl Exporter for GFF2Exporter {
 pub struct GFF3Exporter;
 impl Exporter for GFF3Exporter {
     fn save(&self, result: &RunResult, out: &mut dyn Write) -> Result<()> {
-        writeln!(out, "##gff-version 3.2.1").chain_err(|| "Unable to write results")?;
+        writeln!(out, "##gff-version 3.2.1").context("Unable to write results")?;
         for chr in &result.strand.map {
             writeln!(
                 out,
@@ -70,7 +70,7 @@ impl Exporter for GFF3Exporter {
                 start = chr.position + 1,
                 end = chr.position + chr.length + 1,
             )
-            .chain_err(|| "Unable to write results")?;
+            .context("Unable to write results")?;
         }
 
         for (i, family) in result.families.iter().enumerate() {
@@ -83,7 +83,7 @@ impl Exporter for GFF3Exporter {
                     end       = sd.chr_left_position + sd.left_length + 1,
                     identity  = sd.identity,
                     i         = i, j = j
-                ).chain_err(|| "Unable to write results")?;
+                ).context("Unable to write results")?;
                 writeln!(
                     out,
                     "{chr_right}\tASGART\tSD\t{right}\t{end}\t{identity}\t{reverse}\t.\tID=SD#{i}-{j}-right;Parent=SD#{i}-{j};Name=SD#{i}-{j}",
@@ -93,9 +93,9 @@ impl Exporter for GFF3Exporter {
                     identity  = sd.identity,
                     reverse   = if sd.reversed { "-" } else { "+" },
                     i         = i, j = j
-                ).chain_err(|| "Unable to write results")?;
+                ).context("Unable to write results")?;
             }
-            writeln!(out).chain_err(|| "Unable to write results")?;
+            writeln!(out).context("Unable to write results")?;
         }
 
         Ok(())

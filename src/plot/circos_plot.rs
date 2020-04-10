@@ -31,7 +31,7 @@ impl Plotter for CircosPlotter {
                 log::info!("Karyotype written to `{}`", &karyotype_filename);
                 Ok(())
             })
-            .chain_err(|| format!("Unable to write in `{}`", &karyotype_filename))?;
+            .with_context(|| format!("Failed to save karyotype to `{}`", &karyotype_filename))?;
 
         File::create(links_filename)
             .and_then(|mut f| f.write_all(self.plot_links().as_bytes()))
@@ -39,7 +39,7 @@ impl Plotter for CircosPlotter {
                 log::info!("Links written to `{}`", &links_filename);
                 Ok(())
             })
-            .chain_err(|| format!("Unable to write in `{}`", &links_filename))?;
+            .with_context(|| format!("Failed to save links to `{}`", &links_filename))?;
 
         File::create(config_filename)
             .and_then(|mut f| {
@@ -52,7 +52,7 @@ impl Plotter for CircosPlotter {
                 log::info!("Config written to `{}`", &config_filename);
                 Ok(())
             })
-            .chain_err(|| format!("Unable to write in `{}`", &config_filename))?;
+            .with_context(|| format!("Failed to save plot configuration to `{}`", &config_filename))?;
 
         println!(
             "\nYou can now edit `{}` and/or run `circos {}` to generate the final plot.",

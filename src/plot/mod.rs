@@ -1,8 +1,10 @@
 extern crate regex;
 extern crate palette;
 extern crate rand;
+extern crate anyhow;
 
-use errors::*;
+use self::anyhow::{Result, Context};
+
 use structs::*;
 
 pub mod chord_plot;

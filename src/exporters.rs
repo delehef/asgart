@@ -1,7 +1,9 @@
+use std::io::Write;
+
 use anyhow::{Context, Result};
 use serde_json;
-use std::io::Write;
-use structs::*;
+
+use crate::structs::*;
 
 pub trait Exporter {
     fn save(&self, result: &RunResult, out: &mut dyn Write) -> Result<()>;

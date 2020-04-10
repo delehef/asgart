@@ -1,19 +1,14 @@
-#[macro_use] extern crate log;
-#[macro_use] extern crate clap;
-extern crate asgart;
-
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::process;
 
-use clap::{App, AppSettings, Arg};
-use asgart::anyhow::{Result, Context};
+use anyhow::{Context, Result};
+use clap::*;
+use log::*;
 
-use asgart::log::LevelFilter;
-use asgart::logger::Logger;
+use asgart::logger::*;
 use asgart::utils;
-
 
 fn read_fasta(filename: &str) -> Result<Vec<u8>> {
     let mut r = Vec::new();
@@ -65,24 +60,35 @@ fn main() -> Result<()> {
     let result = asgart::structs::RunResult::from_files(&[input])?;
     info!("Done.");
 
-    let strands_files = result.strand.name.split(",")
+    let strands_files = result
+        .strand
+        .name
+        .split(",")
         .map(str::trim)
         .map(|name| {
             for location in &locations {
                 let path = format!("{}/{}", location, name);
                 if Path::new(&path).exists() {
-                    return Ok(path)
+                    return Ok(path);
                 }
             }
-            Err(format!("Unable to find {} in the locations provided ({})", name, locations.join(", ")))
+            Err(format!(
+                "Unable to find {} in the locations provided ({})",
+                name,
+                locations.join(", ")
+            ))
         })
         .collect::<std::result::Result<Vec<_>, _>>()
-        .unwrap_or_else(|msg| {error!("{}", msg); process::exit(1)});
+        .unwrap_or_else(|msg| {
+            error!("{}", msg);
+            process::exit(1)
+        });
 
     let mut strand = Vec::new();
     for strand_file in &strands_files {
         info!("Reading {}...", strand_file);
-        let new_strand = read_fasta(strand_file).with_context(|| format!("Unable to read FASTA file `{}`", strand_file))?;
+        let new_strand = read_fasta(strand_file)
+            .with_context(|| format!("Unable to read FASTA file `{}`", strand_file))?;
         strand.extend(new_strand);
         info!("Done.");
     }
@@ -93,28 +99,57 @@ fn main() -> Result<()> {
         let out_file_name = format!("{}{}.fa", prefix, family_id);
 
         for (j, sd) in family.iter().enumerate() {
-            let mut file = OpenOptions::new().append(true).create(true).open(&out_file_name)
+            let mut file = OpenOptions::new()
+                .append(true)
+                .create(true)
+                .open(&out_file_name)
                 .with_context(|| format!("Unable to write results to `{}`", out_file_name))?;
 
-            let left_seq = strand[sd.global_left_position .. sd.global_left_position + sd.left_length].to_vec();
-            let mut right_seq = strand[sd.global_right_position .. sd.global_right_position + sd.right_length].to_vec();
-            if sd.reversed {right_seq.reverse();}
-            if sd.complemented {right_seq = utils::complemented(&right_seq);}
+            let left_seq =
+                strand[sd.global_left_position..sd.global_left_position + sd.left_length].to_vec();
+            let mut right_seq = strand
+                [sd.global_right_position..sd.global_right_position + sd.right_length]
+                .to_vec();
+            if sd.reversed {
+                right_seq.reverse();
+            }
+            if sd.complemented {
+                right_seq = utils::complemented(&right_seq);
+            }
 
-            file.write_all(format!(">{} {}-{} duplicon-{}-1\n",
-                                   sd.chr_left, sd.chr_left_position, sd.chr_left_position+sd.left_length , j).as_bytes())
+            file.write_all(
+                format!(
+                    ">{} {}-{} duplicon-{}-1\n",
+                    sd.chr_left,
+                    sd.chr_left_position,
+                    sd.chr_left_position + sd.left_length,
+                    j
+                )
+                .as_bytes(),
+            )
+            .with_context(|| "Unable to write results")?;
+            file.write_all(&left_seq)
                 .with_context(|| "Unable to write results")?;
-            file.write_all(&left_seq).with_context(|| "Unable to write results")?;
-            file.write_all(b"\n").with_context(|| "Unable to write results")?;
-            file.write_all(format!(">{} {}-{} duplicon-{}-2\n",
-                                   sd.chr_right, sd.chr_right_position, sd.chr_right_position+sd.right_length, j).as_bytes())
+            file.write_all(b"\n")
                 .with_context(|| "Unable to write results")?;
-            file.write_all(&right_seq).with_context(|| "Unable to write results")?;
-            file.write_all(b"\n").with_context(|| "Unable to write results")?;
+            file.write_all(
+                format!(
+                    ">{} {}-{} duplicon-{}-2\n",
+                    sd.chr_right,
+                    sd.chr_right_position,
+                    sd.chr_right_position + sd.right_length,
+                    j
+                )
+                .as_bytes(),
+            )
+            .with_context(|| "Unable to write results")?;
+            file.write_all(&right_seq)
+                .with_context(|| "Unable to write results")?;
+            file.write_all(b"\n")
+                .with_context(|| "Unable to write results")?;
         }
     }
     info!("Done.");
-
 
     Ok(())
 }

@@ -1,14 +1,12 @@
-#[macro_use] extern crate clap;
-extern crate asgart;
-
 use std::fs::File;
-use clap::{App, Arg, AppSettings};
 
-use asgart::log::LevelFilter;
+use clap::*;
+use log::LevelFilter;
+use anyhow::Result;
+
 use asgart::exporters::Exporter;
 use asgart::exporters;
 use asgart::logger::Logger;
-use asgart::anyhow::Result;
 use asgart::structs::*;
 
 

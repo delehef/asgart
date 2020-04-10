@@ -1,8 +1,12 @@
 [package]
-name = "asgart"
-version = "2.3.0"
-authors = ["Franklin Delehelle <franklin.delehelle@odena.eu>"]
-license = "GPLv3"
+name         = "asgart"
+version      = "2.3.0"
+authors      = ["Franklin Delehelle <franklin.delehelle@odena.eu>"]
+edition      = "2018"
+description  = "A large duplication families mapper"
+license      = "GPLv3"
+license_file = "LICENSE.txt"
+default-run  = "asgart"
 
 [dependencies]
 anyhow       = "1.0"

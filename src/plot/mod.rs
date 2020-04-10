@@ -1,11 +1,6 @@
-extern crate regex;
-extern crate palette;
-extern crate rand;
-extern crate anyhow;
+use anyhow::{Result, Context};
 
-use self::anyhow::{Result, Context};
-
-use structs::*;
+use crate::structs::*;
 
 pub mod chord_plot;
 pub mod flat_plot;

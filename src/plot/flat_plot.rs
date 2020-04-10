@@ -1,10 +1,10 @@
-extern crate rand;
-use plot::*;
-use plot::colorizers::Colorizer;
-
 use std::fs::File;
 use std::io::prelude::*;
+
 use thousands::Separable;
+
+use crate::plot::*;
+use crate::plot::colorizers::Colorizer;
 
 const CHR_WIDTH: f64 = 4.0;
 

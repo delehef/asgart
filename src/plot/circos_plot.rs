@@ -1,6 +1,6 @@
-use plot::*;
-use plot::colorizers::Colorizer;
-use ::utils::slugify;
+use crate::plot::*;
+use crate::plot::colorizers::Colorizer;
+use crate::utils::slugify;
 
 use std::fs::File;
 use std::io::prelude::*;

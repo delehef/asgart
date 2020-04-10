@@ -1,16 +1,3 @@
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
-extern crate asgart;
-
-use clap::{App, AppSettings};
-
-use asgart::console::style;
-use asgart::indicatif::{HumanDuration, ProgressBar, ProgressStyle};
-use asgart::rayon::prelude::*;
-use asgart::thousands::Separable;
-
 use std::cmp;
 use std::path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -21,12 +8,17 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 
+use log::*;
+use clap::*;
+use console::style;
+use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
+use rayon::prelude::*;
+use thousands::Separable;
+use anyhow::{Result, Context};
+
 use asgart::automaton;
 use asgart::divsufsort::{divsufsort64, SuffixArray};
-use asgart::anyhow::{Result, Context};
 use asgart::exporters;
-use asgart::exporters::Exporter;
-use asgart::log::LevelFilter;
 use asgart::logger::Logger;
 use asgart::searcher;
 use asgart::structs::*;
@@ -700,7 +692,7 @@ fn main() -> Result<()> {
         .to_owned();
     let mut out = std::fs::File::create(&out_filename)
         .with_context(|| format!("Unable to create `{}`", out_filename))?;
-    let exporter = Box::new(exporters::JSONExporter) as Box<dyn Exporter>;
+    let exporter = Box::new(exporters::JSONExporter) as Box<dyn exporters::Exporter>;
     exporter.save(&result, &mut out)?;
     info!("{}",
           style(format!("Result written to {}", &out_filename)).bold()

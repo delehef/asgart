@@ -3,10 +3,9 @@ use std::mem;
 
 use superslice::Ext;
 
-use automaton::Segment;
-use structs::ALPHABET;
-
-use divsufsort::*;
+use crate::automaton::Segment;
+use crate::divsufsort::*;
+use crate::structs::ALPHABET;
 
 pub struct Searcher {
     cache: HashMap<u64, (usize, usize)>,

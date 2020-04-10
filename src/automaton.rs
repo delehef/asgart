@@ -1,6 +1,3 @@
-extern crate indicatif;
-extern crate rayon;
-
 use std::cmp;
 use std::fmt;
 

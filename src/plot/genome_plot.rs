@@ -1,5 +1,5 @@
-use plot::*;
-use plot::colorizers::Colorizer;
+use crate::plot::*;
+use crate::plot::colorizers::Colorizer;
 
 use std::fs::File;
 use std::io::Write;
@@ -102,7 +102,7 @@ impl GenomePlotter {
                 };
 
                 // left arm
-                if sd.chr_left != ::structs::COLLAPSED_NAME {
+                if sd.chr_left != COLLAPSED_NAME {
                     let chr_left_index = self.result.strand.find_chr_index(&sd.chr_left).unwrap();
                     let left = sd.chr_left_position;
                     let start = factor * left as f64;
@@ -132,7 +132,7 @@ impl GenomePlotter {
                 }
 
                 // right arm
-                if sd.chr_right != ::structs::COLLAPSED_NAME {
+                if sd.chr_right != COLLAPSED_NAME {
                     let chr_right_index = self.result.strand.find_chr_index(&sd.chr_right).unwrap();
                     let right = sd.chr_right_position;
                     let start = factor * right as f64;

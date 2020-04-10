@@ -1,7 +1,9 @@
-use super::palette::*;
-use structs::*;
 use std::collections::HashMap;
-use super::rand::prelude::*;
+
+use palette::*;
+use rand::prelude::*;
+
+use crate::structs::*;
 
 pub trait Colorizer {
     fn color_fragment(&self, name: &str) -> String;
@@ -42,7 +44,7 @@ impl Colorizer for TypeColorizer {
 
 pub struct PositionColorizer {
     total_length: f64,
-    gradient: Gradient<::plot::palette::Hsv<::plot::palette::encoding::Srgb, f64>>
+    gradient: Gradient<Hsv<encoding::Srgb, f64>>
 }
 impl PositionColorizer {
     pub fn new(result: &RunResult) -> Self {

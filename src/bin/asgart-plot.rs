@@ -1,11 +1,3 @@
-#[macro_use] extern crate clap;
-extern crate serde_json;
-extern crate colored;
-extern crate asgart;
-extern crate regex;
-extern crate rand;
-extern crate bio;
-
 use regex::Regex;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -13,7 +5,9 @@ use std::fs::File;
 use std::path::Path;
 use std::collections::HashMap;
 
-use clap::{App, AppSettings};
+use anyhow::{Result, Context, anyhow};
+use clap::*;
+use log::LevelFilter;
 
 use asgart::plot::*;
 use asgart::plot::chord_plot::ChordPlotter;
@@ -21,10 +15,7 @@ use asgart::plot::flat_plot::FlatPlotter;
 use asgart::plot::circos_plot::CircosPlotter;
 use asgart::plot::genome_plot::GenomePlotter;
 use asgart::plot::colorizers::*;
-use asgart::anyhow::{Result, Context, anyhow};
 use asgart::logger::Logger;
-use asgart::log::LevelFilter;
-
 use asgart::structs::*;
 
 fn filter_families_in_features(

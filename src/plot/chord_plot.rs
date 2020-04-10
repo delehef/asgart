@@ -1,13 +1,11 @@
-extern crate rand;
-
 use std::f64::consts::PI;
 use std::fs::File;
 use std::io::prelude::*;
 
 use thousands::Separable;
 
-use plot::*;
-use plot::colorizers::Colorizer;
+use crate::plot::*;
+use crate::plot::colorizers::Colorizer;
 
 const R: f64 = 200.0;
 

@@ -1,4 +1,5 @@
 use anyhow::{Result, Context, anyhow};
+use serde_derive::*;
 use std::fs::File;
 use std::io::Read;
 use std::collections::HashMap;
@@ -247,11 +248,11 @@ impl RunResult {
                           let left_match = to_flatten.iter().any(|n| *n.name == sd.chr_left);
                           let right_match = to_flatten.iter().any(|n| *n.name == sd.chr_right);
                           if left_match {
-                              sd.chr_left_position = to_flatten_positions[&sd.chr_left] + sd.chr_left_position;
+                              sd.chr_left_position += to_flatten_positions[&sd.chr_left];
                               sd.chr_left = COLLAPSED_NAME.to_string();
                           }
                           if right_match {
-                              sd.chr_right_position = to_flatten_positions[&sd.chr_right] + sd.chr_right_position;
+                              sd.chr_right_position += to_flatten_positions[&sd.chr_right];
                               sd.chr_right = COLLAPSED_NAME.to_string();
                           }
                       }));

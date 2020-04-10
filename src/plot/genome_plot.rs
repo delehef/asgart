@@ -1,5 +1,5 @@
-use crate::plot::*;
 use crate::plot::colorizers::Colorizer;
+use crate::plot::*;
 
 use std::fs::File;
 use std::io::Write;
@@ -25,7 +25,10 @@ impl Plotter for GenomePlotter {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_genome().as_bytes()))
-            .and_then(|_| { log::info!("Genome plot written to `{}`", &out_filename); Ok(()) })
+            .and_then(|_| {
+                log::info!("Genome plot written to `{}`", &out_filename);
+                Ok(())
+            })
             .with_context(|| format!("Failed to save plot to `{}`", &out_filename))?;
 
         Ok(())
@@ -40,7 +43,16 @@ impl GenomePlotter {
         let chr_spacing = 100.0;
         let chr_width = 40.0;
         let height_factor = 800.0;
-        let factor = 1.0/self.result.strand.map.iter().map(|chr| chr.length).max().unwrap() as f64 * height_factor;
+        let factor = 1.0
+            / self
+                .result
+                .strand
+                .map
+                .iter()
+                .map(|chr| chr.length)
+                .max()
+                .unwrap() as f64
+            * height_factor;
 
         let width = chr_spacing as usize * (self.result.strand.map.len() + 1);
         // height_factor + 50px top + 100px bot
@@ -49,13 +61,14 @@ impl GenomePlotter {
         // 1. Draw the chromosomes
         for (i, chr) in self.result.strand.map.iter().enumerate() {
             // Chromosome bar
-            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}44' stroke-width='{}'/>\n",
-                            chr_spacing + i as f64 * chr_spacing,
-                            50,
-                            chr_spacing + i as f64 * chr_spacing,
-                            50.0 + factor*chr.length as f64,
-                            self.colorizer.color_fragment(&chr.name),
-                            chr_width,
+            svg += &format!(
+                "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}44' stroke-width='{}'/>\n",
+                chr_spacing + i as f64 * chr_spacing,
+                50,
+                chr_spacing + i as f64 * chr_spacing,
+                50.0 + factor * chr.length as f64,
+                self.colorizer.color_fragment(&chr.name),
+                chr_width,
             );
 
             // Central delimiter
@@ -83,10 +96,15 @@ impl GenomePlotter {
             );
 
             // Label
-            svg += &format!("<text x='{}' y='{}' style='font-size: 11;'>{}</text>\n",
-                            chr_spacing + i as f64 * chr_spacing - 10.0,
-                            20 + (i%2) * 10,
-                            if chr.name.len() > 8 { &chr.name[0..3] } else { &chr.name },
+            svg += &format!(
+                "<text x='{}' y='{}' style='font-size: 11;'>{}</text>\n",
+                chr_spacing + i as f64 * chr_spacing - 10.0,
+                20 + (i % 2) * 10,
+                if chr.name.len() > 8 {
+                    &chr.name[0..3]
+                } else {
+                    &chr.name
+                },
             );
         }
 
@@ -94,11 +112,20 @@ impl GenomePlotter {
         for family in &self.result.families {
             for sd in family {
                 let color = self.colorizer.color(sd);
-                let x: Box<dyn Fn(usize) -> f64> = match (sd.chr_left == sd.chr_right, sd.reversed) {
-                    (true,  false) => {Box::new(|x| chr_spacing - 3.0*chr_width/8.0 + chr_spacing*x as f64)}
-                    (true,  true)  => {Box::new(|x| chr_spacing - 1.0*chr_width/8.0 + chr_spacing*x as f64)}
-                    (false, false) => {Box::new(|x| chr_spacing + 1.0*chr_width/8.0 + chr_spacing*x as f64)}
-                    (false, true)  => {Box::new(|x| chr_spacing + 3.0*chr_width/8.0 + chr_spacing*x as f64)}
+                let x: Box<dyn Fn(usize) -> f64> = match (sd.chr_left == sd.chr_right, sd.reversed)
+                {
+                    (true, false) => {
+                        Box::new(|x| chr_spacing - 3.0 * chr_width / 8.0 + chr_spacing * x as f64)
+                    }
+                    (true, true) => {
+                        Box::new(|x| chr_spacing - 1.0 * chr_width / 8.0 + chr_spacing * x as f64)
+                    }
+                    (false, false) => {
+                        Box::new(|x| chr_spacing + 1.0 * chr_width / 8.0 + chr_spacing * x as f64)
+                    }
+                    (false, true) => {
+                        Box::new(|x| chr_spacing + 3.0 * chr_width / 8.0 + chr_spacing * x as f64)
+                    }
                 };
 
                 // left arm
@@ -173,8 +200,7 @@ impl GenomePlotter {
 <svg version='1.0' width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>
 {}
 </svg>"#,
-            width,
-            height,
-            svg)
+            width, height, svg
+        )
     }
 }

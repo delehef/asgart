@@ -1,4 +1,4 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 
 use crate::structs::*;
 
@@ -40,6 +40,10 @@ pub struct Feature {
 }
 
 pub trait Plotter {
-    fn new(settings: Settings, result: RunResult, colorizer: Box<dyn colorizers::Colorizer>) -> Self;
+    fn new(
+        settings: Settings,
+        result: RunResult,
+        colorizer: Box<dyn colorizers::Colorizer>,
+    ) -> Self;
     fn plot(&self) -> Result<()>;
 }

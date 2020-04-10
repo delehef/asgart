@@ -1,5 +1,5 @@
-use crate::plot::*;
 use crate::plot::colorizers::Colorizer;
+use crate::plot::*;
 use crate::utils::slugify;
 
 use std::fs::File;
@@ -12,10 +12,7 @@ pub struct CircosPlotter {
 
 impl Plotter for CircosPlotter {
     fn new(settings: Settings, result: RunResult, _x: Box<dyn Colorizer>) -> CircosPlotter {
-        CircosPlotter {
-            result,
-            settings,
-        }
+        CircosPlotter { result, settings }
     }
 
     fn plot(&self) -> Result<()> {
@@ -52,7 +49,12 @@ impl Plotter for CircosPlotter {
                 log::info!("Config written to `{}`", &config_filename);
                 Ok(())
             })
-            .with_context(|| format!("Failed to save plot configuration to `{}`", &config_filename))?;
+            .with_context(|| {
+                format!(
+                    "Failed to save plot configuration to `{}`",
+                    &config_filename
+                )
+            })?;
 
         println!(
             "\nYou can now edit `{}` and/or run `circos {}` to generate the final plot.",

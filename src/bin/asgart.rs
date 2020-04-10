@@ -8,13 +8,13 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 
-use log::*;
+use anyhow::{Context, Result};
 use clap::*;
 use console::style;
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
+use log::*;
 use rayon::prelude::*;
 use thousands::Separable;
-use anyhow::{Result, Context};
 
 use asgart::automaton;
 use asgart::divsufsort::{divsufsort64, SuffixArray};
@@ -694,8 +694,9 @@ fn main() -> Result<()> {
         .with_context(|| format!("Unable to create `{}`", out_filename))?;
     let exporter = Box::new(exporters::JSONExporter) as Box<dyn exporters::Exporter>;
     exporter.save(&result, &mut out)?;
-    info!("{}",
-          style(format!("Result written to {}", &out_filename)).bold()
+    info!(
+        "{}",
+        style(format!("Result written to {}", &out_filename)).bold()
     );
     Ok(())
 }

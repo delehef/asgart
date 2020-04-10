@@ -4,8 +4,8 @@ use std::io::prelude::*;
 
 use thousands::Separable;
 
-use crate::plot::*;
 use crate::plot::colorizers::Colorizer;
+use crate::plot::*;
 
 const R: f64 = 200.0;
 
@@ -129,12 +129,14 @@ impl ChordPlotter {
                 let t22 = self.angle(right as f64 + sd.right_length as f64);
                 let t2 = t21 + (t22 - t21) / 2.0;
 
-                let mut width = R * (2.0*(1.0 - (t12-t11).cos())).sqrt(); // Cf. Al-Kashi
-                if width <= self.settings.min_thickness {width = self.settings.min_thickness};
+                let mut width = R * (2.0 * (1.0 - (t12 - t11).cos())).sqrt(); // Cf. Al-Kashi
+                if width <= self.settings.min_thickness {
+                    width = self.settings.min_thickness
+                };
                 let color = self.colorizer.color(&sd);
 
-                let ((x1, y1), (x2, y2), (cx, cy)) = if sd.chr_left != sd.chr_right
-                    || self.result.strand.map.len() == 1 {
+                let ((x1, y1), (x2, y2), (cx, cy)) =
+                    if sd.chr_left != sd.chr_right || self.result.strand.map.len() == 1 {
                         let (x1, y1) = self.cartesian(t1, R);
                         let (x2, y2) = self.cartesian(t2, R);
                         let (cx, cy) = (CX, CY);
@@ -150,24 +152,27 @@ impl ChordPlotter {
                     };
 
                 let path = format!("M {},{} Q {},{} {} {}", x1, y1, cx, cy, x2, y2);
-                svg += &format!(r#"
+                svg += &format!(
+                    r#"
                                 <path
                                 d='{}' fill='none' stroke='{}' stroke-opacity='0.3' stroke-width='{}' class='sd'>
                                 <title>{}</title>
                                 </path>
                                 "#,
-                                path, color, width,
-                                &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
-                                         &sd.chr_left,
-                                         sd.chr_left_position.separate_with_spaces(),
-                                         (sd.chr_left_position+sd.left_length).separate_with_spaces(),
-                                         sd.left_length.separate_with_spaces(),
-
-                                         &sd.chr_right,
-                                         sd.chr_right_position.separate_with_spaces(),
-                                         (sd.chr_right_position+sd.right_length).separate_with_spaces(),
-                                         sd.right_length.separate_with_spaces()
-                                )
+                    path,
+                    color,
+                    width,
+                    &format!(
+                        "{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
+                        &sd.chr_left,
+                        sd.chr_left_position.separate_with_spaces(),
+                        (sd.chr_left_position + sd.left_length).separate_with_spaces(),
+                        sd.left_length.separate_with_spaces(),
+                        &sd.chr_right,
+                        sd.chr_right_position.separate_with_spaces(),
+                        (sd.chr_right_position + sd.right_length).separate_with_spaces(),
+                        sd.right_length.separate_with_spaces()
+                    )
                 );
             }
         }

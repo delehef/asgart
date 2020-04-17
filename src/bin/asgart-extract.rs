@@ -33,7 +33,7 @@ fn main() -> Result<()> {
         .setting(AppSettings::UnifiedHelpMessage)
         .version(crate_version!())
         .author(crate_authors!())
-        .about("ASGART extract pulls out duplication families as described in an ASGART JSON file into a serie of FASTA files, one per family.")
+        .about("asgart-extract pulls out duplication families from an ASGART JSON file into a serie of FASTA files, one per family.")
         .arg(Arg::with_name("INPUT")
              .help("Set the input JSON file(s) to use")
              .required(true)

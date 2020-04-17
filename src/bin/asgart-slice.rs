@@ -11,14 +11,14 @@ use asgart::structs::*;
 
 fn main() -> Result<()> {
     Logger::init(LevelFilter::Info).expect("Unable to initialize logger");
-    let args = App::new("ASGART splice")
+    let args = App::new("ASGART slice")
         .setting(AppSettings::ColoredHelp)
         .setting(AppSettings::ColorAuto)
         .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::UnifiedHelpMessage)
         .version(crate_version!())
         .author(crate_authors!())
-        .about("asgart-splice combines multiple ASGART JSON files into a single output file in the desired format.\nIt also features some other functions to collapse, convert and filter data.")
+        .about("asgart-slice combines multiple ASGART JSON files into a single output file in the desired format, and features functions to filter, convert and collapse data.")
         .arg(Arg::with_name("INPUT")
              .help("Set the input file(s) to use")
              .required(true)

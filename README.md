@@ -141,7 +141,7 @@ where it was launched, using the following structure:
 }
 ```
 
-You can use the companion program `asgart-splice` to convert JSON files to another format.
+You can use the companion program `asgart-slice` to convert JSON files to another format.
 
 ## Options
 
@@ -336,8 +336,8 @@ _Please note that ASGART follows the [semver](https://semver.org/) versioning sc
 
 ## v2.3.0
 
-- `asgart-cat` has been renamed to `asgart-splice`
-- `asgart` does not feature multiple output formats anymore; `asgart-splice` is to
+- `asgart-cat` has been renamed to `asgart-slice`
+- `asgart` does not feature multiple output formats anymore; `asgart-slice` is to
   to be used instead.
 
 ## v2.2.1

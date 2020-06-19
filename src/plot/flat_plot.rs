@@ -1,10 +1,10 @@
-extern crate rand;
-use plot::*;
-use plot::colorizers::Colorizer;
-
 use std::fs::File;
 use std::io::prelude::*;
-use separator::Separatable;
+
+use thousands::Separable;
+
+use crate::plot::colorizers::Colorizer;
+use crate::plot::*;
 
 const CHR_WIDTH: f64 = 4.0;
 
@@ -40,7 +40,7 @@ impl Plotter for FlatPlotter {
                 println!("Flat plot written to `{}`", &out_filename);
                 Ok(())
             })
-            .chain_err(|| format!("Unable to write in `{}`", &out_filename))?;
+            .with_context(|| format!("Failed to save plot to `{}`", &out_filename))?;
 
         Ok(())
     }
@@ -58,23 +58,29 @@ impl FlatPlotter {
             // Top bar
             svg += &format!(
                 "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>",
-                offset as f64/self.max_length*self.width, CHR_WIDTH/2.0,
-                (offset + chr.length as i64) as f64/self.max_length*self.width,
-                CHR_WIDTH/2.0,
-                self.colorizer.color_fragment(&chr.name), CHR_WIDTH
+                offset as f64 / self.max_length * self.width,
+                CHR_WIDTH / 2.0,
+                (offset + chr.length as i64) as f64 / self.max_length * self.width,
+                CHR_WIDTH / 2.0,
+                self.colorizer.color_fragment(&chr.name),
+                CHR_WIDTH
             );
             // Bottom bar
             svg += &format!(
                 "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>",
-                offset as f64/self.max_length*self.width, self.height-CHR_WIDTH/2.0,
-                (offset + chr.length as i64) as f64/self.max_length*self.width,
-                self.height-CHR_WIDTH/2.0,
-                self.colorizer.color_fragment(&chr.name), CHR_WIDTH
+                offset as f64 / self.max_length * self.width,
+                self.height - CHR_WIDTH / 2.0,
+                (offset + chr.length as i64) as f64 / self.max_length * self.width,
+                self.height - CHR_WIDTH / 2.0,
+                self.colorizer.color_fragment(&chr.name),
+                CHR_WIDTH
             );
             // Name
             svg += &format!(
                 "<text x='{}' y='{}' font-family='Helvetica' font-size='12'>{}</text>",
-                offset as f64/self.max_length*self.width, self.height + 35.0, chr.name
+                offset as f64 / self.max_length * self.width,
+                self.height + 35.0,
+                chr.name
             );
 
             //
@@ -89,19 +95,18 @@ impl FlatPlotter {
                     } else {
                         self.height + 3.0
                     };
-                    let x = (i + offset) as f64/self.max_length*self.width;
+                    let x = (i + offset) as f64 / self.max_length * self.width;
 
                     svg += &format!(
                         "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#898989' stroke-width='1'/>",
-                        x, self.height,
-                        x, height
+                        x, self.height, x, height
                     );
 
                     if i % 10_000_000 == 0 {
                         svg += &format!(
                             "<text x='{}' y='{}' font-family='Helvetica' font-size='8'>{}Mb</text>",
                             x,
-                            self.height + 15.0 + ((j % 2) as f64)*5.0,
+                            self.height + 15.0 + ((j % 2) as f64) * 5.0,
                             i / 1_000_000
                         );
                     }
@@ -167,10 +172,14 @@ impl FlatPlotter {
 
         for family in &self.result.families {
             for sd in family {
-                let left1 = (sd.global_left_position as f64)/self.max_length * self.width;
-                let left2 = (sd.global_left_position as f64 + sd.left_length as f64)/self.max_length * self.width;
-                let right1 = (sd.global_right_position as f64)/self.max_length * self.width;
-                let right2 = (sd.global_right_position as f64 + sd.right_length as f64)/self.max_length * self.width;
+                let left1 = (sd.global_left_position as f64) / self.max_length * self.width;
+                let left2 = (sd.global_left_position as f64 + sd.left_length as f64)
+                    / self.max_length
+                    * self.width;
+                let right1 = (sd.global_right_position as f64) / self.max_length * self.width;
+                let right2 = (sd.global_right_position as f64 + sd.right_length as f64)
+                    / self.max_length
+                    * self.width;
 
                 let color = self.colorizer.color(sd);
 
@@ -184,34 +193,48 @@ impl FlatPlotter {
                             <title>{}</title>
                             </polygon>
                             "#,
-                    left1, CHR_WIDTH,
-                    if left2 - left1 < self.settings.min_thickness { left1 + self.settings.min_thickness} else { left2 }, CHR_WIDTH,
-                    if right2 - right1 < self.settings.min_thickness { right1 + self.settings.min_thickness} else { right2 }, self.height - CHR_WIDTH,
-                    right1, self.height - CHR_WIDTH,
+                    left1,
+                    CHR_WIDTH,
+                    if left2 - left1 < self.settings.min_thickness {
+                        left1 + self.settings.min_thickness
+                    } else {
+                        left2
+                    },
+                    CHR_WIDTH,
+                    if right2 - right1 < self.settings.min_thickness {
+                        right1 + self.settings.min_thickness
+                    } else {
+                        right2
+                    },
+                    self.height - CHR_WIDTH,
+                    right1,
+                    self.height - CHR_WIDTH,
                     color,
                     color,
-                    &format!("{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
-                             &sd.chr_left,
-                             sd.chr_left_position.separated_string(),
-                             (sd.chr_left_position+sd.left_length).separated_string(),
-                             sd.left_length.separated_string(),
-
-                             &sd.chr_right,
-                             sd.chr_right_position.separated_string(),
-                             (sd.chr_right_position+sd.right_length).separated_string(),
-                             sd.right_length.separated_string()
+                    &format!(
+                        "{}: {} → {}  ({}bp)\n{}: {} → {} ({}bp)",
+                        &sd.chr_left,
+                        sd.chr_left_position.separate_with_spaces(),
+                        (sd.chr_left_position + sd.left_length).separate_with_spaces(),
+                        sd.left_length.separate_with_spaces(),
+                        &sd.chr_right,
+                        sd.chr_right_position.separate_with_spaces(),
+                        (sd.chr_right_position + sd.right_length).separate_with_spaces(),
+                        sd.right_length.separate_with_spaces()
                     )
                 );
             }
         }
 
-        format!("<?xml version='1.0' encoding='UTF-8' standalone='no' ?> <!DOCTYPE svg \
+        format!(
+            "<?xml version='1.0' encoding='UTF-8' standalone='no' ?> <!DOCTYPE svg \
                  PUBLIC '-//W3C//DTD SVG 1.0//EN' \
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
                  width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
                  xmlns:xlink='http://www.w3.org/1999/xlink'>{}</svg>",
-                self.width+25.0,
-                self.height+40.0,
-                svg)
+            self.width + 25.0,
+            self.height + 40.0,
+            svg
+        )
     }
 }

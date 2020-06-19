@@ -1,6 +1,6 @@
-use plot::*;
-use plot::colorizers::Colorizer;
-use ::utils::slugify;
+use crate::plot::colorizers::Colorizer;
+use crate::plot::*;
+use crate::utils::slugify;
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -12,10 +12,7 @@ pub struct CircosPlotter {
 
 impl Plotter for CircosPlotter {
     fn new(settings: Settings, result: RunResult, _x: Box<dyn Colorizer>) -> CircosPlotter {
-        CircosPlotter {
-            result,
-            settings,
-        }
+        CircosPlotter { result, settings }
     }
 
     fn plot(&self) -> Result<()> {
@@ -31,7 +28,7 @@ impl Plotter for CircosPlotter {
                 log::info!("Karyotype written to `{}`", &karyotype_filename);
                 Ok(())
             })
-            .chain_err(|| format!("Unable to write in `{}`", &karyotype_filename))?;
+            .with_context(|| format!("Failed to save karyotype to `{}`", &karyotype_filename))?;
 
         File::create(links_filename)
             .and_then(|mut f| f.write_all(self.plot_links().as_bytes()))
@@ -39,7 +36,7 @@ impl Plotter for CircosPlotter {
                 log::info!("Links written to `{}`", &links_filename);
                 Ok(())
             })
-            .chain_err(|| format!("Unable to write in `{}`", &links_filename))?;
+            .with_context(|| format!("Failed to save links to `{}`", &links_filename))?;
 
         File::create(config_filename)
             .and_then(|mut f| {
@@ -52,7 +49,12 @@ impl Plotter for CircosPlotter {
                 log::info!("Config written to `{}`", &config_filename);
                 Ok(())
             })
-            .chain_err(|| format!("Unable to write in `{}`", &config_filename))?;
+            .with_context(|| {
+                format!(
+                    "Failed to save plot configuration to `{}`",
+                    &config_filename
+                )
+            })?;
 
         println!(
             "\nYou can now edit `{}` and/or run `circos {}` to generate the final plot.",

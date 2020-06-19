@@ -1,9 +1,6 @@
-extern crate regex;
-extern crate palette;
-extern crate rand;
+use anyhow::{Context, Result};
 
-use errors::*;
-use structs::*;
+use crate::structs::*;
 
 pub mod chord_plot;
 pub mod flat_plot;
@@ -43,6 +40,10 @@ pub struct Feature {
 }
 
 pub trait Plotter {
-    fn new(settings: Settings, result: RunResult, colorizer: Box<dyn colorizers::Colorizer>) -> Self;
+    fn new(
+        settings: Settings,
+        result: RunResult,
+        colorizer: Box<dyn colorizers::Colorizer>,
+    ) -> Self;
     fn plot(&self) -> Result<()>;
 }

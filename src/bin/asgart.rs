@@ -1,16 +1,3 @@
-#[macro_use]
-extern crate clap;
-#[macro_use]
-extern crate log;
-extern crate asgart;
-
-use clap::{App, AppSettings};
-
-use asgart::console::style;
-use asgart::indicatif::{HumanDuration, ProgressBar, ProgressStyle};
-use asgart::rayon::prelude::*;
-use asgart::separator::Separatable;
-
 use std::cmp;
 use std::path;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -21,12 +8,17 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 
+use anyhow::{Context, Result};
+use clap::*;
+use console::style;
+use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
+use log::*;
+use rayon::prelude::*;
+use thousands::Separable;
+
 use asgart::automaton;
 use asgart::divsufsort::{divsufsort64, SuffixArray};
-use asgart::errors::*;
 use asgart::exporters;
-use asgart::exporters::Exporter;
-use asgart::log::LevelFilter;
 use asgart::logger::Logger;
 use asgart::searcher;
 use asgart::structs::*;
@@ -269,16 +261,11 @@ fn prepare_data(
         let mut r = Vec::new();
 
         let reader = bio::io::fasta::Reader::from_file(filename)
-            .chain_err(|| format!("Unable to open `{}`", filename))?;
+            .with_context(|| format!("Unable to read FASTA file `{}`", filename))?;
         let mut counter = 0;
 
         for record in reader.records() {
-            let record = record.chain_err(|| {
-                format!(
-                    "Unable to read {:?}: not a FASTA file",
-                    path::Path::new(filename).file_name().unwrap()
-                )
-            })?;
+            let record = record.context(format!("Unable to parse `{}`", filename))?;
 
             let name = record.id().to_owned();
             let mut seq = record.seq().to_vec();
@@ -369,7 +356,7 @@ fn prepare_data(
 
     for file_name in strands_files {
         let (map, new_strand) = read_fasta(file_name, skip_masked)
-            .chain_err(|| format!("Unable to parse `{}`", file_name))?;
+            .with_context(|| format!("Unable to parse `{}`", file_name))?;
 
         // We want to add each fragment separately to ensure that chunks are cutting between fragments
         for chr in map.iter() {
@@ -397,28 +384,28 @@ fn prepare_data(
         debug!(
             "{:>20}: {:>15}  --> {:>15}    {:>15} bp",
             s.name,
-            s.position.separated_string(),
-            (s.position + s.length).separated_string(),
-            s.length.separated_string()
+            s.position.separate_with_spaces(),
+            (s.position + s.length).separate_with_spaces(),
+            s.length.separate_with_spaces()
         )
     });
 
     let chunks_length = chunks_to_process.iter().fold(0, |ax, c| ax + c.1);
     info!(
         "Processing {} chunks totalling {}bp, skipping {}bp out of {} ({}%)",
-        chunks_to_process.len().separated_string(),
-        chunks_length.separated_string(),
-        (strand.len() - chunks_length).separated_string(),
-        strand.len().separated_string(),
+        chunks_to_process.len().separate_with_spaces(),
+        chunks_length.separate_with_spaces(),
+        (strand.len() - chunks_length).separate_with_spaces(),
+        strand.len().separate_with_spaces(),
         (((strand.len() as f64 - (chunks_length as f64)) * 100.0 / strand.len() as f64) as i64)
-            .separated_string()
+            .separate_with_spaces()
     );
     chunks_to_process.iter().for_each(|c| {
         trace!(
             "{:>12} -> {:>12}   {:>11} bp",
-            c.0.separated_string(),
-            (c.0 + c.1).separated_string(),
-            c.1.separated_string()
+            c.0.separate_with_spaces(),
+            (c.0 + c.1).separate_with_spaces(),
+            c.1.separate_with_spaces()
         );
     });
     strand.push(b'$'); // For the SA construction
@@ -557,7 +544,7 @@ fn reduce_overlap(result: &[ProtoSD]) -> Vec<ProtoSD> {
     news
 }
 
-fn run() -> Result<()> {
+fn main() -> Result<()> {
     // Those settings are only used to handily parse arguments
     struct Settings {
         strands_files: Vec<String>,
@@ -573,7 +560,6 @@ fn run() -> Result<()> {
 
         prefix: String,
         out: String,
-        out_format: String,
         compute_score: bool,
         threads_count: usize,
     }
@@ -606,7 +592,6 @@ fn run() -> Result<()> {
 
         prefix: args.value_of("prefix").unwrap().to_owned(),
         out: args.value_of("out").unwrap_or("").to_owned(),
-        out_format: args.value_of("out_format").unwrap().to_owned(),
         compute_score: args.is_present("compute_score"),
         threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
     };
@@ -617,7 +602,7 @@ fn run() -> Result<()> {
         2 => LevelFilter::Trace,
         _ => LevelFilter::Trace,
     })
-    .chain_err(|| "Unable to initialize logger")?;
+    .with_context(|| "Unable to initialize logger")?;
 
     let radix = (settings
         .strands_files
@@ -681,7 +666,7 @@ fn run() -> Result<()> {
 
     let out_radix = if settings.out.is_empty() {
         format!(
-            "{}{}{}{}{}{}.{}",
+            "{}{}{}{}{}{}.json",
             &settings.prefix,
             radix,
             if settings.reverse || settings.complement {
@@ -696,27 +681,18 @@ fn run() -> Result<()> {
             } else {
                 "".into()
             }),
-            &settings.out_format
         )
     } else {
         settings.out
     };
 
-    let out_filename = asgart::utils::make_out_filename(Some(&out_radix), "", &settings.out_format)
+    let out_filename = asgart::utils::make_out_filename(Some(&out_radix), "", "json")
         .to_str()
         .unwrap()
         .to_owned();
     let mut out = std::fs::File::create(&out_filename)
-        .chain_err(|| format!("Unable to create `{}`", out_filename))?;
-    let exporter = match &settings.out_format[..] {
-        "json" => Box::new(exporters::JSONExporter) as Box<dyn Exporter>,
-        "gff2" => Box::new(exporters::GFF2Exporter) as Box<dyn Exporter>,
-        "gff3" => Box::new(exporters::GFF3Exporter) as Box<dyn Exporter>,
-        format @ _ => {
-            warn!("Unknown output format `{}`: using json instead", format);
-            Box::new(exporters::JSONExporter) as Box<dyn Exporter>
-        }
-    };
+        .with_context(|| format!("Unable to create `{}`", out_filename))?;
+    let exporter = Box::new(exporters::JSONExporter) as Box<dyn exporters::Exporter>;
     exporter.save(&result, &mut out)?;
     info!(
         "{}",
@@ -815,16 +791,4 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
             })
             .collect(),
     })
-}
-
-fn main() {
-    if let Err(ref e) = run() {
-        error!("{}", e);
-        e.iter().skip(1).for_each(|e| warn!("{}", e));
-
-        if let Some(backtrace) = e.backtrace() {
-            println!("backtrace: {:?}", backtrace);
-        }
-        std::process::exit(1);
-    }
 }

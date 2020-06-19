@@ -1,9 +1,9 @@
-use errors::*;
+use ::rayon::prelude::*;
+use anyhow::{anyhow, Context, Result};
+use serde_derive::*;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
-use std::collections::HashMap;
-use ::rayon::prelude::*;
-
 
 pub const COLLAPSED_NAME: &str = "ASGART_COLLAPSED";
 pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
@@ -74,10 +74,12 @@ pub struct RunResult {
 }
 impl RunResult {
     pub fn from_file(filename: &str) -> Result<RunResult> {
-        let mut f = File::open(filename).chain_err(|| format!("Unable to open {}", filename))?;
+        let mut f = File::open(filename)
+            .with_context(|| format!("Cannot read data from `{}`", filename))?;
         let mut s = String::new();
         let _ = f.read_to_string(&mut s);
-        serde_json::from_str(&s).chain_err(|| "Failed to parse JSON")
+        serde_json::from_str(&s)
+            .with_context(|| format!("Failed to parse JSON data from `{}`", filename))
     }
 
     pub fn from_files(filenames: &[String]) -> Result<RunResult> {
@@ -88,9 +90,10 @@ impl RunResult {
 
         for result in &results {
             if result.strand.name != results[0].strand.name {
-                bail!(format!(
+                return Err(anyhow!(
                     "Trying to combine ASGART files from different sources: `{}` and `{}`",
-                    result.strand.name, results[0].strand.name,
+                    result.strand.name,
+                    results[0].strand.name,
                 ));
             }
         }
@@ -137,11 +140,13 @@ impl RunResult {
     }
 
     pub fn remove_inter(&mut self) {
-        self.families
-            .iter_mut()
-            .for_each(|family| family.retain(|sd| sd.chr_left == sd.chr_right
-                                             || sd.chr_left == COLLAPSED_NAME
-                                             || sd.chr_right == COLLAPSED_NAME));
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| {
+                sd.chr_left == sd.chr_right
+                    || sd.chr_left == COLLAPSED_NAME
+                    || sd.chr_right == COLLAPSED_NAME
+            })
+        });
         self.families.retain(|f| !f.is_empty());
     }
 
@@ -157,11 +162,15 @@ impl RunResult {
     }
 
     pub fn restrict_fragments<T: AsRef<str>>(&mut self, to_keep: &[T]) {
-        self.families.iter_mut().for_each(|family| family.retain(|sd| {
-            to_keep.iter().any(|n| n.as_ref() == sd.chr_left)
-                && to_keep.iter().any(|n| n.as_ref() == sd.chr_right)
-        }));
-        self.strand.map.retain(|c| to_keep.iter().any(|n| n.as_ref() == c.name));
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| {
+                to_keep.iter().any(|n| n.as_ref() == sd.chr_left)
+                    && to_keep.iter().any(|n| n.as_ref() == sd.chr_right)
+            })
+        });
+        self.strand
+            .map
+            .retain(|c| to_keep.iter().any(|n| n.as_ref() == c.name));
         self.strand.length = self.strand.map.iter().map(|c| c.length).sum::<usize>();
 
         let mut i = 0;
@@ -171,20 +180,24 @@ impl RunResult {
         }
         for f in self.families.iter_mut() {
             for sd in f.iter_mut() {
-                sd.global_left_position = self.strand.find_chr(&sd.chr_left).unwrap().position
-                    + sd.chr_left_position;
-                sd.global_right_position = self.strand.find_chr(&sd.chr_right).unwrap().position
-                    + sd.chr_right_position;
+                sd.global_left_position =
+                    self.strand.find_chr(&sd.chr_left).unwrap().position + sd.chr_left_position;
+                sd.global_right_position =
+                    self.strand.find_chr(&sd.chr_right).unwrap().position + sd.chr_right_position;
             }
         }
     }
 
     pub fn exclude_fragments<T: AsRef<str>>(&mut self, to_exclude: &[T]) {
-        self.families.iter_mut().for_each(|family| family.retain(|sd| {
-            !(to_exclude.iter().any(|n| n.as_ref() == sd.chr_left)
-              || to_exclude.iter().any(|n| n.as_ref() == sd.chr_right))
-        }));
-        self.strand.map.retain(|c| !to_exclude.iter().any(|n| n.as_ref() == c.name));
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| {
+                !(to_exclude.iter().any(|n| n.as_ref() == sd.chr_left)
+                    || to_exclude.iter().any(|n| n.as_ref() == sd.chr_right))
+            })
+        });
+        self.strand
+            .map
+            .retain(|c| !to_exclude.iter().any(|n| n.as_ref() == c.name));
         self.strand.length = self.strand.map.iter().map(|c| c.length).sum::<usize>();
 
         let mut i = 0;
@@ -194,33 +207,46 @@ impl RunResult {
         }
         for f in self.families.iter_mut() {
             for sd in f.iter_mut() {
-                sd.global_left_position = self.strand.find_chr(&sd.chr_left).unwrap().position
-                    + sd.chr_left_position;
-                sd.global_right_position = self.strand.find_chr(&sd.chr_right).unwrap().position
-                    + sd.chr_right_position;
+                sd.global_left_position =
+                    self.strand.find_chr(&sd.chr_left).unwrap().position + sd.chr_left_position;
+                sd.global_right_position =
+                    self.strand.find_chr(&sd.chr_right).unwrap().position + sd.chr_right_position;
             }
         }
     }
 
     pub fn flatten(&mut self) {
-        if self.strand.map.len() < 2 { return; }
+        if self.strand.map.len() < 2 {
+            return;
+        }
         let n = self.strand.map.len() as f64;
-        let lengths = self.strand.map.iter().map(|c| c.length as f64).collect::<Vec<_>>();
-        let avg = lengths.iter().sum::<f64>()/n;
-        let std = (1.0/(n - 1.0) * lengths.iter().map(|x| (x - avg).powf(2.0)).sum::<f64>()).sqrt();
+        let lengths = self
+            .strand
+            .map
+            .iter()
+            .map(|c| c.length as f64)
+            .collect::<Vec<_>>();
+        let avg = lengths.iter().sum::<f64>() / n;
+        let std =
+            (1.0 / (n - 1.0) * lengths.iter().map(|x| (x - avg).powf(2.0)).sum::<f64>()).sqrt();
 
-        let mut to_flatten = self.strand.map
-            .iter().cloned()
+        let mut to_flatten = self
+            .strand
+            .map
+            .iter()
+            .cloned()
             .filter(|c| c.length as f64 <= avg + std && c.name.len() > 2) // Try not to remove normal but small scaffolds/chromosomes
             .clone()
             .collect::<Vec<_>>();
         let to_flatten_len = to_flatten.iter().map(|c| c.length).sum::<usize>();
-        let mut to_keep = self.strand.map.iter()
+        let mut to_keep = self
+            .strand
+            .map
+            .iter()
             .cloned()
             .filter(|c| !to_flatten.iter().any(|r| c.name == r.name))
             .collect::<Vec<_>>();
-        let to_keep_len = to_keep.iter().map(|c| c.length)
-            .sum::<usize>();
+        let to_keep_len = to_keep.iter().map(|c| c.length).sum::<usize>();
 
         let mut i = 0;
         for c in to_keep.iter_mut() {
@@ -232,29 +258,32 @@ impl RunResult {
             i += c.length;
         }
 
-        let to_flatten_positions = to_flatten.iter()
+        let to_flatten_positions = to_flatten
+            .iter()
             .map(|c| (c.name.clone(), c.position))
             .collect::<HashMap<_, _>>();
 
         self.strand.map = to_keep;
-        self.strand.map.push(Start{name: COLLAPSED_NAME.to_string(), position: to_keep_len+1, length: to_flatten_len});
+        self.strand.map.push(Start {
+            name: COLLAPSED_NAME.to_string(),
+            position: to_keep_len + 1,
+            length: to_flatten_len,
+        });
 
-        self.families
-            .par_iter_mut()
-            .for_each(|family|
-                      family.iter_mut()
-                      .for_each(|mut sd| {
-                          let left_match = to_flatten.iter().any(|n| *n.name == sd.chr_left);
-                          let right_match = to_flatten.iter().any(|n| *n.name == sd.chr_right);
-                          if left_match {
-                              sd.chr_left_position = to_flatten_positions[&sd.chr_left] + sd.chr_left_position;
-                              sd.chr_left = COLLAPSED_NAME.to_string();
-                          }
-                          if right_match {
-                              sd.chr_right_position = to_flatten_positions[&sd.chr_right] + sd.chr_right_position;
-                              sd.chr_right = COLLAPSED_NAME.to_string();
-                          }
-                      }));
+        self.families.par_iter_mut().for_each(|family| {
+            family.iter_mut().for_each(|mut sd| {
+                let left_match = to_flatten.iter().any(|n| *n.name == sd.chr_left);
+                let right_match = to_flatten.iter().any(|n| *n.name == sd.chr_right);
+                if left_match {
+                    sd.chr_left_position += to_flatten_positions[&sd.chr_left];
+                    sd.chr_left = COLLAPSED_NAME.to_string();
+                }
+                if right_match {
+                    sd.chr_right_position += to_flatten_positions[&sd.chr_right];
+                    sd.chr_right = COLLAPSED_NAME.to_string();
+                }
+            })
+        });
     }
 }
 

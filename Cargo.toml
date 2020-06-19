@@ -1,31 +1,35 @@
 [package]
-name = "asgart"
-version = "2.1.0"
-authors = ["Franklin Delehelle <franklin.delehelle@odena.eu>"]
-license = "GPLv3"
+name         = "asgart"
+version      = "2.3.0"
+authors      = ["Franklin Delehelle <franklin.delehelle@odena.eu>"]
+edition      = "2018"
+description  = "A large duplication families mapper"
+license      = "GPLv3"
+license_file = "LICENSE.txt"
+default-run  = "asgart"
 
 [dependencies]
+anyhow       = "1.0"
 atty         = "0.2"
 bio          = "*"
 colored      = "1.*"
-console      = "0.7"
-env_logger   = "0.6"
-error-chain  = "0.12"
+console      = "0.10"
+env_logger   = "0.7"
 human-panic  = "1.0"
-indicatif    = "0.11"
+indicatif    = "0.14"
 log          = "0.4"
 num_cpus     = "1.*"
-palette      = "0.4"
-rand         = "0.6"
+palette      = "0.5"
+rand         = "0.7"
 rayon        = "1.*"
 regex        = "1.*"
-separator    = { git = "https://github.com/delehef/rust-separator.git" }
 serde        = "1.*"
 serde_derive = "1.*"
 serde_json   = "1.*"
 superslice   = "1.0"
+thousands    = "0.2"
 threadpool   = "1.*"
-uuid         = "0.7"
+uuid         = "0.8"
 
 
 [dependencies.clap]

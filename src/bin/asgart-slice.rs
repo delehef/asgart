@@ -1,37 +1,24 @@
-#[macro_use] extern crate clap;
-extern crate asgart;
-
 use std::fs::File;
-use clap::{App, Arg, AppSettings};
 
-use asgart::log::LevelFilter;
-use asgart::exporters::Exporter;
+use anyhow::Result;
+use clap::*;
+use log::LevelFilter;
+
 use asgart::exporters;
+use asgart::exporters::Exporter;
 use asgart::logger::Logger;
-use asgart::errors::*;
 use asgart::structs::*;
 
-
-fn main() {
+fn main() -> Result<()> {
     Logger::init(LevelFilter::Info).expect("Unable to initialize logger");
-    let x = run();
-    if let Err(ref e) = x {
-        log::error!("{}", e);
-        for e in e.iter().skip(1) { println!("{}", e); }
-        if let Some(backtrace) = e.backtrace() { println!("Backtrace: {:?}", backtrace); }
-        std::process::exit(1);
-    }
-}
-
-fn run() -> Result<()> {
-    let args = App::new("ASGART concatenate")
+    let args = App::new("ASGART slice")
         .setting(AppSettings::ColoredHelp)
         .setting(AppSettings::ColorAuto)
         .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::UnifiedHelpMessage)
         .version(crate_version!())
         .author(crate_authors!())
-        .about("asgart-cat convert multiple input JSON files into a single one. Its main intended use is to merge together multiple files resulting from complementary runs on the same dataset, e.g. direct and palindromic duplications searches.\nIt also features some other functions to collapse, convert and filter data.")
+        .about("asgart-slice combines multiple ASGART JSON files into a single output file in the desired format, and features functions to filter, convert and collapse data.")
         .arg(Arg::with_name("INPUT")
              .help("Set the input file(s) to use")
              .required(true)
@@ -101,34 +88,46 @@ fn run() -> Result<()> {
     let inputs = values_t!(args, "INPUT", String).unwrap();
     let format = value_t!(args, "format", String).unwrap_or("json".to_string());
     let mut out: Box<dyn std::io::Write> = if args.is_present("OUTPUT") {
-        let out_filename = asgart::utils::make_out_filename(
-            args.value_of("OUTPUT"),
-            "out",
-            &format
-        );
+        let out_filename =
+            asgart::utils::make_out_filename(args.value_of("OUTPUT"), "out", &format);
         Box::new(File::create(out_filename).unwrap())
     } else {
         Box::new(std::io::stdout())
     };
 
     let exporter = match &format[..] {
-        "json"     => { Box::new(exporters::JSONExporter) as Box<dyn Exporter> }
-        "gff2"     => { Box::new(exporters::GFF2Exporter) as Box<dyn Exporter> }
-        "gff3"     => { Box::new(exporters::GFF3Exporter) as Box<dyn Exporter> }
+        "json" => Box::new(exporters::JSONExporter) as Box<dyn Exporter>,
+        "gff2" => Box::new(exporters::GFF2Exporter) as Box<dyn Exporter>,
+        "gff3" => Box::new(exporters::GFF3Exporter) as Box<dyn Exporter>,
         format @ _ => {
             log::warn!("Unknown output format `{}`: using json instead", format);
             Box::new(exporters::JSONExporter) as Box<dyn Exporter>
-        }};
+        }
+    };
 
     let mut results = RunResult::from_files(&inputs)?;
 
-    if args.is_present("flatten") {results.flatten();}
-    if args.is_present("no-direct") {results.remove_direct();}
-    if args.is_present("no-reversed") {results.remove_reversed();}
-    if args.is_present("no-uncomplemented") {results.remove_uncomplemented();}
-    if args.is_present("no-complemented") {results.remove_complemented();}
-    if args.is_present("no-inter") {results.remove_inter();}
-    if args.is_present("no-intra") {results.remove_intra();}
+    if args.is_present("flatten") {
+        results.flatten();
+    }
+    if args.is_present("no-direct") {
+        results.remove_direct();
+    }
+    if args.is_present("no-reversed") {
+        results.remove_reversed();
+    }
+    if args.is_present("no-uncomplemented") {
+        results.remove_uncomplemented();
+    }
+    if args.is_present("no-complemented") {
+        results.remove_complemented();
+    }
+    if args.is_present("no-inter") {
+        results.remove_inter();
+    }
+    if args.is_present("no-intra") {
+        results.remove_intra();
+    }
     if args.is_present("min-length") {
         let min_length   = value_t!(args, "min-length", usize).unwrap();
         results
@@ -138,7 +137,8 @@ fn run() -> Result<()> {
         results.families.retain(|f| !f.is_empty());
     }
     if args.is_present("max-family-members") {
-        results.max_family_members(value_t!(args, "max-family-members", usize).unwrap_or(100_000_000));
+        results
+            .max_family_members(value_t!(args, "max-family-members", usize).unwrap_or(100_000_000));
     }
     if args.is_present("restrict-fragments") {
         results.restrict_fragments(&values_t!(args, "restrict-fragments", String).unwrap());

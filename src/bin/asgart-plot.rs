@@ -1,33 +1,21 @@
-#[macro_use] extern crate clap;
-extern crate serde_json;
-extern crate colored;
-extern crate asgart;
-extern crate error_chain;
-extern crate regex;
-extern crate rand;
-extern crate bio;
-
-use error_chain::*;
 use regex::Regex;
-use std::io::BufReader;
-use std::io::prelude::*;
-use std::fs::File;
-use std::path::Path;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::path::Path;
 
-use clap::{App, AppSettings};
-use colored::Colorize;
+use anyhow::{anyhow, Context, Result};
+use clap::*;
+use log::LevelFilter;
 
-use asgart::plot::*;
-use asgart::plot::chord_plot::ChordPlotter;
-use asgart::plot::flat_plot::FlatPlotter;
-use asgart::plot::circos_plot::CircosPlotter;
-use asgart::plot::genome_plot::GenomePlotter;
-use asgart::plot::colorizers::*;
-use asgart::errors::*;
 use asgart::logger::Logger;
-use asgart::log::LevelFilter;
-
+use asgart::plot::chord_plot::ChordPlotter;
+use asgart::plot::circos_plot::CircosPlotter;
+use asgart::plot::colorizers::*;
+use asgart::plot::flat_plot::FlatPlotter;
+use asgart::plot::genome_plot::GenomePlotter;
+use asgart::plot::*;
 use asgart::structs::*;
 
 fn filter_families_in_features(
@@ -186,7 +174,7 @@ fn read_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
 }
 
 fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
-    let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
+    let f = File::open(file).with_context(|| format!("Unable to open {}", file))?;
     let f = BufReader::new(f);
 
     let r = f
@@ -226,7 +214,7 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
 }
 
 fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
-    let f = File::open(file).chain_err(|| format!("Unable to open {}", file))?;
+    let f = File::open(file).with_context(|| format!("Unable to open {}", file))?;
     let f = BufReader::new(f);
     let mut d = HashMap::new();
 
@@ -240,13 +228,13 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     {
         let v: Vec<&str> = line.split(';').collect();
         if v.len() != 3 {
-            bail!(
+            return Err(anyhow!(
                 "{}:L{} `{}`: incorrect format, expecting two members, found {}",
                 file,
                 i + 1,
                 line,
                 v.len()
-            );
+            ));
         }
         let name = v[0].to_owned();
 
@@ -267,12 +255,12 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
                 .find_chr(chr_name)
                 .expect(&format!("Unable to find fragment `{}`", chr_name));
             if chr.length < position {
-                bail!(
+                return Err(anyhow!(
                     "{} greater than {} length ({})",
                     position,
                     chr.name,
                     chr.length
-                );
+                ));
             }
             FeaturePosition::Relative {
                 chr: chr.name.to_owned(),
@@ -299,7 +287,7 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     Ok(features)
 }
 
-fn run() -> Result<()> {
+fn main() -> Result<()> {
     let yaml = load_yaml!("asgart-plot.yaml");
     let args = App::from_yaml(yaml)
         .version(crate_version!())
@@ -310,11 +298,12 @@ fn run() -> Result<()> {
         .setting(AppSettings::UnifiedHelpMessage)
         .get_matches();
     Logger::init(match args.occurrences_of("verbose") {
-        0 => { LevelFilter::Info }
-        1 => { LevelFilter::Debug }
-        2 => { LevelFilter::Trace }
-        _ => { LevelFilter::Trace }
-    }).chain_err(|| "Unable to initialize logger")?;
+        0 => LevelFilter::Info,
+        1 => LevelFilter::Debug,
+        2 => LevelFilter::Trace,
+        _ => LevelFilter::Trace,
+    })
+    .with_context(|| "Unable to initialize logger")?;
 
     let json_files = values_t!(args, "FILE", String).unwrap();
     let mut result = RunResult::from_files(&json_files)?;
@@ -333,12 +322,24 @@ fn run() -> Result<()> {
     }
     let mut features_tracks = features_tracks.unwrap();
 
-    if args.is_present("no-direct") {result.remove_direct();}
-    if args.is_present("no-reversed") {result.remove_reversed();}
-    if args.is_present("no-uncomplemented") {result.remove_uncomplemented();}
-    if args.is_present("no-complemented") {result.remove_complemented();}
-    if args.is_present("no-inter") {result.remove_inter();}
-    if args.is_present("no-intra") {result.remove_intra();}
+    if args.is_present("no-direct") {
+        result.remove_direct();
+    }
+    if args.is_present("no-reversed") {
+        result.remove_reversed();
+    }
+    if args.is_present("no-uncomplemented") {
+        result.remove_uncomplemented();
+    }
+    if args.is_present("no-complemented") {
+        result.remove_complemented();
+    }
+    if args.is_present("no-inter") {
+        result.remove_inter();
+    }
+    if args.is_present("no-intra") {
+        result.remove_intra();
+    }
     if args.is_present("restrict-fragments") {
         let to_keep = values_t!(args, "restrict-fragments", String).unwrap();
         log::info!("Restricting to fragments {:?}", &to_keep);
@@ -350,9 +351,10 @@ fn run() -> Result<()> {
         result.exclude_fragments(&to_remove);
     }
 
-
-    let min_length   = value_t!(args, "min_length", usize).unwrap();
-    result.families.iter_mut().for_each(|family| family.retain(|sd| std::cmp::max(sd.left_length, sd.right_length) >= min_length));
+    let min_length = value_t!(args, "min_length", usize).unwrap();
+    result.families.iter_mut().for_each(|family| {
+        family.retain(|sd| std::cmp::max(sd.left_length, sd.right_length) >= min_length)
+    });
     let min_identity = value_t!(args, "min_identity", f32).unwrap();
     result
         .families
@@ -394,33 +396,24 @@ fn run() -> Result<()> {
     };
 
     let colorizer = match args.value_of("colorize") {
-        Some("by-type")     => Box::new(TypeColorizer::new((1.0, 0.36, 0.0), (0.0, 0.70, 0.68))) as Box<dyn Colorizer>,
+        Some("by-type") => {
+            Box::new(TypeColorizer::new((1.0, 0.36, 0.0), (0.0, 0.70, 0.68))) as Box<dyn Colorizer>
+        }
         Some("by-position") => Box::new(PositionColorizer::new(&result)) as Box<dyn Colorizer>,
         Some("by-fragment") => Box::new(FragmentColorizer::new(&result)) as Box<dyn Colorizer>,
-        Some("none")        => Box::new(TypeColorizer::new((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))) as Box<dyn Colorizer>,
-        _                   => unreachable!(),
-    } ;
+        Some("none") => {
+            Box::new(TypeColorizer::new((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))) as Box<dyn Colorizer>
+        }
+        _ => unreachable!(),
+    };
 
     let r = match args.value_of("PLOT-TYPE") {
-        Some("chord")   => ChordPlotter::new(settings, result, colorizer).plot(),
-        Some("flat")    => FlatPlotter::new(settings, result, colorizer).plot(),
-        Some("genome")  => GenomePlotter::new(settings, result, colorizer).plot(),
-        Some("circos")  => CircosPlotter::new(settings, result, colorizer).plot(),
+        Some("chord") => ChordPlotter::new(settings, result, colorizer).plot(),
+        Some("flat") => FlatPlotter::new(settings, result, colorizer).plot(),
+        Some("genome") => GenomePlotter::new(settings, result, colorizer).plot(),
+        Some("circos") => CircosPlotter::new(settings, result, colorizer).plot(),
         // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
-        _               => unreachable!(),
+        _ => unreachable!(),
     };
     r
-}
-
-fn main() {
-    if let Err(ref e) = run() {
-        println!("{} {}", "Error: ".red(), e);
-        for e in e.iter().skip(1) {
-            println!("{}", e);
-        }
-        if let Some(backtrace) = e.backtrace() {
-            println!("Backtrace: {:?}", backtrace);
-        }
-        std::process::exit(1);
-    }
 }

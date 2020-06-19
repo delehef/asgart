@@ -69,7 +69,7 @@ asgart seq.fasta
 ```
 
 This command will look for duplications in the `seq.fasta` file, then
-write them in a JSON file in the folder where it was launched. ASGART
+write them in a JSON file in the folder from which it was launched. ASGART
 will probe using 20-mers, and guarantee that no duplication will
 include gaps longer than 100bp in their arm-to-arm pairwise alignment.
 
@@ -90,9 +90,7 @@ file) format.
 
 ## Output
 
-### JSON
-
-By default, ASGART will write its result in a JSON file in the folder
+ASGART will write its result in a JSON file in the folder
 where it was launched, using the following structure:
 
 ```
@@ -143,14 +141,7 @@ where it was launched, using the following structure:
 }
 ```
 
-### GFF
-
-ASGART can also write its results in GFF2 or GFF3 files by using the
-`--format` option. For instance, use `--format gff3` to save the
-results in a GFF3 file.
-
-You can also use the `asgart-cat` companion tool to convert JSON results
-to GFF2 or GFF3 format.
+You can use the companion program `asgart-slice` to convert JSON files to another format.
 
 ## Options
 
@@ -184,9 +175,6 @@ to GFF2 or GFF3 format.
 
   - `--prefix NAME` defines a prefix to prepend to the standard output
     file name
-
-  - `--format OUT_FORMAT` sets the output format. Default is `json`,
-    it can also be set to `gff2` or `gff3`
 
   - `--threads COUNT` set the numbers of thread to use. Defaults to
     the number of cores abailable on the CPU
@@ -342,9 +330,15 @@ manually replaced.
 
 `asgart-plot human_Y.json human_Y_RC.json circos --min-length 10000`
 
-# Update Log
+# Change Log
 
 _Please note that ASGART follows the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
+
+## v2.3.0
+
+- `asgart-cat` has been renamed to `asgart-slice`
+- `asgart` does not feature multiple output formats anymore; `asgart-slice` is to
+  to be used instead.
 
 ## v2.2.1
 

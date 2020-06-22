@@ -141,11 +141,7 @@ impl RunResult {
 
     pub fn remove_inter(&mut self) {
         self.families.iter_mut().for_each(|family| {
-            family.retain(|sd| {
-                sd.chr_left == sd.chr_right
-                    || sd.chr_left == COLLAPSED_NAME
-                    || sd.chr_right == COLLAPSED_NAME
-            })
+            family.retain(|sd| { sd.chr_left == sd.chr_right })
         });
         self.families.retain(|f| !f.is_empty());
     }

@@ -1,4 +1,4 @@
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 use std::process;
@@ -9,6 +9,7 @@ use log::*;
 
 use asgart::logger::*;
 use asgart::utils;
+use asgart::exporters::{Exporter, JSONExporter};
 
 fn read_fasta(filename: &str) -> Result<Vec<u8>> {
     let mut r = Vec::new();
@@ -39,25 +40,41 @@ fn main() -> Result<()> {
              .required(true)
              .takes_value(true)
              .min_values(1))
-        .arg(Arg::with_name("prefix")
-             .short("p")
-             .long("prefix")
-             .help("A prefix to append to the output files")
-             .takes_value(true)
-             .number_of_values(1))
         .arg(Arg::with_name("locations")
              .short("l")
              .long("locations")
              .help("Where to find the original FASTA files; might take multiple values")
              .takes_value(true))
+
+        .arg(Arg::with_name("in-place")
+             .short("I")
+             .long("in-json")
+             .help("write the sequences directly in the input JSON file"))
+        .arg(Arg::with_name("dump")
+             .short("D")
+             .long("dump")
+             .help("dump the sequences into a set of multiFASTA files"))
+        .arg(Arg::with_name("destination")
+             .short("d")
+             .long("destination")
+             .help("where to write the multiFASTA files")
+             .takes_value(true)
+             .number_of_values(1))
         .get_matches();
 
+    if !args.is_present("in-place") && !args.is_present("dump") {
+        return Err(anyhow::Error::msg(
+            format!("Please specify at least one of `--in-json` or `--dump`; see --help for more details")))
+    }
     let input = value_t!(args, "INPUT", String).unwrap();
-    let prefix = value_t!(args, "prefix", String).unwrap_or("".to_string());
-    let locations = values_t!(args, "locations", String).unwrap_or(vec!["".to_owned()]);
+    let destination = format!("{}/", value_t!(args, "destination", String).unwrap_or("./".to_string()));
+    if !Path::new(&destination).is_dir() {
+        return Err(anyhow::Error::msg(format!("`{}` is not a valid directory", destination)))
+    }
+    let locations = values_t!(args, "locations", String).unwrap_or(vec![".".to_owned()]);
 
     info!("Reading {}...", &input);
-    let result = asgart::structs::RunResult::from_files(&[input])?;
+    let mut result = asgart::structs::RunResult::from_files(&[input.clone()])?;
     info!("Done.");
 
     let strands_files = result
@@ -93,63 +110,70 @@ fn main() -> Result<()> {
         info!("Done.");
     }
 
-    info!("Writing results...");
-    for (i, family) in result.families.iter().enumerate() {
-        let family_id = format!("family-{}", i);
-        let out_file_name = format!("{}{}.fa", prefix, family_id);
+    if args.is_present("in-place") {
+        result.families.iter_mut().for_each(|family| {
+            family.iter_mut().for_each(|mut sd| {
+                let left_seq =
+                    strand[sd.global_left_position..sd.global_left_position + sd.left_length].to_vec();
+                let mut right_seq = strand
+                    [sd.global_right_position..sd.global_right_position + sd.right_length]
+                    .to_vec();
+                if sd.reversed { right_seq.reverse(); }
+                if sd.complemented { right_seq = utils::complemented(&right_seq); }
 
-        for (j, sd) in family.iter().enumerate() {
-            let mut file = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(&out_file_name)
-                .with_context(|| format!("Unable to write results to `{}`", out_file_name))?;
+                sd.left_seq = Some(String::from_utf8(left_seq).unwrap());
+                sd.right_seq = Some(String::from_utf8(right_seq).unwrap());
+            })
+        });
+        JSONExporter.save(&result, &mut File::create(&input).unwrap())?
+    }
+    if args.is_present("dump") {
+        for (i, family) in result.families.iter().enumerate() {
+            let family_id = format!("family-{}", i);
+            let out_file_name = format!("{}{}.fa", destination, family_id);
 
-            let left_seq =
-                strand[sd.global_left_position..sd.global_left_position + sd.left_length].to_vec();
-            let mut right_seq = strand
-                [sd.global_right_position..sd.global_right_position + sd.right_length]
-                .to_vec();
-            if sd.reversed {
-                right_seq.reverse();
-            }
-            if sd.complemented {
-                right_seq = utils::complemented(&right_seq);
-            }
+            for (j, sd) in family.iter().enumerate() {
+                let mut file = OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .open(&out_file_name)
+                    .with_context(|| format!("Unable to write results to `{}`", out_file_name))?;
 
-            file.write_all(
-                format!(
-                    ">{} {}-{} duplicon-{}-1\n",
+                let left_seq =
+                    strand[sd.global_left_position..sd.global_left_position + sd.left_length].to_vec();
+                let mut right_seq = strand
+                    [sd.global_right_position..sd.global_right_position + sd.right_length]
+                    .to_vec();
+                if sd.reversed { right_seq.reverse(); }
+                if sd.complemented { right_seq = utils::complemented(&right_seq); }
+
+                file.write_all(format!(
+                    ">chr:{};start:{};end:{};family:{};duplicon:{}-1;length:{}\n",
                     sd.chr_left,
                     sd.chr_left_position,
                     sd.chr_left_position + sd.left_length,
-                    j
-                )
-                .as_bytes(),
-            )
-            .with_context(|| "Unable to write results")?;
-            file.write_all(&left_seq)
-                .with_context(|| "Unable to write results")?;
-            file.write_all(b"\n")
-                .with_context(|| "Unable to write results")?;
-            file.write_all(
-                format!(
-                    ">{} {}-{} duplicon-{}-2\n",
-                    sd.chr_right,
-                    sd.chr_right_position,
-                    sd.chr_right_position + sd.right_length,
-                    j
-                )
-                .as_bytes(),
-            )
-            .with_context(|| "Unable to write results")?;
-            file.write_all(&right_seq)
-                .with_context(|| "Unable to write results")?;
-            file.write_all(b"\n")
-                .with_context(|| "Unable to write results")?;
+                    i, j, sd.left_length).as_bytes())
+                    .with_context(|| "Unable to write results")?;
+                file.write_all(&left_seq)
+                    .with_context(|| "Unable to write results")?;
+                file.write_all(b"\n")
+                    .with_context(|| "Unable to write results")?;
+                file.write_all(
+                    format!(
+                        ">chr:{};start:{};end:{};family:{};duplicon:{}-2;length:{}\n",
+                        sd.chr_right,
+                        sd.chr_right_position,
+                        sd.chr_right_position + sd.right_length,
+                        i, j, sd.right_length
+                    ).as_bytes(),)
+                    .with_context(|| "Unable to write results")?;
+                file.write_all(&right_seq)
+                    .with_context(|| "Unable to write results")?;
+                file.write_all(b"\n")
+                    .with_context(|| "Unable to write results")?;
+            }
         }
     }
-    info!("Done.");
 
     Ok(())
 }

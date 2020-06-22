@@ -783,6 +783,9 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
                         left_length: sd.left_length,
                         right_length: sd.right_length,
 
+                        left_seq: None,
+                        right_seq: None,
+
                         identity: sd.identity,
                         reversed: sd.reversed,
                         complemented: sd.complemented,

@@ -333,6 +333,11 @@ pub struct SD {
     pub left_length: usize,
     pub right_length: usize,
 
+    #[serde(default)]
+    pub left_seq: Option<String>,
+    #[serde(default)]
+    pub right_seq: Option<String>,
+
     pub identity: f32,
     pub reversed: bool,
     pub complemented: bool,

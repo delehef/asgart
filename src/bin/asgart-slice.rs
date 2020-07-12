@@ -112,7 +112,7 @@ fn main() -> Result<()> {
 
     let mut results = RunResult::from_files(&inputs)?;
 
-    if args.is_present("flatten") {
+    if args.is_present("collapse") {
         results.flatten();
     }
     if args.is_present("no-direct") {

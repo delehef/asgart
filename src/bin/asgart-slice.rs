@@ -68,9 +68,9 @@ fn main() -> Result<()> {
              .help("filters duplicons shorter than the given argument")
              .takes_value(true))
 
-        .arg(Arg::with_name("flatten")
-             .short("F")
-             .long("flatten")
+        .arg(Arg::with_name("collapse")
+             .short("C")
+             .long("collapse")
              .help("Merge all the smaller-than-average-plus-one-sigma fragments into a single one (useful to deal with datasets containing large numbers of small fragments)"))
 
         .arg(Arg::with_name("restrict-fragments")

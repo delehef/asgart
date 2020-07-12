@@ -146,6 +146,15 @@ impl RunResult {
         self.families.retain(|f| !f.is_empty());
     }
 
+    pub fn remove_inter_relaxed(&mut self) {
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| { (sd.chr_left == sd.chr_right)
+                                  || sd.chr_left == COLLAPSED_NAME
+                                  || sd.chr_right == COLLAPSED_NAME})
+        });
+        self.families.retain(|f| !f.is_empty());
+    }
+
     pub fn remove_intra(&mut self) {
         self.families
             .iter_mut()

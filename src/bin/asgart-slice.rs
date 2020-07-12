@@ -58,7 +58,12 @@ fn main() -> Result<()> {
 
         .arg(Arg::with_name("no-inter")
              .long("no-inter")
-             .help("filters out inter-fragments duplications"))
+             .help("filters out inter-fragments duplications")
+             .conflicts_with("no-inter-relaxed"))
+        .arg(Arg::with_name("no-inter-relaxed")
+             .long("no-inter-relaxed")
+             .help("filters out inter-fragments duplications, except in they stand into the collapsed pseudo-chromosome")
+             .conflicts_with("no-inter"))
         .arg(Arg::with_name("no-intra")
              .long("no-intra")
              .help("filters out intra-fragments duplications"))
@@ -124,6 +129,9 @@ fn main() -> Result<()> {
     }
     if args.is_present("no-inter") {
         results.remove_inter();
+    }
+    if args.is_present("no-inter-relaxed") {
+        results.remove_inter_relaxed();
     }
     if args.is_present("no-intra") {
         results.remove_intra();

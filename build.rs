@@ -9,6 +9,8 @@ fn main() {
         .define("BUILD_SHARED_LIBS", "OFF")
         .define("CMAKE_INSTALL_LIBDIR", env::var("OUT_DIR").unwrap())
         .build();
+
     println!("cargo:rustc-link-search=native={}", dst.display());
+
     println!("cargo:rustc-link-lib=static=divsufsort64");
 }

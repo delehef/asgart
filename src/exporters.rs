@@ -35,23 +35,29 @@ impl Exporter for GFF2Exporter {
         .context("Unable to write results")?;
         for (i, family) in result.families.iter().enumerate() {
             for (j, sd) in family.iter().enumerate() {
-                writeln!(out,
-                         "{chr_left}\tASGART\tSD\t{left}\t{end}\t#{identity}\t+\t.\tSD#{i}/{j}-{chr_left}",
-                         chr_left = str::replace(&sd.chr_left.trim(), " ", "_"),
-                         left     = sd.chr_left_position,
-                         end      = sd.chr_left_position + sd.left_length,
-                         identity = sd.identity * 100.0,
-                         i        = i, j = j
-                ).context("Unable to write results")?;
-                writeln!(out,
-                         "{chr_right}\tASGART\tSD\t{right}\t{end}\t#{identity}\t#{reverse}\t.\tSD#{i}/{j}-{chr_right}",
-                         chr_right = str::replace(&sd.chr_right.trim(), " ", "_"),
-                         right     = sd.chr_right_position,
-                         end       = sd.chr_right_position + sd.right_length,
-                         identity  = sd.identity * 100.0,
-                         reverse   = if sd.reversed { "-" } else { "+" },
-                         i         = i, j = j
-                ).context("Unable to write results")?;
+                writeln!(
+                    out,
+                    "{chr_left}\tASGART\tSD\t{left}\t{end}\t#{identity}\t+\t.\tSD#{i}/{j}-{chr_left}",
+                    chr_left = str::replace(&sd.chr_left.trim(), " ", "_"),
+                    left = sd.chr_left_position,
+                    end = sd.chr_left_position + sd.left_length,
+                    identity = sd.identity * 100.0,
+                    i = i,
+                    j = j
+                )
+                .context("Unable to write results")?;
+                writeln!(
+                    out,
+                    "{chr_right}\tASGART\tSD\t{right}\t{end}\t#{identity}\t#{reverse}\t.\tSD#{i}/{j}-{chr_right}",
+                    chr_right = str::replace(&sd.chr_right.trim(), " ", "_"),
+                    right = sd.chr_right_position,
+                    end = sd.chr_right_position + sd.right_length,
+                    identity = sd.identity * 100.0,
+                    reverse = if sd.reversed { "-" } else { "+" },
+                    i = i,
+                    j = j
+                )
+                .context("Unable to write results")?;
             }
             writeln!(out).context("Unable to write results")?;
         }
@@ -80,12 +86,14 @@ impl Exporter for GFF3Exporter {
                 writeln!(
                     out,
                     "{chr_left}\tASGART\tSD\t{left}\t{end}\t{identity}\t+\t.\tID=SD#{i}-{j};Name=SD#{i}-{j}",
-                    chr_left  = str::replace(&sd.chr_left.trim(), " ", "_"),
-                    left      = sd.chr_left_position + 1,
-                    end       = sd.chr_left_position + sd.left_length + 1,
-                    identity  = sd.identity,
-                    i         = i, j = j
-                ).context("Unable to write results")?;
+                    chr_left = str::replace(&sd.chr_left.trim(), " ", "_"),
+                    left = sd.chr_left_position + 1,
+                    end = sd.chr_left_position + sd.left_length + 1,
+                    identity = sd.identity,
+                    i = i,
+                    j = j
+                )
+                .context("Unable to write results")?;
                 writeln!(
                     out,
                     "{chr_right}\tASGART\tSD\t{right}\t{end}\t{identity}\t{reverse}\t.\tID=SD#{i}-{j}-right;Parent=SD#{i}-{j};Name=SD#{i}-{j}",

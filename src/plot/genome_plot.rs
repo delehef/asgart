@@ -7,8 +7,8 @@ use std::io::Write;
 use thousands::Separable;
 
 pub struct GenomePlotter {
-    result: RunResult,
-    settings: Settings,
+    result:    RunResult,
+    settings:  Settings,
     colorizer: Box<dyn Colorizer>,
 }
 
@@ -72,27 +72,30 @@ impl GenomePlotter {
             );
 
             // Central delimiter
-            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#111' stroke-width='{}' stroke-dasharray='5,5'/>\n",
-                            chr_spacing + i as f64 * chr_spacing,
-                            50,
-                            chr_spacing + i as f64 * chr_spacing,
-                            50.0 + factor*chr.length as f64,
-                            1,
+            svg += &format!(
+                "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#111' stroke-width='{}' stroke-dasharray='5,5'/>\n",
+                chr_spacing + i as f64 * chr_spacing,
+                50,
+                chr_spacing + i as f64 * chr_spacing,
+                50.0 + factor * chr.length as f64,
+                1,
             );
             // Side delimiters
-            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#222' stroke-width='{}' stroke-dasharray='1,2'/>\n",
-                            chr_spacing + i as f64 * chr_spacing - chr_width/4.0,
-                            50,
-                            chr_spacing + i as f64 * chr_spacing - chr_width/4.0,
-                            50.0 + factor*chr.length as f64,
-                            0.5,
+            svg += &format!(
+                "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#222' stroke-width='{}' stroke-dasharray='1,2'/>\n",
+                chr_spacing + i as f64 * chr_spacing - chr_width / 4.0,
+                50,
+                chr_spacing + i as f64 * chr_spacing - chr_width / 4.0,
+                50.0 + factor * chr.length as f64,
+                0.5,
             );
-            svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#222' stroke-width='{}' stroke-dasharray='1,2'/>\n",
-                            chr_spacing + i as f64 * chr_spacing + chr_width/4.0,
-                            50,
-                            chr_spacing + i as f64 * chr_spacing + chr_width/4.0,
-                            50.0 + factor*chr.length as f64,
-                            0.5,
+            svg += &format!(
+                "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='#222' stroke-width='{}' stroke-dasharray='1,2'/>\n",
+                chr_spacing + i as f64 * chr_spacing + chr_width / 4.0,
+                50,
+                chr_spacing + i as f64 * chr_spacing + chr_width / 4.0,
+                50.0 + factor * chr.length as f64,
+                0.5,
             );
 
             // Label
@@ -114,18 +117,14 @@ impl GenomePlotter {
                 let color = self.colorizer.color(sd);
                 let x: Box<dyn Fn(usize) -> f64> = match (sd.chr_left == sd.chr_right, sd.reversed)
                 {
-                    (true, false) => {
-                        Box::new(|x| chr_spacing - 3.0 * chr_width / 8.0 + chr_spacing * x as f64)
-                    }
-                    (true, true) => {
-                        Box::new(|x| chr_spacing - 1.0 * chr_width / 8.0 + chr_spacing * x as f64)
-                    }
-                    (false, false) => {
-                        Box::new(|x| chr_spacing + 1.0 * chr_width / 8.0 + chr_spacing * x as f64)
-                    }
-                    (false, true) => {
-                        Box::new(|x| chr_spacing + 3.0 * chr_width / 8.0 + chr_spacing * x as f64)
-                    }
+                    (true, false) =>
+                        Box::new(|x| chr_spacing - 3.0 * chr_width / 8.0 + chr_spacing * x as f64),
+                    (true, true) =>
+                        Box::new(|x| chr_spacing - 1.0 * chr_width / 8.0 + chr_spacing * x as f64),
+                    (false, false) =>
+                        Box::new(|x| chr_spacing + 1.0 * chr_width / 8.0 + chr_spacing * x as f64),
+                    (false, true) =>
+                        Box::new(|x| chr_spacing + 3.0 * chr_width / 8.0 + chr_spacing * x as f64),
                 };
 
                 // left arm

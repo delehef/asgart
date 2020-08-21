@@ -199,10 +199,10 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
             };
 
             let feature = Feature {
-                name: name,
+                name:      name,
                 positions: vec![FeaturePosition::Relative {
-                    chr: l[0].to_string(),
-                    start: start,
+                    chr:    l[0].to_string(),
+                    start:  start,
                     length: end - start,
                 }],
             };
@@ -263,13 +263,13 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
                 ));
             }
             FeaturePosition::Relative {
-                chr: chr.name.to_owned(),
-                start: position,
+                chr:    chr.name.to_owned(),
+                start:  position,
                 length: v[2].parse::<usize>().unwrap(),
             }
         } else {
             FeaturePosition::Absolute {
-                start: v[1].parse::<usize>().unwrap(),
+                start:  v[1].parse::<usize>().unwrap(),
                 length: v[2].parse::<usize>().unwrap(),
             }
         };
@@ -279,7 +279,7 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     let mut features = Vec::new();
     for (name, positions) in &d {
         features.push(Feature {
-            name: name.to_owned(),
+            name:      name.to_owned(),
             positions: positions.clone(),
         })
     }
@@ -387,23 +387,21 @@ fn main() -> Result<()> {
     let settings = Settings {
         out_file: out_file.to_str().unwrap().to_owned(),
 
-        size: 200.0,
+        size:          200.0,
         min_thickness: value_t!(args, "min_thickness", f64).unwrap(),
-        color1: "#ff5b00".to_owned(),
-        color2: "#00b2ae".to_owned(),
+        color1:        "#ff5b00".to_owned(),
+        color2:        "#00b2ae".to_owned(),
 
         feature_tracks: features_tracks,
     };
 
     let colorizer = match args.value_of("colorize") {
-        Some("by-type") => {
-            Box::new(TypeColorizer::new((1.0, 0.36, 0.0), (0.0, 0.70, 0.68))) as Box<dyn Colorizer>
-        }
+        Some("by-type") =>
+            Box::new(TypeColorizer::new((1.0, 0.36, 0.0), (0.0, 0.70, 0.68))) as Box<dyn Colorizer>,
         Some("by-position") => Box::new(PositionColorizer::new(&result)) as Box<dyn Colorizer>,
         Some("by-fragment") => Box::new(FragmentColorizer::new(&result)) as Box<dyn Colorizer>,
-        Some("none") => {
-            Box::new(TypeColorizer::new((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))) as Box<dyn Colorizer>
-        }
+        Some("none") =>
+            Box::new(TypeColorizer::new((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))) as Box<dyn Colorizer>,
         _ => unreachable!(),
     };
 

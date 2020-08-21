@@ -9,13 +9,13 @@ use crate::plot::*;
 const CHR_WIDTH: f64 = 4.0;
 
 pub struct FlatPlotter {
-    result: RunResult,
-    settings: Settings,
+    result:    RunResult,
+    settings:  Settings,
     colorizer: Box<dyn Colorizer>,
 
     max_length: f64,
-    width: f64,
-    height: f64,
+    width:      f64,
+    height:     f64,
 }
 
 impl Plotter for FlatPlotter {
@@ -52,7 +52,6 @@ impl FlatPlotter {
 
         let mut offset: i64 = 0;
         for (j, chr) in self.result.strand.map.iter().enumerate() {
-            //
             // Chromosomes
             //
             // Top bar
@@ -83,7 +82,6 @@ impl FlatPlotter {
                 chr.name
             );
 
-            //
             // Ticks
             //
             for i in 0..chr.length as i64 {
@@ -116,7 +114,6 @@ impl FlatPlotter {
             offset += chr.length as i64;
         }
 
-        //
         // Feaures
         //
         for features_family in &self.settings.feature_tracks {

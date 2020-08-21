@@ -2,6 +2,6 @@
 
 pkgs.mkShell {
   buildInputs = [
-    pkgs.cmake pkgs.cargo
+    pkgs.cmake pkgs.cargo pkgs.rustfmt
   ];
 }

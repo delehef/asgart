@@ -138,10 +138,9 @@ fn main() -> Result<()> {
     }
     if args.is_present("min-length") {
         let min_length = value_t!(args, "min-length", usize).unwrap();
-        results
-            .families
-            .iter_mut()
-            .for_each(|family| family.retain(|sd| std::cmp::min(sd.left_length, sd.right_length) >= min_length));
+        results.families.iter_mut().for_each(|family| {
+            family.retain(|sd| std::cmp::min(sd.left_length, sd.right_length) >= min_length)
+        });
         results.families.retain(|f| !f.is_empty());
     }
     if args.is_present("max-family-members") {

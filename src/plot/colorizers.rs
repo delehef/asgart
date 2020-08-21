@@ -12,13 +12,13 @@ pub trait Colorizer {
 
 pub struct TypeColorizer {
     direct_color: Srgb,
-    rc_color: Srgb,
+    rc_color:     Srgb,
 }
 impl TypeColorizer {
     pub fn new(direct_color: (f32, f32, f32), rc_color: (f32, f32, f32)) -> Self {
         TypeColorizer {
             direct_color: Srgb::from_components(direct_color),
-            rc_color: Srgb::from_components(rc_color),
+            rc_color:     Srgb::from_components(rc_color),
         }
     }
 }
@@ -26,6 +26,7 @@ impl Colorizer for TypeColorizer {
     fn color_fragment(&self, _name: &str) -> String {
         "#cccccc".to_owned()
     }
+
     fn color(&self, sd: &SD) -> String {
         let color = (if !sd.reversed && !sd.complemented {
             self.direct_color
@@ -45,13 +46,13 @@ impl Colorizer for TypeColorizer {
 
 pub struct PositionColorizer {
     total_length: f64,
-    gradient: Gradient<Hsv<encoding::Srgb, f64>>,
+    gradient:     Gradient<Hsv<encoding::Srgb, f64>>,
 }
 impl PositionColorizer {
     pub fn new(result: &RunResult) -> Self {
         PositionColorizer {
             total_length: result.strand.length as f64,
-            gradient: Gradient::new(vec![
+            gradient:     Gradient::new(vec![
                 Hsv::from(LinSrgb::new(1.0, 0.1, 0.1)),
                 Hsv::from(LinSrgb::new(0.1, 1.0, 1.0)),
             ]),
@@ -62,6 +63,7 @@ impl Colorizer for PositionColorizer {
     fn color_fragment(&self, _name: &str) -> String {
         "#cccccc".to_owned()
     }
+
     fn color(&self, sd: &SD) -> String {
         let color = Srgb::from_hsv(
             self.gradient

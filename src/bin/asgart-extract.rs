@@ -7,9 +7,9 @@ use anyhow::{Context, Result};
 use clap::*;
 use log::*;
 
+use asgart::exporters::{Exporter, JSONExporter};
 use asgart::logger::*;
 use asgart::utils;
-use asgart::exporters::{Exporter, JSONExporter};
 
 fn read_fasta(filename: &str) -> Result<Vec<u8>> {
     let mut r = Vec::new();
@@ -63,13 +63,20 @@ fn main() -> Result<()> {
         .get_matches();
 
     if !args.is_present("in-place") && !args.is_present("dump") {
-        return Err(anyhow::Error::msg(
-            format!("Please specify at least one of `--in-json` or `--dump`; see --help for more details")))
+        return Err(anyhow::Error::msg(format!(
+            "Please specify at least one of `--in-json` or `--dump`; see --help for more details"
+        )));
     }
     let input = value_t!(args, "INPUT", String).unwrap();
-    let destination = format!("{}/", value_t!(args, "destination", String).unwrap_or("./".to_string()));
+    let destination = format!(
+        "{}/",
+        value_t!(args, "destination", String).unwrap_or("./".to_string())
+    );
     if !Path::new(&destination).is_dir() {
-        return Err(anyhow::Error::msg(format!("`{}` is not a valid directory", destination)))
+        return Err(anyhow::Error::msg(format!(
+            "`{}` is not a valid directory",
+            destination
+        )));
     }
     let locations = values_t!(args, "locations", String).unwrap_or(vec![".".to_owned()]);
 
@@ -113,13 +120,18 @@ fn main() -> Result<()> {
     if args.is_present("in-place") {
         result.families.iter_mut().for_each(|family| {
             family.iter_mut().for_each(|mut sd| {
-                let left_seq =
-                    strand[sd.global_left_position..sd.global_left_position + sd.left_length].to_vec();
+                let left_seq = strand
+                    [sd.global_left_position..sd.global_left_position + sd.left_length]
+                    .to_vec();
                 let mut right_seq = strand
                     [sd.global_right_position..sd.global_right_position + sd.right_length]
                     .to_vec();
-                if sd.reversed { right_seq.reverse(); }
-                if sd.complemented { right_seq = utils::complemented(&right_seq); }
+                if sd.reversed {
+                    right_seq.reverse();
+                }
+                if sd.complemented {
+                    right_seq = utils::complemented(&right_seq);
+                }
 
                 sd.left_seq = Some(String::from_utf8(left_seq).unwrap());
                 sd.right_seq = Some(String::from_utf8(right_seq).unwrap());
@@ -139,21 +151,32 @@ fn main() -> Result<()> {
                     .open(&out_file_name)
                     .with_context(|| format!("Unable to write results to `{}`", out_file_name))?;
 
-                let left_seq =
-                    strand[sd.global_left_position..sd.global_left_position + sd.left_length].to_vec();
+                let left_seq = strand
+                    [sd.global_left_position..sd.global_left_position + sd.left_length]
+                    .to_vec();
                 let mut right_seq = strand
                     [sd.global_right_position..sd.global_right_position + sd.right_length]
                     .to_vec();
-                if sd.reversed { right_seq.reverse(); }
-                if sd.complemented { right_seq = utils::complemented(&right_seq); }
+                if sd.reversed {
+                    right_seq.reverse();
+                }
+                if sd.complemented {
+                    right_seq = utils::complemented(&right_seq);
+                }
 
-                file.write_all(format!(
-                    ">chr:{};start:{};end:{};family:{};duplicon:{}-1;length:{}\n",
-                    sd.chr_left,
-                    sd.chr_left_position,
-                    sd.chr_left_position + sd.left_length,
-                    i, j, sd.left_length).as_bytes())
-                    .with_context(|| "Unable to write results")?;
+                file.write_all(
+                    format!(
+                        ">chr:{};start:{};end:{};family:{};duplicon:{}-1;length:{}\n",
+                        sd.chr_left,
+                        sd.chr_left_position,
+                        sd.chr_left_position + sd.left_length,
+                        i,
+                        j,
+                        sd.left_length
+                    )
+                    .as_bytes(),
+                )
+                .with_context(|| "Unable to write results")?;
                 file.write_all(&left_seq)
                     .with_context(|| "Unable to write results")?;
                 file.write_all(b"\n")
@@ -164,9 +187,13 @@ fn main() -> Result<()> {
                         sd.chr_right,
                         sd.chr_right_position,
                         sd.chr_right_position + sd.right_length,
-                        i, j, sd.right_length
-                    ).as_bytes(),)
-                    .with_context(|| "Unable to write results")?;
+                        i,
+                        j,
+                        sd.right_length
+                    )
+                    .as_bytes(),
+                )
+                .with_context(|| "Unable to write results")?;
                 file.write_all(&right_seq)
                     .with_context(|| "Unable to write results")?;
                 file.write_all(b"\n")

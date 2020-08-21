@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 pub struct CircosPlotter {
-    result: RunResult,
+    result:   RunResult,
     settings: Settings,
 }
 

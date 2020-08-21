@@ -11,11 +11,11 @@ pub mod genome_plot;
 
 pub struct Settings {
     pub out_file: String,
-    pub size: f64,
+    pub size:     f64,
 
     pub min_thickness: f64,
-    pub color1: String,
-    pub color2: String,
+    pub color1:        String,
+    pub color2:        String,
 
     pub feature_tracks: Vec<Vec<Feature>>,
 }
@@ -23,19 +23,19 @@ pub struct Settings {
 #[derive(Debug, Clone)]
 pub enum FeaturePosition {
     Relative {
-        chr: String,
-        start: usize,
+        chr:    String,
+        start:  usize,
         length: usize,
     },
     Absolute {
-        start: usize,
+        start:  usize,
         length: usize,
     },
 }
 
 #[derive(Debug, Clone)]
 pub struct Feature {
-    pub name: String,
+    pub name:      String,
     pub positions: Vec<FeaturePosition>,
 }
 

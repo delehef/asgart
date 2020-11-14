@@ -334,6 +334,10 @@ manually replaced.
 
 _Please note that ASGART follows the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
+## HEAD
+
+- Add an option (-E) to `asgart-slice` to filter fragments per regexp rather than per name
+
 ## v2.3.0
 
 - `asgart-cat` has been renamed to `asgart-slice`

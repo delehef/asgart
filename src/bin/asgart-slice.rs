@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::*;
 use log::LevelFilter;
 
@@ -78,6 +78,10 @@ fn main() -> Result<()> {
              .long("collapse")
              .help("Merge all the smaller-than-average-plus-one-sigma fragments into a single one (useful to deal with datasets containing large numbers of small fragments)"))
 
+        .arg(Arg::with_name("regexp")
+             .short("E")
+             .long("--regexp")
+             .help("Use regexp matching instead of literal for restrict- and exclude-fragments"))
         .arg(Arg::with_name("restrict-fragments")
              .long("restrict-fragments")
              .help("ignore all fragments whose name are not in the provided list")
@@ -95,7 +99,7 @@ fn main() -> Result<()> {
     let mut out: Box<dyn std::io::Write> = if args.is_present("OUTPUT") {
         let out_filename =
             asgart::utils::make_out_filename(args.value_of("OUTPUT"), "out", &format);
-        Box::new(File::create(out_filename).unwrap())
+        Box::new(File::create(out_filename)?)
     } else {
         Box::new(std::io::stdout())
     };
@@ -137,7 +141,7 @@ fn main() -> Result<()> {
         results.remove_intra();
     }
     if args.is_present("min-length") {
-        let min_length = value_t!(args, "min-length", usize).unwrap();
+        let min_length = value_t!(args, "min-length", usize)?;
         results.families.iter_mut().for_each(|family| {
             family.retain(|sd| std::cmp::min(sd.left_length, sd.right_length) >= min_length)
         });
@@ -148,10 +152,22 @@ fn main() -> Result<()> {
             .max_family_members(value_t!(args, "max-family-members", usize).unwrap_or(100_000_000));
     }
     if args.is_present("restrict-fragments") {
-        results.restrict_fragments(&values_t!(args, "restrict-fragments", String).unwrap());
+        if args.is_present("regexp") {
+            let regexp = value_t!(args, "restrict-fragments", String)?;
+            results.restrict_fragments_regexp::<&str>(&regexp)
+                .with_context(|| format!("Error while compiling `{}`", regexp))?;
+        } else {
+            results.restrict_fragments(&values_t!(args, "restrict-fragments", String).unwrap());
+        }
     }
     if args.is_present("exclude-fragments") {
-        results.exclude_fragments(&values_t!(args, "exclude-fragments", String).unwrap());
+        if args.is_present("regexp") {
+            let regexp = value_t!(args, "exclude-fragments", String)?;
+            results.exclude_fragments_regexp::<&str>(&regexp)
+                .with_context(|| format!("Error while compiling `{}`", regexp))?;
+        }  else {
+            results.exclude_fragments(&values_t!(args, "exclude-fragments", String)?);
+        }
     }
 
     exporter.save(&results, &mut out)?;

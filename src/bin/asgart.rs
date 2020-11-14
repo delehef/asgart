@@ -583,8 +583,8 @@ fn main() -> Result<()> {
             .collect(),
         kmer_size:              value_t_or_exit!(args, "probe_size", usize),
         gap_size:               value_t_or_exit!(args, "max_gap", u32),
-        min_duplication_length: value_t!(args, "min_length", usize).unwrap(),
-        max_cardinality:        value_t!(args, "max_cardinality", usize).unwrap(),
+        min_duplication_length: value_t!(args, "min_length", usize)?,
+        max_cardinality:        value_t!(args, "max_cardinality", usize)?,
         skip_masked:            args.is_present("skip_masked"),
 
         reverse:    args.is_present("reverse"),

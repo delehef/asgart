@@ -4,6 +4,7 @@ use serde_derive::*;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
+use regex::Regex;
 
 pub const COLLAPSED_NAME: &str = "ASGART_COLLAPSED";
 pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
@@ -175,6 +176,7 @@ impl RunResult {
                     && to_keep.iter().any(|n| n.as_ref() == sd.chr_right)
             })
         });
+        self.families.retain(|f| !f.is_empty());
         self.strand
             .map
             .retain(|c| to_keep.iter().any(|n| n.as_ref() == c.name));
@@ -195,13 +197,44 @@ impl RunResult {
         }
     }
 
+    pub fn restrict_fragments_regexp<T: AsRef<str>>(&mut self, to_keep: &str) -> anyhow::Result<()> {
+        let re = Regex::new(to_keep)?;
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| {
+                re.is_match(&sd.chr_left) && re.is_match(&sd.chr_right)
+            })
+        });
+        self.families.retain(|f| !f.is_empty());
+        self.strand
+            .map
+            .retain(|c| re.is_match(&c.name));
+        self.strand.length = self.strand.map.iter().map(|c| c.length).sum::<usize>();
+
+        let mut i = 0;
+        for c in self.strand.map.iter_mut() {
+            c.position = i;
+            i += c.length;
+        }
+        for f in self.families.iter_mut() {
+            for sd in f.iter_mut() {
+                sd.global_left_position =
+                    self.strand.find_chr(&sd.chr_left).unwrap().position + sd.chr_left_position;
+                sd.global_right_position =
+                    self.strand.find_chr(&sd.chr_right).unwrap().position + sd.chr_right_position;
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn exclude_fragments<T: AsRef<str>>(&mut self, to_exclude: &[T]) {
         self.families.iter_mut().for_each(|family| {
             family.retain(|sd| {
-                !(to_exclude.iter().any(|n| n.as_ref() == sd.chr_left)
-                    || to_exclude.iter().any(|n| n.as_ref() == sd.chr_right))
+                !to_exclude.iter().any(|n| n.as_ref() == sd.chr_left)
+                    && !to_exclude.iter().any(|n| n.as_ref() == sd.chr_right)
             })
         });
+        self.families.retain(|f| !f.is_empty());
         self.strand
             .map
             .retain(|c| !to_exclude.iter().any(|n| n.as_ref() == c.name));
@@ -220,6 +253,36 @@ impl RunResult {
                     self.strand.find_chr(&sd.chr_right).unwrap().position + sd.chr_right_position;
             }
         }
+    }
+
+    pub fn exclude_fragments_regexp<T: AsRef<str>>(&mut self, to_exclude: &str) -> anyhow::Result<()> {
+        let re = Regex::new(to_exclude)?;
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| {
+                !re.is_match(&sd.chr_left) && !re.is_match(&sd.chr_right)
+            })
+        });
+        self.families.retain(|f| !f.is_empty());
+        self.strand
+            .map
+            .retain(|c| !re.is_match(&c.name));
+        self.strand.length = self.strand.map.iter().map(|c| c.length).sum::<usize>();
+
+        let mut i = 0;
+        for c in self.strand.map.iter_mut() {
+            c.position = i;
+            i += c.length;
+        }
+        for f in self.families.iter_mut() {
+            for sd in f.iter_mut() {
+                sd.global_left_position =
+                    self.strand.find_chr(&sd.chr_left).unwrap().position + sd.chr_left_position;
+                sd.global_right_position =
+                    self.strand.find_chr(&sd.chr_right).unwrap().position + sd.chr_right_position;
+            }
+        }
+
+        Ok(())
     }
 
     pub fn flatten(&mut self) {

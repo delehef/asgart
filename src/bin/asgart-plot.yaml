@@ -3,14 +3,8 @@ about: Generate plots from ASGART results
 args:
     - FILE:
         help: Sets the input file to use
-        index: 1
         required: true
         multiple: true
-    - PLOT-TYPE:
-        help: Type of plot to generate
-        possible_values: ["flat", "chord", "genome", "circos"]
-        index: 2
-        required: true
     - out:
         long: out
         help: Set output file name
@@ -93,9 +87,18 @@ args:
         default_value: "0.1"
     - colorize:
         long: colorize
-        short: C
         help: How to colorize duplications
         possible_values: ["by-type", "by-position", "by-fragment", "none"]
         default_value: "by-type"
         takes_value: true
         number_of_values: 1
+
+subcommands:
+    - flat:
+        about: "Plot duplications on a flat representation of the underlying fragments"
+    - chord:
+        about: "Plot duplications on a circo-like plot"
+    - genome:
+        about: "Plot duplications per chromosome on a classicaly laid out genome"
+    - circos:
+        about: "Generate files that can be used as input by the Circos program"

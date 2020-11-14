@@ -296,6 +296,7 @@ fn main() -> Result<()> {
         .setting(AppSettings::ColorAuto)
         .setting(AppSettings::VersionlessSubcommands)
         .setting(AppSettings::UnifiedHelpMessage)
+        .setting(AppSettings::SubcommandRequired)
         .get_matches();
     Logger::init(match args.occurrences_of("verbose") {
         0 => LevelFilter::Info,
@@ -405,7 +406,7 @@ fn main() -> Result<()> {
         _ => unreachable!(),
     };
 
-    let r = match args.value_of("PLOT-TYPE") {
+    let r = match args.subcommand_name() {
         Some("chord") => ChordPlotter::new(settings, result, colorizer).plot(),
         Some("flat") => FlatPlotter::new(settings, result, colorizer).plot(),
         Some("genome") => GenomePlotter::new(settings, result, colorizer).plot(),

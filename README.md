@@ -281,7 +281,7 @@ proportional to the length of the duplicons they represent.
 
 ### Example
 
-`asgart-plot human_genome.json chord --out=flat.svg --min-length 20000`
+`asgart-plot human_genome.json --out=chord.svg --min-length 20000 chord`
 
 ![Chord plot example](screenshots/chord.png)
 
@@ -294,7 +294,7 @@ length of the duplicaton.
 
 ### Example
 
-`asgart-plot human_Y.json flat --out=flat.svg --no-direct --no-uncomplemented --min-length 2000`
+`asgart-plot human_Y.json --out=flat.svg --no-direct --no-uncomplemented --min-length 2000 flat`
 
 ![Chord plot example](screenshots/flat.png)
 
@@ -307,7 +307,7 @@ the interchromosomal direct and palindromic duplications families.
 
 ### Example
 
-`asgart-plot chr10-chrY.json genome --min-length 10000`
+`asgart-plot chr10-chrY.json --min-length 10000 genome`
 
 ![Chord plot example](screenshots/genome.png)
 
@@ -328,7 +328,7 @@ manually replaced.
 
 ### Example
 
-`asgart-plot human_Y.json human_Y_RC.json circos --min-length 10000`
+`asgart-plot human_Y.json human_Y_RC.json --min-length 10000 circos`
 
 # Change Log
 
@@ -336,13 +336,16 @@ _Please note that ASGART follows the [semver](https://semver.org/) versioning sc
 
 ## HEAD
 
-- Add an option (-E) to `asgart-slice` to filter fragments per regexp rather than per name
+- Add an option (-E) to `asgart-slice` to filter fragments per regexp
+  rather than per name
+- `asgart-plot` now uses subcommands for more flexibility. WARNING
+  arguments order may have to be reordered
 
 ## v2.3.0
 
 - `asgart-cat` has been renamed to `asgart-slice`
-- `asgart` does not feature multiple output formats anymore; `asgart-slice` is to
-  to be used instead.
+- `asgart` does not feature multiple output formats anymore;
+  `asgart-slice` is to to be used instead.
 
 ## v2.2.1
 
@@ -365,7 +368,8 @@ _Please note that ASGART follows the [semver](https://semver.org/) versioning sc
 
 ## v2.1.0
 
-- Ensure that multiple fragments in a mFASTA file are processed separately
+- Ensure that multiple fragments in a mFASTA file are processed
+  separately
 - Add a flag to specify the minimum width of a chord
 - Add filtering options
 - Add tooltips to chord graphs
@@ -373,7 +377,8 @@ _Please note that ASGART follows the [semver](https://semver.org/) versioning sc
 
 ## v2.0.2
 
-- Fix a bound-checking bug where the last chunk would not be processed.
+- Fix a bound-checking bug where the last chunk would not be
+  processed.
 
 ## v2.0.1
 
@@ -447,7 +452,8 @@ _Please note that ASGART follows the [semver](https://semver.org/) versioning sc
 
 ## v1.4.0
 
-- Add Jaccard distance computation to estimate identity between duplicons
+- Add Jaccard distance computation to estimate identity between
+  duplicons
 - Increase font size for feature plotting
 
 ## v1.3.3
@@ -460,14 +466,16 @@ _Please note that ASGART follows the [semver](https://semver.org/) versioning sc
 
 ## v1.3.1
 
-- Fix erroneous GFF3 output: seq names are now corrent, no superfluous underscore and correct, relative positions instead of absolute ones.
+- Fix erroneous GFF3 output: seq names are now corrent, no superfluous
+  underscore and correct, relative positions instead of absolute ones.
 
 ## v1.3
 
 - Add a new plot format, _genome_
 - Relabel “translate” to “complement”
 - Fix the lack of color in SVG export
-- `asgart-plot` can now read features tracks, either in custom or GFF3 format
+- `asgart-plot` can now read features tracks, either in custom or GFF3
+  format
 - Add a setting to skip soft-masked zones
 - Update dependencies
 

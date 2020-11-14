@@ -28,7 +28,11 @@ impl Plotter for GenomePlotter {
 }
 
 impl GenomePlotter {
-    pub fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> GenomePlotter {
+    pub fn new(
+        settings: Settings,
+        result: RunResult,
+        colorizer: Box<dyn Colorizer>,
+    ) -> GenomePlotter {
         GenomePlotter {
             result,
             settings,

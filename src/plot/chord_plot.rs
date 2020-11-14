@@ -43,7 +43,11 @@ impl Plotter for ChordPlotter {
 }
 
 impl ChordPlotter {
-    pub fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> ChordPlotter {
+    pub fn new(
+        settings: Settings,
+        result: RunResult,
+        colorizer: Box<dyn Colorizer>,
+    ) -> ChordPlotter {
         let length = result.strand.length as f64;
         ChordPlotter {
             result,

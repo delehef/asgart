@@ -157,7 +157,8 @@ fn main() -> Result<()> {
     if args.is_present("restrict-fragments") {
         if args.is_present("regexp") {
             let regexp = value_t!(args, "restrict-fragments", String)?;
-            results.restrict_fragments_regexp::<&str>(&regexp)
+            results
+                .restrict_fragments_regexp::<&str>(&regexp)
                 .with_context(|| format!("Error while compiling `{}`", regexp))?;
         } else {
             results.restrict_fragments(&values_t!(args, "restrict-fragments", String).unwrap());
@@ -166,9 +167,10 @@ fn main() -> Result<()> {
     if args.is_present("exclude-fragments") {
         if args.is_present("regexp") {
             let regexp = value_t!(args, "exclude-fragments", String)?;
-            results.exclude_fragments_regexp::<&str>(&regexp)
+            results
+                .exclude_fragments_regexp::<&str>(&regexp)
                 .with_context(|| format!("Error while compiling `{}`", regexp))?;
-        }  else {
+        } else {
             results.exclude_fragments(&values_t!(args, "exclude-fragments", String)?);
         }
     }

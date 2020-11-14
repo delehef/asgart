@@ -34,7 +34,11 @@ impl Plotter for FlatPlotter {
 }
 
 impl FlatPlotter {
-    pub fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> FlatPlotter {
+    pub fn new(
+        settings: Settings,
+        result: RunResult,
+        colorizer: Box<dyn Colorizer>,
+    ) -> FlatPlotter {
         let length = result.strand.length as f64;
         FlatPlotter {
             result,
@@ -114,7 +118,6 @@ impl FlatPlotter {
             offset += chr.length as i64;
         }
 
-        //
         // Features
         //
         for features_family in &self.settings.feature_tracks {

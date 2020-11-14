@@ -212,16 +212,23 @@ impl SvgObject {
 
     pub fn bbox(&self) -> BBox {
         match self {
-            SvgObject::Line { x1, y1, x2, y2, stroke_width, .. } => {
+            SvgObject::Line {
+                x1,
+                y1,
+                x2,
+                y2,
+                stroke_width,
+                ..
+            } => {
                 let (x_min, x_max) = if x1 > x2 { (x2, x1) } else { (x1, x2) };
                 let (y_min, y_max) = if y1 > y2 { (y2, y1) } else { (y1, y2) };
 
                 // FIXME ugly approximation
                 BBox {
-                    x1: x_min - stroke_width/2.,
-                    y1: y_min - stroke_width/2.,
-                    x2: x_max + stroke_width/2.,
-                    y2: y_max + stroke_width/2.,
+                    x1: x_min - stroke_width / 2.,
+                    y1: y_min - stroke_width / 2.,
+                    x2: x_max + stroke_width / 2.,
+                    y2: y_max + stroke_width / 2.,
                 }
             }
             SvgObject::Circle { cx, cy, r, .. } => BBox {
@@ -231,28 +238,43 @@ impl SvgObject {
                 y2: cy + r,
             },
             SvgObject::Text {
-                x, y, font_size, text, ..
-            } =>
-                BBox {
-                    x1: *x,
-                    y1: *y,
-                    x2: x + font_size.unwrap_or(10.) * text.len() as f32,
-                    y2: y + font_size.unwrap_or(10.),
-                },
+                x,
+                y,
+                font_size,
+                text,
+                ..
+            } => BBox {
+                x1: *x,
+                y1: *y,
+                x2: x + font_size.unwrap_or(10.) * text.len() as f32,
+                y2: y + font_size.unwrap_or(10.),
+            },
         }
     }
 
     pub fn transpose(&mut self) {
         match self {
-            SvgObject::Line { ref mut x1, ref mut y1, ref mut x2, ref mut y2, .. } => {
+            SvgObject::Line {
+                ref mut x1,
+                ref mut y1,
+                ref mut x2,
+                ref mut y2,
+                ..
+            } => {
                 std::mem::swap(x1, y1);
                 std::mem::swap(x2, y2);
             }
-            SvgObject::Circle { ref mut cx, ref mut cy, .. } => {
+            SvgObject::Circle {
+                ref mut cx,
+                ref mut cy,
+                ..
+            } => {
                 std::mem::swap(cx, cy);
-            },
+            }
             SvgObject::Text {
-                ref mut x, ref mut y, ..
+                ref mut x,
+                ref mut y,
+                ..
             } => {
                 std::mem::swap(x, y);
             }
@@ -299,10 +321,18 @@ impl SvgGroup {
         for x in self.content.iter() {
             let bbox = x.bbox();
 
-            if bbox.x1 < x1 { x1 = bbox.x1 };
-            if bbox.y1 < y1 { y1 = bbox.y1 };
-            if bbox.x2 > x2 { x2 = bbox.x2 };
-            if bbox.y2 > y2 { y2 = bbox.y2 };
+            if bbox.x1 < x1 {
+                x1 = bbox.x1
+            };
+            if bbox.y1 < y1 {
+                y1 = bbox.y1
+            };
+            if bbox.x2 > x2 {
+                x2 = bbox.x2
+            };
+            if bbox.y2 > y2 {
+                y2 = bbox.y2
+            };
         }
 
         BBox { x1, y1, x2, y2 }

@@ -1,10 +1,10 @@
 use ::rayon::prelude::*;
 use anyhow::{anyhow, Context, Result};
+use regex::Regex;
 use serde_derive::*;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
-use regex::Regex;
 
 pub const COLLAPSED_NAME: &str = "ASGART_COLLAPSED";
 pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
@@ -202,17 +202,16 @@ impl RunResult {
         }
     }
 
-    pub fn restrict_fragments_regexp<T: AsRef<str>>(&mut self, to_keep: &str) -> anyhow::Result<()> {
+    pub fn restrict_fragments_regexp<T: AsRef<str>>(
+        &mut self,
+        to_keep: &str,
+    ) -> anyhow::Result<()> {
         let re = Regex::new(to_keep)?;
         self.families.iter_mut().for_each(|family| {
-            family.retain(|sd| {
-                re.is_match(&sd.chr_left) && re.is_match(&sd.chr_right)
-            })
+            family.retain(|sd| re.is_match(&sd.chr_left) && re.is_match(&sd.chr_right))
         });
         self.families.retain(|f| !f.is_empty());
-        self.strand
-            .map
-            .retain(|c| re.is_match(&c.name));
+        self.strand.map.retain(|c| re.is_match(&c.name));
         self.strand.length = self.strand.map.iter().map(|c| c.length).sum::<usize>();
 
         let mut i = 0;
@@ -260,17 +259,16 @@ impl RunResult {
         }
     }
 
-    pub fn exclude_fragments_regexp<T: AsRef<str>>(&mut self, to_exclude: &str) -> anyhow::Result<()> {
+    pub fn exclude_fragments_regexp<T: AsRef<str>>(
+        &mut self,
+        to_exclude: &str,
+    ) -> anyhow::Result<()> {
         let re = Regex::new(to_exclude)?;
         self.families.iter_mut().for_each(|family| {
-            family.retain(|sd| {
-                !re.is_match(&sd.chr_left) && !re.is_match(&sd.chr_right)
-            })
+            family.retain(|sd| !re.is_match(&sd.chr_left) && !re.is_match(&sd.chr_right))
         });
         self.families.retain(|f| !f.is_empty());
-        self.strand
-            .map
-            .retain(|c| !re.is_match(&c.name));
+        self.strand.map.retain(|c| !re.is_match(&c.name));
         self.strand.length = self.strand.map.iter().map(|c| c.length).sum::<usize>();
 
         let mut i = 0;

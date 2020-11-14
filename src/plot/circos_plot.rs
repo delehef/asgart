@@ -54,7 +54,8 @@ impl Plotter for CircosPlotter {
 
         log::warn!(
             "You can now edit `{}` and/or run `circos {}` to generate the final plot.",
-            config_filename, config_filename
+            config_filename,
+            config_filename
         );
         Ok(())
     }

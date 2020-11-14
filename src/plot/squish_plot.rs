@@ -142,7 +142,7 @@ impl SquishPlotter {
                 class:  SpanClass::Duplicon {
                     reversed:     duplicon.3,
                     complemented: duplicon.4,
-                    both: false,
+                    both:         false,
                 },
             })
             .collect();
@@ -153,8 +153,18 @@ impl SquishPlotter {
             let last = duplicons.last_mut().unwrap();
             if new.start <= last.start + last.length + self.clustering_margin {
                 last.length = new.start + new.length - last.start;
-                if let SpanClass::Duplicon{reversed: old_r, complemented: old_c , ref mut both} = last.class {
-                    if let SpanClass::Duplicon{reversed: new_r, complemented: new_c , ..} = new.class {
+                if let SpanClass::Duplicon {
+                    reversed: old_r,
+                    complemented: old_c,
+                    ref mut both,
+                } = last.class
+                {
+                    if let SpanClass::Duplicon {
+                        reversed: new_r,
+                        complemented: new_c,
+                        ..
+                    } = new.class
+                    {
                         if (old_r != new_r) || (old_c != new_c) {
                             *both = true;
                         }
@@ -216,7 +226,13 @@ impl SquishPlotter {
 
                     draw_commands.push(DrawCommand::Feature {
                         length: span.length as i64,
-                        color:  if let SpanClass::Duplicon { reversed, complemented, both, .. } = span.class {
+                        color:  if let SpanClass::Duplicon {
+                            reversed,
+                            complemented,
+                            both,
+                            ..
+                        } = span.class
+                        {
                             if !both {
                                 if reversed && complemented {
                                     "#00b2ae".to_owned()
@@ -259,10 +275,10 @@ impl SquishPlotter {
 
         let label_space = 5.0
             + labels
-            .iter()
-            .map(|x| (x.dims().0 + 1.) as i64)
-            .max()
-            .unwrap() as f32;
+                .iter()
+                .map(|x| (x.dims().0 + 1.) as i64)
+                .max()
+                .unwrap() as f32;
 
         let chrs: Vec<SvgGroup> = chr_draw_commands
             .iter()

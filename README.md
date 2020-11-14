@@ -309,7 +309,7 @@ the interchromosomal direct and palindromic duplications families.
 
 `asgart-plot chr10-chrY.json --min-length 10000 genome`
 
-![Chord plot example](screenshots/genome.png)
+![Genome plot example](screenshots/genome.png)
 
 ## Circos Plots
 
@@ -329,6 +329,22 @@ manually replaced.
 ### Example
 
 `asgart-plot human_Y.json human_Y_RC.json --min-length 10000 circos`
+
+## Rosary plots
+
+Rosary plots are non-linear plots designed for large scale
+visualization. They represent every duplication-rich or
+duplication-devoid regions as a “bead”, whose area is exponentially
+proportional to its length if it is enriched in duplicons, or
+logarithmically if it is devoid of duplications. Therefore, areas
+enriched in large duplicons cluster are immediately obvious.
+
+### Example
+
+`asgart-plot human_RC.json --min-length 10000 rosary --clustering 10000`
+
+
+![Rosary plot example](screenshots/rosary.png)
 
 # Change Log
 

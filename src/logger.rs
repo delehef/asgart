@@ -18,7 +18,7 @@ impl log::Log for Logger {
                     format!("{} {}", "⚠".yellow(), record.args().to_string().yellow())
                 }
                 Level::Info => format!("{} {}", "▷".cyan(), record.args()),
-                Level::Debug => format!("    {}", record.args()),
+                Level::Debug => format!("{} {}", "DBG".red(), record.args()),
                 Level::Trace => {
                     format!("{} {}", "❖".blue(), record.args().to_string().blue())
                 }

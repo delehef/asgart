@@ -101,3 +101,14 @@ subcommands:
         about: "Plot duplications per chromosome on a classicaly laid out genome"
     - circos:
         about: "Generate files that can be used as input by the Circos program"
+    - rosary:
+        about: "Plot duplications in a non-linear way for easier large-scale visualization"
+        args:
+          - clustering:
+              long: clustering
+              help: two consecutive duplicons close enough will be shown as a larger, single one
+              takes_value: true
+              default_value: "0"
+          - rosary:
+              long: rosary
+              help: Place an upper limit on the size of duplications-devoid spans represented as a single ball

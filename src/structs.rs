@@ -74,6 +74,11 @@ pub struct RunResult {
     pub families: Vec<SDsFamily>,
 }
 impl RunResult {
+    pub fn from_stdin() -> Result<RunResult> {
+        serde_json::from_reader(std::io::stdin())
+            .with_context(|| "Failed to parse JSON data from STDIN")
+    }
+
     pub fn from_file(filename: &str) -> Result<RunResult> {
         let mut f = File::open(filename)
             .with_context(|| format!("Cannot read data from `{}`", filename))?;

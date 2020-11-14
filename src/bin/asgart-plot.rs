@@ -306,11 +306,15 @@ fn main() -> Result<()> {
     })
     .with_context(|| "Unable to initialize logger")?;
 
-    let json_files = values_t!(args, "FILE", String).unwrap();
-    let mut result = RunResult::from_files(&json_files)?;
+    let (mut result, out_file) = if args.is_present("FILE") {
+        let json_files = values_t!(args, "FILE", String).unwrap();
+        (RunResult::from_files(&json_files)?,
+         asgart::utils::make_out_filename(args.value_of("out"), &json_files.join("-"), ""))
+    } else {
+        log::warn!("Reading results from STDIN");
+        (RunResult::from_stdin()?, asgart::utils::make_out_filename(args.value_of("out"), "out", ""))
+    };
 
-    let out_file =
-        asgart::utils::make_out_filename(args.value_of("out"), &json_files.join("-"), "");
 
     let features_tracks: Result<Vec<_>> = match args.values_of("features") {
         Some(x) => x

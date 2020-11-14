@@ -21,9 +21,7 @@ fn main() -> Result<()> {
         .about("asgart-slice combines multiple ASGART JSON files into a single output file in the desired format, and features functions to filter, convert and collapse data.")
         .arg(Arg::with_name("INPUT")
              .help("Set the input file(s) to use")
-             .required(true)
-             .takes_value(true)
-             .min_values(1))
+             .takes_value(true))
         .arg(Arg::with_name("format")
              .short("f")
              .long("format")
@@ -94,7 +92,14 @@ fn main() -> Result<()> {
              .min_values(1))
         .get_matches();
 
-    let inputs = values_t!(args, "INPUT", String).unwrap();
+    let mut results = if args.is_present("INPUT") {
+        let inputs = values_t!(args, "INPUT", String).unwrap();
+        RunResult::from_files(&inputs)?
+    } else {
+        log::warn!("Reading results from STDIN");
+        RunResult::from_stdin()?
+    };
+
     let format = value_t!(args, "format", String).unwrap_or("json".to_string());
     let mut out: Box<dyn std::io::Write> = if args.is_present("OUTPUT") {
         let out_filename =
@@ -113,8 +118,6 @@ fn main() -> Result<()> {
             Box::new(exporters::JSONExporter) as Box<dyn Exporter>
         }
     };
-
-    let mut results = RunResult::from_files(&inputs)?;
 
     if args.is_present("collapse") {
         results.flatten();

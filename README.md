@@ -340,6 +340,9 @@ _Please note that ASGART follows the [semver](https://semver.org/) versioning sc
   rather than per name
 - `asgart-plot` now uses subcommands for more flexibility. WARNING
   arguments order may have to be reordered
+- `asgart-plot` and `asgart-slice` now both accepts data either from
+  files or from STDIN. This way, pipelines combining one or more steps
+  of slicing before plotting do not need intermediate files anymore.
 
 ## v2.3.0
 

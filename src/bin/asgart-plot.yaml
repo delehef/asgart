@@ -2,8 +2,7 @@ name: asgart-plot
 about: Generate plots from ASGART results
 args:
     - FILE:
-        help: Sets the input file to use
-        required: true
+        help: Sets the input file(s) to use. If not specified, JSON data will be expected from STDIN
         multiple: true
     - out:
         long: out

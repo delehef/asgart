@@ -1,6 +1,6 @@
 [package]
 name         = "asgart"
-version      = "2.3.0"
+version      = "2.4.0"
 authors      = ["Franklin Delehelle <franklin.delehelle@odena.eu>"]
 edition      = "2018"
 description  = "A large duplication families mapper"

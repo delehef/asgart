@@ -350,7 +350,7 @@ enriched in large duplicons cluster are immediately obvious.
 
 _Please note that ASGART follows the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
-## HEAD
+## v2.4.0
 
 - Add an option (-E) to `asgart-slice` to filter fragments per regexp
   rather than per name
@@ -359,6 +359,7 @@ _Please note that ASGART follows the [semver](https://semver.org/) versioning sc
 - `asgart-plot` and `asgart-slice` now both accepts data either from
   files or from STDIN. This way, pipelines combining one or more steps
   of slicing before plotting do not need intermediate files anymore.
+- A new plotting scheme, `rosary`, has been added.
 
 ## v2.3.0
 

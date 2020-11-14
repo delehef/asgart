@@ -28,16 +28,6 @@ pub struct ChordPlotter {
 }
 
 impl Plotter for ChordPlotter {
-    fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> ChordPlotter {
-        let length = result.strand.length as f64;
-        ChordPlotter {
-            result,
-            settings,
-            colorizer,
-            length,
-        }
-    }
-
     fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
@@ -53,6 +43,16 @@ impl Plotter for ChordPlotter {
 }
 
 impl ChordPlotter {
+    pub fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> ChordPlotter {
+        let length = result.strand.length as f64;
+        ChordPlotter {
+            result,
+            settings,
+            colorizer,
+            length,
+        }
+    }
+
     fn angle(&self, x: f64) -> f64 {
         -x / self.length * 2.0 * PI
     }

@@ -19,19 +19,6 @@ pub struct FlatPlotter {
 }
 
 impl Plotter for FlatPlotter {
-    fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> FlatPlotter {
-        let length = result.strand.length as f64;
-        FlatPlotter {
-            result,
-            settings,
-            colorizer,
-
-            max_length: length,
-            width: 1500.0,
-            height: 230.0,
-        }
-    }
-
     fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
@@ -47,6 +34,19 @@ impl Plotter for FlatPlotter {
 }
 
 impl FlatPlotter {
+    pub fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> FlatPlotter {
+        let length = result.strand.length as f64;
+        FlatPlotter {
+            result,
+            settings,
+            colorizer,
+
+            max_length: length,
+            width: 1500.0,
+            height: 230.0,
+        }
+    }
+
     fn plot_flat(&self) -> String {
         let mut svg = String::new();
 
@@ -114,7 +114,8 @@ impl FlatPlotter {
             offset += chr.length as i64;
         }
 
-        // Feaures
+        //
+        // Features
         //
         for features_family in &self.settings.feature_tracks {
             for feature in features_family.iter() {

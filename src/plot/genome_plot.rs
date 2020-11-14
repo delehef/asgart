@@ -13,14 +13,6 @@ pub struct GenomePlotter {
 }
 
 impl Plotter for GenomePlotter {
-    fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> GenomePlotter {
-        GenomePlotter {
-            result,
-            settings,
-            colorizer,
-        }
-    }
-
     fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
@@ -36,6 +28,14 @@ impl Plotter for GenomePlotter {
 }
 
 impl GenomePlotter {
+    pub fn new(settings: Settings, result: RunResult, colorizer: Box<dyn Colorizer>) -> GenomePlotter {
+        GenomePlotter {
+            result,
+            settings,
+            colorizer,
+        }
+    }
+
     fn plot_genome(&self) -> String {
         let mut svg = String::new();
 

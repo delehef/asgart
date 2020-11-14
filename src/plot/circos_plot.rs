@@ -11,10 +11,6 @@ pub struct CircosPlotter {
 }
 
 impl Plotter for CircosPlotter {
-    fn new(settings: Settings, result: RunResult, _x: Box<dyn Colorizer>) -> CircosPlotter {
-        CircosPlotter { result, settings }
-    }
-
     fn plot(&self) -> Result<()> {
         let prefix = self.settings.out_file.clone();
 
@@ -56,8 +52,8 @@ impl Plotter for CircosPlotter {
                 )
             })?;
 
-        println!(
-            "\nYou can now edit `{}` and/or run `circos {}` to generate the final plot.",
+        log::warn!(
+            "You can now edit `{}` and/or run `circos {}` to generate the final plot.",
             config_filename, config_filename
         );
         Ok(())
@@ -65,6 +61,10 @@ impl Plotter for CircosPlotter {
 }
 
 impl CircosPlotter {
+    pub fn new(settings: Settings, result: RunResult, _x: Box<dyn Colorizer>) -> CircosPlotter {
+        CircosPlotter { result, settings }
+    }
+
     fn plot_karyotype(&self) -> String {
         fn encode_chromosome(chr: &Start) -> String {
             format!(

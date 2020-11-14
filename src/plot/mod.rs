@@ -40,10 +40,5 @@ pub struct Feature {
 }
 
 pub trait Plotter {
-    fn new(
-        settings: Settings,
-        result: RunResult,
-        colorizer: Box<dyn colorizers::Colorizer>,
-    ) -> Self;
     fn plot(&self) -> Result<()>;
 }

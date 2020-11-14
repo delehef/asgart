@@ -148,27 +148,30 @@ impl SquishPlotter {
             .collect();
         proto_duplicons.sort_by_key(|span| span.start);
 
-        let mut duplicons = vec![proto_duplicons[0].clone()]; // FIXME
+        let mut duplicons: Vec<Span> = Vec::new();
         for new in proto_duplicons {
-            let last = duplicons.last_mut().unwrap();
-            if new.start <= last.start + last.length + self.clustering_margin {
-                last.length = new.start + new.length - last.start;
-                if let SpanClass::Duplicon {
-                    reversed: old_r,
-                    complemented: old_c,
-                    ref mut both,
-                } = last.class
-                {
+            if let Some(last) = duplicons.last_mut() {
+                if new.start <= last.start + last.length + self.clustering_margin {
+                    last.length = new.start + new.length - last.start;
                     if let SpanClass::Duplicon {
-                        reversed: new_r,
-                        complemented: new_c,
-                        ..
-                    } = new.class
+                        reversed: old_r,
+                        complemented: old_c,
+                        ref mut both,
+                    } = last.class
                     {
-                        if (old_r != new_r) || (old_c != new_c) {
-                            *both = true;
+                        if let SpanClass::Duplicon {
+                            reversed: new_r,
+                            complemented: new_c,
+                            ..
+                        } = new.class
+                        {
+                            if (old_r != new_r) || (old_c != new_c) {
+                                *both = true;
+                            }
                         }
                     }
+                } else {
+                    duplicons.push(new);
                 }
             } else {
                 duplicons.push(new);
@@ -275,10 +278,10 @@ impl SquishPlotter {
 
         let label_space = 5.0
             + labels
-                .iter()
-                .map(|x| (x.dims().0 + 1.) as i64)
-                .max()
-                .unwrap() as f32;
+            .iter()
+            .map(|x| (x.dims().0 + 1.) as i64)
+            .max()
+            .unwrap() as f32;
 
         let chrs: Vec<SvgGroup> = chr_draw_commands
             .iter()

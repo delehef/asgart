@@ -350,6 +350,10 @@ enriched in large duplicons cluster are immediately obvious.
 
 _Please note that ASGART follows the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
+## v2.4.2
+
+- Fix regression in `asgart-slice`
+
 ## v2.4.1
 
 - Fix OoB

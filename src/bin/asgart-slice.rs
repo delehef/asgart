@@ -21,6 +21,7 @@ fn main() -> Result<()> {
         .about("asgart-slice combines multiple ASGART JSON files into a single output file in the desired format, and features functions to filter, convert and collapse data.")
         .arg(Arg::with_name("INPUT")
              .help("Set the input file(s) to use")
+             .min_values(1)
              .takes_value(true))
         .arg(Arg::with_name("format")
              .short("f")

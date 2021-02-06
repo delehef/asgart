@@ -15,7 +15,7 @@ use asgart::plot::circos_plot::CircosPlotter;
 use asgart::plot::colorizers::*;
 use asgart::plot::flat_plot::FlatPlotter;
 use asgart::plot::genome_plot::GenomePlotter;
-use asgart::plot::squish_plot::SquishPlotter;
+use asgart::plot::rosary_plot::RosaryPlotter;
 use asgart::plot::*;
 use asgart::structs::*;
 
@@ -424,7 +424,7 @@ fn main() -> Result<()> {
             let sub_args = args.subcommand_matches("rosary").unwrap();
             let clustering_margin = value_t!(sub_args, "clustering", usize)?;
             let rosary_mode = sub_args.is_present("rosary");
-            SquishPlotter::new(settings, result, colorizer, clustering_margin, rosary_mode).plot()
+            RosaryPlotter::new(settings, result, colorizer, clustering_margin, rosary_mode).plot()
         }
         // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
         _ => unreachable!(),

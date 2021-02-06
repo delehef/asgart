@@ -8,7 +8,7 @@ pub mod flat_plot;
 pub mod circos_plot;
 pub mod colorizers;
 pub mod genome_plot;
-pub mod squish_plot;
+pub mod rosary_plot;
 
 pub struct Settings {
     pub out_file: String,

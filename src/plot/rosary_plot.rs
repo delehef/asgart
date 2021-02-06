@@ -27,7 +27,7 @@ enum DrawCommand {
     Feature { length: i64, color: String },
 }
 
-pub struct SquishPlotter {
+pub struct RosaryPlotter {
     result:    RunResult,
     settings:  Settings,
     colorizer: Box<dyn Colorizer>,
@@ -36,13 +36,13 @@ pub struct SquishPlotter {
     rosary_mode:       bool,
 }
 
-impl Plotter for SquishPlotter {
+impl Plotter for RosaryPlotter {
     fn plot(&self) -> Result<()> {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_squish().as_bytes()))
             .and_then(|_| {
-                log::info!("Squish plot written to `{}`", &out_filename);
+                log::info!("Rosary plot written to `{}`", &out_filename);
                 Ok(())
             })
             .with_context(|| format!("Failed to save plot to `{}`", &out_filename))?;
@@ -51,16 +51,16 @@ impl Plotter for SquishPlotter {
     }
 }
 
-impl SquishPlotter {
+impl RosaryPlotter {
     pub fn new(
         settings: Settings,
         result: RunResult,
         colorizer: Box<dyn Colorizer>,
         clustering_margin: usize,
         rosary_mode: bool,
-    ) -> SquishPlotter {
+    ) -> RosaryPlotter {
         log::info!("Clustering margin: {}bp", clustering_margin);
-        SquishPlotter {
+        RosaryPlotter {
             result,
             settings,
             colorizer,

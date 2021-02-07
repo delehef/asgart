@@ -287,86 +287,116 @@ impl RosaryPlotter {
             .iter()
             .flat_map(|x| x.iter())
             .filter_map(|c| match c {
-                DrawCommand::Feature { length: l, .. }  => Some(*l),
-                DrawCommand::Distance(l) => None,
+                DrawCommand::Feature { length: l, .. } => Some(*l),
+                DrawCommand::Distance(..) => None,
             })
             .max()
             .unwrap_or(0);
 
-        let captions_beads_text = SvgObject::Text{
-            x: 0., y: 0., text: "Duplications-devoid regions".to_string(),
-            font_size: None, color: None,
+        let captions_beads_text = SvgObject::Text {
+            x:         0.,
+            y:         0.,
+            text:      "Duplications-devoid regions".to_string(),
+            font_size: None,
+            color:     None,
         };
-        let mut captions_beads = SCALES
+        let captions_beads = SCALES
             .iter()
             .filter(|x| x.0 <= largest_bead)
-            .fold(((0., captions_beads_text.dims().1 + 5.), SvgGroup::new().push(captions_beads_text)), |((x, y), g), l| {
-                let r = Self::size_for_void(l.0 as f32);
-                let text = SvgObject::Text {
-                    x, y,
-                    text:      l.1.to_string(),
-                    color:     None,
-                    font_size: None,
-                };
-                let bead = SvgObject::Circle {
-                    cx: x + text.dims().0/3.,
-                    cy: y + text.dims().1 + 5.,
-                    r,
-                    fill: "#555555".to_string(),
-                };
+            .fold(
                 (
-                    (x + text.dims().0 + bead.dims().0 + 10., y),
-                    g.append(SvgGroup::new().push(bead).push(text)),
-                )
-            })
+                    (0., captions_beads_text.dims().1 + 5.),
+                    SvgGroup::new().push(captions_beads_text),
+                ),
+                |((x, y), g), l| {
+                    let r = Self::size_for_void(l.0 as f32);
+                    let text = SvgObject::Text {
+                        x,
+                        y,
+                        text: l.1.to_string(),
+                        color: None,
+                        font_size: None,
+                    };
+                    let bead = SvgObject::Circle {
+                        cx: x + text.dims().0 / 3.,
+                        cy: y + text.dims().1 + 5.,
+                        r,
+                        fill: "#555555".to_string(),
+                    };
+                    (
+                        (x + text.dims().0 + bead.dims().0 + 10., y),
+                        g.append(SvgGroup::new().push(bead).push(text)),
+                    )
+                },
+            )
             .1;
 
-        let captions_squares_text = SvgObject::Text{
-            x: 0., y: 0., text: "Duplications-rich regions".to_string(),
-            font_size: None, color: None,
+        let captions_squares_text = SvgObject::Text {
+            x:         0.,
+            y:         0.,
+            text:      "Duplications-rich regions".to_string(),
+            font_size: None,
+            color:     None,
         };
-        let mut captions_squares = SCALES
+        let captions_squares = SCALES
             .iter()
             .filter(|x| x.0 <= largest_square)
-            .fold(((0., captions_squares_text.dims().1 + 5.), SvgGroup::new().push(captions_squares_text)), |((x, y), g), l| {
-                let w = Self::size_for_feature(l.0 as f32);
-                let text = SvgObject::Text {
-                    x, y,
-                    text:      l.1.to_string(),
-                    color:     None,
-                    font_size: None,
-                };
-
-                let square = SvgObject::Line {
-                    x1: x + text.dims().0/3.,
-                    x2: x + text.dims().0/3.,
-                    y1: y + text.dims().1 + 5.,
-                    y2: y + text.dims().1 + w + 5.,
-                    stroke: Some("#bbb".to_string()),
-                    stroke_width: w,
-                    hover: None,
-                };
+            .fold(
                 (
-                    (x + text.dims().0 + square.dims().0 + 10., y),
-                    g.append(SvgGroup::new().push(square).push(text)),
-                )
-            })
+                    (0., captions_squares_text.dims().1 + 5.),
+                    SvgGroup::new().push(captions_squares_text),
+                ),
+                |((x, y), g), l| {
+                    let w = Self::size_for_feature(l.0 as f32);
+                    let text = SvgObject::Text {
+                        x,
+                        y,
+                        text: l.1.to_string(),
+                        color: None,
+                        font_size: None,
+                    };
+
+                    let square = SvgObject::Line {
+                        x1:           x + text.dims().0 / 3.,
+                        x2:           x + text.dims().0 / 3.,
+                        y1:           y + text.dims().1 + 5.,
+                        y2:           y + text.dims().1 + w + 5.,
+                        stroke:       Some("#bbb".to_string()),
+                        stroke_width: w,
+                        hover:        None,
+                    };
+                    (
+                        (x + text.dims().0 + square.dims().0 + 10., y),
+                        g.append(SvgGroup::new().push(square).push(text)),
+                    )
+                },
+            )
             .1;
 
         let captions = SvgGroup::new()
             .append(captions_squares.shift(0., captions_beads.dims().1 + 15.))
-            .append(captions_beads)
-            ;
+            .append(captions_beads);
 
-        let labels = self.result.strand.map.iter().map(|chr| SvgObject::Text {
+        let labels = self
+            .result
+            .strand
+            .map
+            .iter()
+            .map(|chr| SvgObject::Text {
                 x:         0.,
                 y:         0.,
                 text:      chr.name.clone(),
                 color:     None,
                 font_size: None,
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
 
-        let label_space = 5.0 + labels.iter().map(|x| (x.dims().0 + 1.) as i64).max().unwrap() as f32;
+        let label_space = 5.0
+            + labels
+            .iter()
+            .map(|x| (x.dims().0 + 1.) as i64)
+            .max()
+            .unwrap() as f32;
 
         let chrs: Vec<SvgGroup> = chr_draw_commands
             .iter()
@@ -417,7 +447,7 @@ impl RosaryPlotter {
             })
             .collect();
 
-        let mut main_plot = labels
+        let main_plot = labels
             .into_iter()
             .zip(chrs.into_iter())
             .fold((0., SvgGroup::new()), |(y, ax), (mut label, chr)| {
@@ -431,7 +461,7 @@ impl RosaryPlotter {
             })
             .1
             .shift(0., captions.dims().1 + 20.);
-        let mut all = SvgGroup::new()
+        let all = SvgGroup::new()
             .append(captions)
             .append(main_plot)
             .shift(10., 10.)
@@ -442,10 +472,10 @@ impl RosaryPlotter {
             "<?xml version='1.0' encoding='UTF-8'  standalone='no' ?> <!DOCTYPE svg \
              PUBLIC '-//W3C//DTD SVG 1.0//EN' 'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> \
              <svg version='1.0' width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'>\n \
-                 {} \
-                 </svg>",
-                all.dims().0 + 10., all.dims().1 + 10.,
-                all.render(),
-            )
+             {} \
+             </svg>",
+            all.dims().0 + 10., all.dims().1 + 10.,
+            all.render(),
+        )
     }
 }

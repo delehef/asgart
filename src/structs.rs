@@ -174,13 +174,11 @@ impl RunResult {
         self.families.retain(|family| family.len() <= m)
     }
 
-    pub fn restrict_fragments<T: AsRef<str>>(&mut self, to_keep: &[T]) {
-        self.families.iter_mut().for_each(|family| {
-            family.retain(|sd| {
-                to_keep.iter().any(|n| n.as_ref() == sd.chr_left)
-                    && to_keep.iter().any(|n| n.as_ref() == sd.chr_right)
-            })
-        });
+    /// Ensure that
+    /// 1. No empty families are kept
+    /// 2. Only used fragments are kept
+    /// 3. Fragment & duplicons have valid global coordinates
+    fn consolidate_families<T: AsRef<str>>(&mut self, to_keep: &[T]) {
         self.families.retain(|f| !f.is_empty());
         self.strand
             .map
@@ -194,12 +192,58 @@ impl RunResult {
         }
         for f in self.families.iter_mut() {
             for sd in f.iter_mut() {
-                sd.global_left_position =
-                    self.strand.find_chr(&sd.chr_left).unwrap().position + sd.chr_left_position;
-                sd.global_right_position =
-                    self.strand.find_chr(&sd.chr_right).unwrap().position + sd.chr_right_position;
+                sd.global_left_position = self
+                    .strand
+                    .find_chr(&sd.chr_left)
+                    .map_or(0, |c| c.position + sd.chr_left_position);
+                sd.global_right_position = self
+                    .strand
+                    .find_chr(&sd.chr_right)
+                    .map_or(0, |c| c.position + sd.chr_right_position);
             }
         }
+    }
+
+    /// Given a list of fragments, keep the duplicons for which AT LEAST a leg
+    /// stands on one of them
+    pub fn keep_fragments<T: AsRef<str>>(&mut self, to_keep: &[T]) {
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| {
+                to_keep.iter().any(|n| n.as_ref() == sd.chr_left)
+                    || to_keep.iter().any(|n| n.as_ref() == sd.chr_right)
+            })
+        });
+        self.consolidate_families(to_keep);
+    }
+
+    pub fn keep_fragments_regexp<T: AsRef<str>>(&mut self, to_keep: &str) -> anyhow::Result<()> {
+        let re = Regex::new(to_keep)?;
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| re.is_match(&sd.chr_left) || re.is_match(&sd.chr_right))
+        });
+
+        self.consolidate_families(
+            &self
+                .strand
+                .map
+                .iter()
+                .map(|c| c.name.to_owned())
+                .filter(|c| re.is_match(c))
+                .collect::<Vec<String>>(),
+        );
+        Ok(())
+    }
+
+    /// Given a list of fragments, keep the duplicons for which BOTH legs
+    /// stands on one of them
+    pub fn restrict_fragments<T: AsRef<str>>(&mut self, to_keep: &[T]) {
+        self.families.iter_mut().for_each(|family| {
+            family.retain(|sd| {
+                to_keep.iter().any(|n| n.as_ref() == sd.chr_left)
+                    && to_keep.iter().any(|n| n.as_ref() == sd.chr_right)
+            })
+        });
+        self.consolidate_families(to_keep);
     }
 
     pub fn restrict_fragments_regexp<T: AsRef<str>>(
@@ -210,24 +254,16 @@ impl RunResult {
         self.families.iter_mut().for_each(|family| {
             family.retain(|sd| re.is_match(&sd.chr_left) && re.is_match(&sd.chr_right))
         });
-        self.families.retain(|f| !f.is_empty());
-        self.strand.map.retain(|c| re.is_match(&c.name));
-        self.strand.length = self.strand.map.iter().map(|c| c.length).sum::<usize>();
 
-        let mut i = 0;
-        for c in self.strand.map.iter_mut() {
-            c.position = i;
-            i += c.length;
-        }
-        for f in self.families.iter_mut() {
-            for sd in f.iter_mut() {
-                sd.global_left_position =
-                    self.strand.find_chr(&sd.chr_left).unwrap().position + sd.chr_left_position;
-                sd.global_right_position =
-                    self.strand.find_chr(&sd.chr_right).unwrap().position + sd.chr_right_position;
-            }
-        }
-
+        self.consolidate_families(
+            &self
+                .strand
+                .map
+                .iter()
+                .map(|c| c.name.to_owned())
+                .filter(|c| re.is_match(c))
+                .collect::<Vec<String>>(),
+        );
         Ok(())
     }
 

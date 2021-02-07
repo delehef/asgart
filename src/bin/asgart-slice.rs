@@ -81,7 +81,13 @@ fn main() -> Result<()> {
 
         .arg(Arg::with_name("keep-fragments")
              .long("keep-fragments")
-             .help("ignore all fragments not in the list [comma-separated]")
+             .help("ignore all duplicons not having at least an arm in a fragment in the list [comma-separated]")
+             .takes_value(true)
+             .min_values(1)
+             .require_delimiter(true))
+        .arg(Arg::with_name("restrict-fragments")
+             .long("restrict-fragments")
+             .help("ignore all duplicons not having both arms in a fragment in the list [comma-separated]")
              .takes_value(true)
              .min_values(1)
              .require_delimiter(true))
@@ -163,10 +169,20 @@ fn main() -> Result<()> {
         if args.is_present("regexp") {
             let regexp = value_t!(args, "keep-fragments", String)?;
             results
+                .keep_fragments_regexp::<&str>(&regexp)
+                .with_context(|| format!("Error while compiling `{}`", regexp))?;
+        } else {
+            results.keep_fragments(&values_t!(args, "keep-fragments", String).unwrap());
+        }
+    }
+    if args.is_present("restrict-fragments") {
+        if args.is_present("regexp") {
+            let regexp = value_t!(args, "restrict-fragments", String)?;
+            results
                 .restrict_fragments_regexp::<&str>(&regexp)
                 .with_context(|| format!("Error while compiling `{}`", regexp))?;
         } else {
-            results.restrict_fragments(&values_t!(args, "keep-fragments", String).unwrap());
+            results.restrict_fragments(&values_t!(args, "restrict-fragments", String).unwrap());
         }
     }
     if args.is_present("exclude-fragments") {

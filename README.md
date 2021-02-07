@@ -202,6 +202,10 @@ plots, flat plots, genome plots and Circos plots.
 
 ## Options
 
+### Common options
+
+These options are common to all the plot types.
+
   - `-h`, `--help` display an help screen
 
   - `--out FILENAME` set output file name
@@ -245,6 +249,10 @@ plots, flat plots, genome plots and Circos plots.
     position within the input file(s)); `by-fragment` (each
     duplication is colorized according to its left-most duplicons);
     `none` (all are drawn in medium grey).
+
+### Specific options
+
+Some plotting formats present options that are specific to them. They can be listed with `asgart-plot [PLOT_TYPE] --help`, _e.g._ `asgart-plot rosary --help`.
 
 ### Features File Format
 

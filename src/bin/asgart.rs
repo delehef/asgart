@@ -77,6 +77,23 @@ impl Step for ReduceOverlap {
     }
 }
 
+struct FilterNs;
+impl Step for FilterNs {
+    fn name(&self) -> &str {
+        "Filtering uncertain duplications"
+    }
+
+    fn run(&self, mut input: Vec<ProtoSDsFamily>, strand: &Strand) -> Vec<ProtoSDsFamily> {
+        input
+            .par_iter_mut()
+            .for_each(|family| family.retain(|sd| sd.n_content(&strand.data) <= 0.2));
+        input
+            .into_iter()
+            .filter(|family| !family.is_empty())
+            .collect::<Vec<_>>()
+    }
+}
+
 struct ComputeScore;
 impl Step for ComputeScore {
     fn name(&self) -> &str {
@@ -161,12 +178,12 @@ impl<'a> Step for SearchDuplications<'a> {
                         Err(TryRecvError::Empty) => {
                             pb.set_position(
                                 (progresses
-                                    .iter()
-                                    .map(|x| x.load(Ordering::Relaxed))
-                                    .fold(0, |ax, x| ax + x)
-                                    as f64
-                                    / total as f64
-                                    * 100.0) as u64,
+                                 .iter()
+                                 .map(|x| x.load(Ordering::Relaxed))
+                                 .fold(0, |ax, x| ax + x)
+                                 as f64
+                                 / total as f64
+                                 * 100.0) as u64,
                             );
                         }
                         _ => {
@@ -603,21 +620,21 @@ fn main() -> Result<()> {
         2 => LevelFilter::Trace,
         _ => LevelFilter::Trace,
     })
-    .with_context(|| "Unable to initialize logger")?;
+        .with_context(|| "Unable to initialize logger")?;
 
     let radix = (settings
-        .strands_files
-        .iter()
-        .map(|n| {
-            path::Path::new(&n)
-                .file_stem()
-                .expect(&format!("Unable to parse {}", n))
-                .to_str()
-                .unwrap()
-                .to_string()
-        })
-        .collect::<Vec<String>>())
-    .join("-");
+                 .strands_files
+                 .iter()
+                 .map(|n| {
+                     path::Path::new(&n)
+                         .file_stem()
+                         .expect(&format!("Unable to parse {}", n))
+                         .to_str()
+                         .unwrap()
+                         .to_string()
+                 })
+                 .collect::<Vec<String>>())
+        .join("-");
 
     info!("Processing {}", &settings.strands_files.join(", "));
     debug!("K-mers size                {}", settings.kmer_size);
@@ -712,11 +729,12 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
         trim,
         settings,
     )));
+    steps.push(Box::new(FilterNs {}));
+    steps.push(Box::new(ReOrder {}));
+    steps.push(Box::new(ReduceOverlap {}));
     if settings.compute_score {
         steps.push(Box::new(ComputeScore {}));
     }
-    steps.push(Box::new(ReOrder {}));
-    steps.push(Box::new(ReduceOverlap {}));
     steps.push(Box::new(Sort {}));
 
     let mut result = Vec::new();
@@ -736,8 +754,8 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
             strands_files.join(", "),
             HumanDuration(total.elapsed())
         ))
-        .green()
-        .bold()
+            .green()
+            .bold()
     );
 
     let strand = StrandResult {
@@ -769,14 +787,14 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
 
                         chr_left_position:  sd.left
                             - strand
-                                .find_chr_by_pos(sd.left)
-                                .and_then(|c| Some(c.position))
-                                .unwrap_or(0),
+                            .find_chr_by_pos(sd.left)
+                            .and_then(|c| Some(c.position))
+                            .unwrap_or(0),
                         chr_right_position: sd.right
                             - strand
-                                .find_chr_by_pos(sd.right)
-                                .and_then(|c| Some(c.position))
-                                .unwrap_or(0),
+                            .find_chr_by_pos(sd.right)
+                            .and_then(|c| Some(c.position))
+                            .unwrap_or(0),
 
                         left_length:  sd.left_length,
                         right_length: sd.right_length,

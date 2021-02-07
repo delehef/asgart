@@ -216,6 +216,7 @@ pub fn search_duplications(
     r
 }
 
+/// Returns the minimal distance between two segments
 fn d_ss(a: &Segment, m: &Segment) -> i64 {
     if (m.start >= a.start && m.start <= a.end) || (m.end >= a.start && m.end <= a.end) {
         0

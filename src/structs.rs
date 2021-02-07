@@ -425,6 +425,21 @@ impl ProtoSD {
 
         100.0 * (1.0 - dist / (std::cmp::max(self.left_length, self.right_length) as f64))
     }
+
+    pub fn n_content(&self, strand: &[u8]) -> f32 {
+        let left_arm_content = strand[self.left..=self.left + self.left_length]
+            .iter()
+            .filter(|&&n| n == b'n' || n == b'N')
+            .count() as f32
+            / self.left_length as f32;
+        let right_arm_content = strand[self.right..=self.right + self.right_length]
+            .iter()
+            .filter(|&&n| n == b'n' || n == b'N')
+            .count() as f32
+            / self.right_length as f32;
+
+        left_arm_content.max(right_arm_content)
+    }
 }
 pub type ProtoSDsFamily = Vec<ProtoSD>;
 

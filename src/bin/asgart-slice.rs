@@ -53,7 +53,8 @@ fn main() -> Result<()> {
              .short("M")
              .long("max-family-members")
              .help("Skip families with more duplicons than specified")
-             .takes_value(true))
+             .takes_value(true)
+             .number_of_values(1))
 
         .arg(Arg::with_name("no-inter")
              .long("no-inter")
@@ -70,27 +71,30 @@ fn main() -> Result<()> {
         .arg(Arg::with_name("min-length")
              .long("min-length")
              .help("filters duplicons shorter than the given argument")
-             .takes_value(true))
+             .takes_value(true)
+             .number_of_values(1))
 
         .arg(Arg::with_name("collapse")
              .short("C")
              .long("collapse")
              .help("Merge all the smaller-than-average-plus-one-sigma fragments into a single one (useful to deal with datasets containing large numbers of small fragments)"))
 
+        .arg(Arg::with_name("keep-fragments")
+             .long("keep-fragments")
+             .help("ignore all fragments not in the list [comma-separated]")
+             .takes_value(true)
+             .min_values(1)
+             .require_delimiter(true))
+        .arg(Arg::with_name("exclude-fragments")
+             .long("exclude-fragments")
+             .help("ignore all fragments is in the list [comma-separated]")
+             .takes_value(true)
+             .min_values(1)
+             .require_delimiter(true))
         .arg(Arg::with_name("regexp")
              .short("E")
              .long("--regexp")
-             .help("Use regexp matching instead of literal for restrict- and exclude-fragments"))
-        .arg(Arg::with_name("restrict-fragments")
-             .long("restrict-fragments")
-             .help("ignore all fragments whose name are not in the provided list")
-             .takes_value(true)
-             .min_values(1))
-        .arg(Arg::with_name("exclude-fragments")
-             .long("exclude-fragments")
-             .help("ignore all fragments whose name is in the list")
-             .takes_value(true)
-             .min_values(1))
+             .help("Use regexp matching instead of literal for keep- and exclude-fragments"))
         .get_matches();
 
     let mut results = if args.is_present("INPUT") {
@@ -155,14 +159,14 @@ fn main() -> Result<()> {
         results
             .max_family_members(value_t!(args, "max-family-members", usize).unwrap_or(100_000_000));
     }
-    if args.is_present("restrict-fragments") {
+    if args.is_present("keep-fragments") {
         if args.is_present("regexp") {
-            let regexp = value_t!(args, "restrict-fragments", String)?;
+            let regexp = value_t!(args, "keep-fragments", String)?;
             results
                 .restrict_fragments_regexp::<&str>(&regexp)
                 .with_context(|| format!("Error while compiling `{}`", regexp))?;
         } else {
-            results.restrict_fragments(&values_t!(args, "restrict-fragments", String).unwrap());
+            results.restrict_fragments(&values_t!(args, "keep-fragments", String).unwrap());
         }
     }
     if args.is_present("exclude-fragments") {

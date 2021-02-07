@@ -62,6 +62,33 @@ impl GenomePlotter {
         // height_factor + 50px top + 100px bot
         let height = height_factor + 50.0 + 100.0;
 
+        let leftmost = chr_spacing - chr_width/2.;
+        let rightmost: f64 = leftmost + (self.result.strand.map.len() - 1) as f64*chr_spacing + chr_width;
+        let longest_chr = self.result.strand.map.iter().max_by_key(|c| c.length).map(|c| c.length).unwrap_or(0);
+        for i in (5_000_000..longest_chr).step_by(5_000_000) {
+            let width = if i % 10_000_000 == 0 { 0.05 } else { 0.02 };
+            let font_size = if i % 10_000_000 == 0 { 8 } else { 6 };
+            let encart = 0.; // if i % 10_000_000 == 0 { -10. } else { -5. };
+            let color = if i % 10_000_000 == 0 { "#444" } else { "#666" };
+            let y = 50. + factor*i as f64;
+            svg += &format!(
+                    "<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'/>\n",
+                leftmost + encart, y,
+                rightmost, y,
+                color,
+                width
+            );
+            svg += &format!(
+                "<text x='{}' y='{}' style='font-size: {}px;' fill='{}'>{}Mbp</text>\n",
+                leftmost - 50.,
+                y, font_size, color,
+                i/1_000_000
+            );
+        }
+
+
+
+
         // 1. Draw the chromosomes
         for (i, chr) in self.result.strand.map.iter().enumerate() {
             // Chromosome bar

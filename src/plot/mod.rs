@@ -126,7 +126,7 @@ impl SvgObject {
     }
 
     pub fn shift(&mut self, dx: f32, dy: f32) {
-        match *self {
+        match self {
             SvgObject::Line {
                 ref mut x1,
                 ref mut y1,
@@ -155,7 +155,7 @@ impl SvgObject {
                 *x += dx;
                 *y += dy;
             }
-        }
+        };
     }
 
     pub fn scale(&mut self, s: f32) {
@@ -292,8 +292,19 @@ impl SvgGroup {
         }
     }
 
-    pub fn push(&mut self, o: SvgObject) {
+    pub fn push(mut self, o: SvgObject) -> Self {
         self.content.push(o);
+        self
+    }
+
+    pub fn append(mut self, other: Self) -> Self{
+        self.content.extend(other.content);
+        self
+    }
+
+    pub fn extend(mut self, other: impl Iterator<Item=SvgObject>) -> Self {
+        self.content.extend(other);
+        self
     }
 
     pub fn render(&self) -> String {
@@ -304,16 +315,14 @@ impl SvgGroup {
             .join("\n")
     }
 
-    pub fn shift(&mut self, dx: f32, dy: f32) {
-        self.content.iter_mut().for_each(|o| o.shift(dx, dy))
+    pub fn shift(mut self, dx: f32, dy: f32) -> Self {
+        self.content.iter_mut().for_each(|o| o.shift(dx, dy));
+        self
     }
 
-    pub fn scale(&mut self, s: f32) {
-        self.content.iter_mut().for_each(|o| o.scale(s))
-    }
-
-    pub fn append(&mut self, other: Self) {
-        self.content.extend(other.content)
+    pub fn scale(mut self, s: f32) -> Self {
+        self.content.iter_mut().for_each(|o| o.scale(s));
+        self
     }
 
     pub fn bbox(&self) -> BBox {
@@ -343,7 +352,8 @@ impl SvgGroup {
         (bbox.x2 - bbox.x1, bbox.y2 - bbox.y1)
     }
 
-    pub fn transpose(&mut self) {
-        self.content.iter_mut().for_each(|x| x.transpose())
+    pub fn transpose(mut self) -> Self {
+        self.content.iter_mut().for_each(|x| x.transpose());
+        self
     }
 }

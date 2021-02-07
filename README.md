@@ -334,15 +334,25 @@ manually replaced.
 
 Rosary plots are non-linear plots designed for large scale
 visualization. They represent every duplication-rich or
-duplication-devoid regions as a “bead”, whose area is exponentially
-proportional to its length if it is enriched in duplicons, or
-logarithmically if it is devoid of duplications. Therefore, areas
-enriched in large duplicons cluster are immediately obvious.
+duplication-devoid regions as a “bead”, whose dimension is
+
+- directly proportional to its length if it is enriched in
+  duplicons
+
+- proportional to the square root of its length if it is devoid of
+  duplications.
+
+Therefore, areas enriched in large duplicons cluster are immediately
+obvious.
+
+Areas devoid of duplications will be represented as gray circles.
+Clusters of duplications will be represented as circles, with orange
+indicating clusters of direct duplicons, teal clusters of palindromic
+ones, and purple mixed clusters.
 
 ### Example
 
-`asgart-plot human_RC.json --min-length 10000 rosary --clustering 10000`
-
+`asgart-plot 20-21-Y_RC.json --min-length 10000 rosary --clustering 10000`
 
 ![Rosary plot example](screenshots/rosary.png)
 

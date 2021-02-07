@@ -106,9 +106,9 @@ subcommands:
         args:
           - clustering:
               long: clustering
-              help: two consecutive duplicons close enough will be shown as a larger, single one
+              help: two consecutive duplicons close enough will be shown as a singel, larger one
               takes_value: true
               default_value: "0"
           - rosary:
               long: rosary
-              help: Place an upper limit on the size of duplications-devoid spans represented as a single ball
+              help: duplications-devoid spans are represented as a string of at most 10Mbp-long beads rather than a single, larger one

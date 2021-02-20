@@ -369,6 +369,12 @@ ones, and purple mixed clusters.
 _Please note that ASGART follows the [semver](https://semver.org/) versioning scheme, where an increase in the major version number reflects a non backward-compatible update._
 
 ## v2.4.3
+
+- Fix Levenshtein distance being not correctly computed for non-direct
+  duplications
+
+## v2.4.3
+
 - Rosary plots now feature a scale
 - Genome plots now feature a scale
 - Fix a regression in `asgart-slice`

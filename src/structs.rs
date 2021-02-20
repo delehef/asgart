@@ -10,6 +10,27 @@ pub const COLLAPSED_NAME: &str = "ASGART_COLLAPSED";
 pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
 pub const ALPHABET_MASKED: [u8; 5] = [b'a', b't', b'g', b'c', b'n'];
 
+lazy_static::lazy_static!{
+    static ref TR: HashMap<u8, u8> = maplit::hashmap!{
+        b'A' => b'T',
+        b'T' => b'A',
+        b'G' => b'C',
+        b'C' => b'G',
+        b'N' => b'N',
+        b'a' => b't',
+        b't' => b'a',
+        b'g' => b'c',
+        b'c' => b'g',
+        b'n' => b'n',
+    };
+}
+
+fn complement(seq: &mut[u8]) {
+    for n in seq.iter_mut() {
+        *n = *TR.get(n).unwrap_or_else(|| panic!("Unknown nucleotide: `{}`", n));
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct RunSettings {
     pub probe_size:             usize,
@@ -420,8 +441,14 @@ impl ProtoSD {
     pub fn levenshtein(&self, strand: &[u8]) -> f64 {
         // TODO take into account R/C duplications
         let left_arm = &strand[self.left..=self.left + self.left_length];
-        let right_arm = &strand[self.right..=self.right + self.right_length];
-        let dist = f64::from(bio::alignment::distance::levenshtein(left_arm, right_arm));
+        let mut right_arm = strand[self.right..=self.right + self.right_length].to_vec();
+        if self.reversed {
+            right_arm.reverse();
+        }
+        if self.complemented {
+            complement(&mut right_arm);
+        }
+        let dist = f64::from(bio::alignment::distance::levenshtein(left_arm, &right_arm));
 
         100.0 * (1.0 - dist / (std::cmp::max(self.left_length, self.right_length) as f64))
     }

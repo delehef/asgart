@@ -1,6 +1,6 @@
 [package]
 name         = "asgart"
-version      = "2.4.3"
+version      = "2.4.4"
 authors      = ["Franklin Delehelle <franklin.delehelle@odena.eu>"]
 edition      = "2018"
 description  = "A large duplication families mapper"
@@ -17,7 +17,9 @@ console      = "0.13"
 env_logger   = "0.7"
 human-panic  = "1.0"
 indicatif    = "0.15"
+lazy_static  = "1.4"
 log          = "0.4"
+maplit       = "1"
 num_cpus     = "1.*"
 palette      = "0.5"
 rand         = "0.7"

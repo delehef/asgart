@@ -205,7 +205,7 @@ impl GenomePlotter {
                         let right = sd.chr_right_position;
                         let start = factor * right as f64;
                         let mut end = factor * (right + sd.right_length) as f64;
-                        if start - end < self.settings.min_thickness {
+                        if end - start < self.settings.min_thickness {
                             end = start + self.settings.min_thickness
                         };
                         svg += &format!("<line x1='{}' y1='{}' x2='{}' y2='{}' stroke='{}' stroke-width='{}'><title>{}</title></line>\n",

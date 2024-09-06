@@ -42,3 +42,9 @@ debug = true
 
 [build-dependencies]
 cmake = "0.1"
+
+[package.metadata.release]
+tag-prefix = ""
+publish = false
+pre-release-hook = ["git-cliff", "-o", "CHANGELOG.md", "--tag", "{{version}}"]
+allow-branch = ["master"]

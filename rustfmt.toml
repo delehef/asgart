@@ -1,9 +1,3 @@
-wrap_comments = true
-edition = "2018"
-match_arm_blocks = false
-newline_style = "Native"
-normalize_comments = true
-overflow_delimited_expr = true
 reorder_impl_items = true
-single_line_if_else_max_width = 80
-struct_field_align_threshold = 20
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"

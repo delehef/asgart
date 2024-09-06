@@ -9,9 +9,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Clone)]
 pub struct Segment {
-    pub tag:   usize,
+    pub tag: usize,
     pub start: usize,
-    pub end:   usize,
+    pub end: usize,
 }
 
 impl fmt::Debug for Segment {
@@ -33,31 +33,31 @@ impl Segment {
 
 #[derive(Debug, Clone)]
 pub struct ProtoProtoSD {
-    bottom:  usize,
-    top:     usize,
+    bottom: usize,
+    top: usize,
     matches: Vec<Segment>,
 }
 
 #[derive(Debug)]
 struct Arm {
-    left:      Segment,
-    right:     Segment,
+    left: Segment,
+    right: Segment,
     family_id: String,
-    active:    bool,
-    dirty:     bool,
-    gap:       usize,
+    active: bool,
+    dirty: bool,
+    gap: usize,
 }
 
 enum Operation {
     ExtendArm {
-        i:     usize,
+        i: usize,
         l_end: usize,
         r_end: usize,
     },
     NewArm {
-        i:       usize,
+        i: usize,
         m_start: usize,
-        m_end:   usize,
+        m_end: usize,
     },
 }
 
@@ -79,7 +79,7 @@ pub fn search_duplications(
                 && m.end > a.right.end
             {
                 return Operation::ExtendArm {
-                    i:     j,
+                    i: j,
                     l_end: i + ps,
                     r_end: m.end,
                 };
@@ -155,20 +155,20 @@ pub fn search_duplications(
         todo.iter().for_each(|op| {
             if let Operation::NewArm { i, m_start, m_end } = op {
                 arms.push(Arm {
-                    left:      Segment {
+                    left: Segment {
                         start: *i,
-                        end:   *i + settings.probe_size,
-                        tag:   0,
+                        end: *i + settings.probe_size,
+                        tag: 0,
                     },
-                    right:     Segment {
+                    right: Segment {
                         start: *m_start,
-                        end:   *m_end,
-                        tag:   0,
+                        end: *m_end,
+                        tag: 0,
                     },
                     family_id: format!("{}-{}", id, current_family_id),
-                    active:    true,
-                    dirty:     false,
-                    gap:       0,
+                    active: true,
+                    dirty: false,
+                    gap: 0,
                 })
             }
         });
@@ -195,12 +195,12 @@ pub fn search_duplications(
                 .iter()
                 .filter(|a| a.right.len() >= settings.min_duplication_length)
                 .map(|a| ProtoSD {
-                    left:         a.left.start,
-                    right:        a.right.start,
-                    left_length:  a.left.len(),
+                    left: a.left.start,
+                    right: a.right.start,
+                    left_length: a.left.len(),
                     right_length: a.right.len(),
-                    identity:     0.,
-                    reversed:     false,
+                    identity: 0.,
+                    reversed: false,
                     complemented: false,
                 })
                 .collect();

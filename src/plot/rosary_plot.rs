@@ -8,17 +8,17 @@ use crate::plot::*;
 #[derive(Clone)]
 enum SpanClass {
     Duplicon {
-        reversed:     bool,
+        reversed: bool,
         complemented: bool,
-        both:         bool,
+        both: bool,
     },
     Feature,
 }
 #[derive(Clone)]
 struct Span {
-    start:  usize,
+    start: usize,
     length: usize,
-    class:  SpanClass,
+    class: SpanClass,
 }
 
 #[derive(Debug)]
@@ -28,12 +28,12 @@ enum DrawCommand {
 }
 
 pub struct RosaryPlotter {
-    result:    RunResult,
-    settings:  Settings,
+    result: RunResult,
+    settings: Settings,
     colorizer: Box<dyn Colorizer>,
 
     clustering_margin: usize,
-    rosary_mode:       bool,
+    rosary_mode: bool,
 }
 
 impl Plotter for RosaryPlotter {
@@ -97,9 +97,9 @@ impl RosaryPlotter {
                                     });
                                 if my_chr.name == chr.name {
                                     Some(Span {
-                                        start:  *start,
+                                        start: *start,
                                         length: *length,
-                                        class:  SpanClass::Feature,
+                                        class: SpanClass::Feature,
                                     })
                                 } else {
                                     None
@@ -110,7 +110,9 @@ impl RosaryPlotter {
                                 length: _,
                             } =>
                             // (*start, start + length),
-                                unimplemented!(),
+                            {
+                                unimplemented!()
+                            }
                         }
                     })
                 })
@@ -145,12 +147,12 @@ impl RosaryPlotter {
             })
             .filter(|duplicon| duplicon.0 == chr.name)
             .map(|duplicon| Span {
-                start:  duplicon.1,
+                start: duplicon.1,
                 length: duplicon.2,
-                class:  SpanClass::Duplicon {
-                    reversed:     duplicon.3,
+                class: SpanClass::Duplicon {
+                    reversed: duplicon.3,
                     complemented: duplicon.4,
-                    both:         false,
+                    both: false,
                 },
             })
             .collect();
@@ -237,7 +239,7 @@ impl RosaryPlotter {
 
                     draw_commands.push(DrawCommand::Feature {
                         length: span.length as i64,
-                        color:  if let SpanClass::Duplicon {
+                        color: if let SpanClass::Duplicon {
                             reversed,
                             complemented,
                             both,
@@ -294,11 +296,11 @@ impl RosaryPlotter {
             .unwrap_or(0);
 
         let captions_beads_text = SvgObject::Text {
-            x:         0.,
-            y:         0.,
-            text:      "Duplications-devoid regions".to_string(),
+            x: 0.,
+            y: 0.,
+            text: "Duplications-devoid regions".to_string(),
             font_size: None,
-            color:     None,
+            color: None,
         };
         let captions_beads = SCALES
             .iter()
@@ -332,11 +334,11 @@ impl RosaryPlotter {
             .1;
 
         let captions_squares_text = SvgObject::Text {
-            x:         0.,
-            y:         0.,
-            text:      "Duplications-rich regions".to_string(),
+            x: 0.,
+            y: 0.,
+            text: "Duplications-rich regions".to_string(),
             font_size: None,
-            color:     None,
+            color: None,
         };
         let captions_squares = SCALES
             .iter()
@@ -357,13 +359,13 @@ impl RosaryPlotter {
                     };
 
                     let square = SvgObject::Line {
-                        x1:           x + text.dims().0 / 3.,
-                        x2:           x + text.dims().0 / 3.,
-                        y1:           y + text.dims().1 + 5.,
-                        y2:           y + text.dims().1 + w + 5.,
-                        stroke:       Some("#bbb".to_string()),
+                        x1: x + text.dims().0 / 3.,
+                        x2: x + text.dims().0 / 3.,
+                        y1: y + text.dims().1 + 5.,
+                        y2: y + text.dims().1 + w + 5.,
+                        stroke: Some("#bbb".to_string()),
                         stroke_width: w,
-                        hover:        None,
+                        hover: None,
                     };
                     (
                         (x + text.dims().0 + square.dims().0 + 10., y),
@@ -383,20 +385,20 @@ impl RosaryPlotter {
             .map
             .iter()
             .map(|chr| SvgObject::Text {
-                x:         0.,
-                y:         0.,
-                text:      chr.name.clone(),
-                color:     None,
+                x: 0.,
+                y: 0.,
+                text: chr.name.clone(),
+                color: None,
                 font_size: None,
             })
             .collect::<Vec<_>>();
 
         let label_space = 5.0
             + labels
-            .iter()
-            .map(|x| (x.dims().0 + 1.) as i64)
-            .max()
-            .unwrap() as f32;
+                .iter()
+                .map(|x| (x.dims().0 + 1.) as i64)
+                .max()
+                .unwrap() as f32;
 
         let chrs: Vec<SvgGroup> = chr_draw_commands
             .iter()

@@ -20,8 +20,8 @@ const CX: f64 = TOTAL_WIDTH / 2.0;
 const CY: f64 = TOTAL_WIDTH / 2.0;
 
 pub struct ChordPlotter {
-    result:    RunResult,
-    settings:  Settings,
+    result: RunResult,
+    settings: Settings,
     colorizer: Box<dyn Colorizer>,
 
     length: f64,

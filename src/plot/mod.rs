@@ -12,11 +12,11 @@ pub mod rosary_plot;
 
 pub struct Settings {
     pub out_file: String,
-    pub size:     f64,
+    pub size: f64,
 
     pub min_thickness: f64,
-    pub color1:        String,
-    pub color2:        String,
+    pub color1: String,
+    pub color2: String,
 
     pub feature_tracks: Vec<Vec<Feature>>,
 }
@@ -24,19 +24,19 @@ pub struct Settings {
 #[derive(Debug, Clone)]
 pub enum FeaturePosition {
     Relative {
-        chr:    String,
-        start:  usize,
+        chr: String,
+        start: usize,
         length: usize,
     },
     Absolute {
-        start:  usize,
+        start: usize,
         length: usize,
     },
 }
 
 #[derive(Debug, Clone)]
 pub struct Feature {
-    pub name:      String,
+    pub name: String,
     pub positions: Vec<FeaturePosition>,
 }
 
@@ -46,28 +46,28 @@ pub trait Plotter {
 
 pub enum SvgObject {
     Line {
-        x1:           f32,
-        y1:           f32,
-        x2:           f32,
-        y2:           f32,
-        stroke:       Option<String>,
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        stroke: Option<String>,
         stroke_width: f32,
-        hover:        Option<String>,
+        hover: Option<String>,
     },
 
     Circle {
-        cx:   f32,
-        cy:   f32,
-        r:    f32,
+        cx: f32,
+        cy: f32,
+        r: f32,
         fill: String,
     },
 
     Text {
-        x:         f32,
-        y:         f32,
-        text:      String,
+        x: f32,
+        y: f32,
+        text: String,
         font_size: Option<f32>,
-        color:     Option<String>,
+        color: Option<String>,
     },
 }
 
@@ -297,12 +297,12 @@ impl SvgGroup {
         self
     }
 
-    pub fn append(mut self, other: Self) -> Self{
+    pub fn append(mut self, other: Self) -> Self {
         self.content.extend(other.content);
         self
     }
 
-    pub fn extend(mut self, other: impl Iterator<Item=SvgObject>) -> Self {
+    pub fn extend(mut self, other: impl Iterator<Item = SvgObject>) -> Self {
         self.content.extend(other);
         self
     }

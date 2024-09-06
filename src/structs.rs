@@ -10,7 +10,7 @@ pub const COLLAPSED_NAME: &str = "ASGART_COLLAPSED";
 pub const ALPHABET: [u8; 5] = [b'A', b'T', b'G', b'C', b'N'];
 pub const ALPHABET_MASKED: [u8; 5] = [b'a', b't', b'g', b'c', b'n'];
 
-lazy_static::lazy_static!{
+lazy_static::lazy_static! {
     static ref TR: HashMap<u8, u8> = maplit::hashmap!{
         b'A' => b'T',
         b'T' => b'A',
@@ -25,26 +25,28 @@ lazy_static::lazy_static!{
     };
 }
 
-fn complement(seq: &mut[u8]) {
+fn complement(seq: &mut [u8]) {
     for n in seq.iter_mut() {
-        *n = *TR.get(n).unwrap_or_else(|| panic!("Unknown nucleotide: `{}`", n));
+        *n = *TR
+            .get(n)
+            .unwrap_or_else(|| panic!("Unknown nucleotide: `{}`", n));
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct RunSettings {
-    pub probe_size:             usize,
-    pub max_gap_size:           u32,
+    pub probe_size: usize,
+    pub max_gap_size: u32,
     pub min_duplication_length: usize,
-    pub max_cardinality:        usize,
-    pub trim:                   Option<(usize, usize)>,
+    pub max_cardinality: usize,
+    pub trim: Option<(usize, usize)>,
 
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub reverse:     bool,
+    pub reverse: bool,
     #[serde(skip_serializing)]
     #[serde(default)]
-    pub complement:  bool,
+    pub complement: bool,
     pub skip_masked: bool,
 
     #[serde(skip_serializing)]
@@ -57,16 +59,16 @@ pub struct RunSettings {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Start {
-    pub name:     String,
+    pub name: String,
     pub position: usize,
-    pub length:   usize,
+    pub length: usize,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct StrandResult {
-    pub name:   String,
+    pub name: String,
     pub length: usize,
-    pub map:    Vec<Start>,
+    pub map: Vec<Start>,
 }
 impl StrandResult {
     pub fn has_chr(&self, name: &str) -> bool {
@@ -90,7 +92,7 @@ impl StrandResult {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RunResult {
-    pub strand:   StrandResult,
+    pub strand: StrandResult,
     pub settings: RunSettings,
     pub families: Vec<SDsFamily>,
 }
@@ -127,7 +129,7 @@ impl RunResult {
 
         let r = RunResult {
             settings: results[0].settings,
-            strand:   results[0].strand.clone(),
+            strand: results[0].strand.clone(),
             families: results
                 .iter()
                 .flat_map(|ref r| r.families.iter())
@@ -395,9 +397,9 @@ impl RunResult {
 
         self.strand.map = to_keep;
         self.strand.map.push(Start {
-            name:     COLLAPSED_NAME.to_string(),
+            name: COLLAPSED_NAME.to_string(),
             position: to_keep_len + 1,
-            length:   to_flatten_len,
+            length: to_flatten_len,
         });
 
         self.families.par_iter_mut().for_each(|family| {
@@ -419,14 +421,14 @@ impl RunResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProtoSD {
-    pub left:  usize,
+    pub left: usize,
     pub right: usize,
 
-    pub left_length:  usize,
+    pub left_length: usize,
     pub right_length: usize,
 
-    pub identity:     f32,
-    pub reversed:     bool,
+    pub identity: f32,
+    pub reversed: bool,
     pub complemented: bool,
 }
 impl ProtoSD {
@@ -472,25 +474,25 @@ pub type ProtoSDsFamily = Vec<ProtoSD>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SD {
-    pub chr_left:  String,
+    pub chr_left: String,
     pub chr_right: String,
 
-    pub global_left_position:  usize,
+    pub global_left_position: usize,
     pub global_right_position: usize,
 
-    pub chr_left_position:  usize,
+    pub chr_left_position: usize,
     pub chr_right_position: usize,
 
-    pub left_length:  usize,
+    pub left_length: usize,
     pub right_length: usize,
 
     #[serde(default)]
-    pub left_seq:  Option<String>,
+    pub left_seq: Option<String>,
     #[serde(default)]
     pub right_seq: Option<String>,
 
-    pub identity:     f32,
-    pub reversed:     bool,
+    pub identity: f32,
+    pub reversed: bool,
     pub complemented: bool,
 }
 impl SD {

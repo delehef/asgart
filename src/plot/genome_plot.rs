@@ -7,8 +7,8 @@ use std::io::Write;
 use thousands::Separable;
 
 pub struct GenomePlotter {
-    result:    RunResult,
-    settings:  Settings,
+    result: RunResult,
+    settings: Settings,
     colorizer: Box<dyn Colorizer>,
 }
 
@@ -157,14 +157,18 @@ impl GenomePlotter {
                 let color = self.colorizer.color(sd);
                 let x: Box<dyn Fn(usize) -> f64> = match (sd.chr_left == sd.chr_right, sd.reversed)
                 {
-                    (true, false) =>
-                        Box::new(|x| chr_spacing - 3.0 * chr_width / 8.0 + chr_spacing * x as f64),
-                    (true, true) =>
-                        Box::new(|x| chr_spacing - 1.0 * chr_width / 8.0 + chr_spacing * x as f64),
-                    (false, false) =>
-                        Box::new(|x| chr_spacing + 1.0 * chr_width / 8.0 + chr_spacing * x as f64),
-                    (false, true) =>
-                        Box::new(|x| chr_spacing + 3.0 * chr_width / 8.0 + chr_spacing * x as f64),
+                    (true, false) => {
+                        Box::new(|x| chr_spacing - 3.0 * chr_width / 8.0 + chr_spacing * x as f64)
+                    }
+                    (true, true) => {
+                        Box::new(|x| chr_spacing - 1.0 * chr_width / 8.0 + chr_spacing * x as f64)
+                    }
+                    (false, false) => {
+                        Box::new(|x| chr_spacing + 1.0 * chr_width / 8.0 + chr_spacing * x as f64)
+                    }
+                    (false, true) => {
+                        Box::new(|x| chr_spacing + 3.0 * chr_width / 8.0 + chr_spacing * x as f64)
+                    }
                 };
 
                 // left arm

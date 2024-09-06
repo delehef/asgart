@@ -8,7 +8,7 @@ use crate::divsufsort::*;
 use crate::structs::ALPHABET;
 
 pub struct Searcher {
-    cache:  HashMap<u64, (usize, usize)>,
+    cache: HashMap<u64, (usize, usize)>,
     offset: usize,
 }
 
@@ -172,9 +172,9 @@ impl Searcher {
         sa[lstart + range.start..lstart + range.end]
             .iter()
             .map(|start| Segment {
-                tag:   0,
+                tag: 0,
                 start: self.offset + *start as usize,
-                end:   self.offset + *start as usize + pattern.len(),
+                end: self.offset + *start as usize + pattern.len(),
             })
             .collect()
     }

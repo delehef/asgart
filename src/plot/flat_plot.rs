@@ -9,13 +9,13 @@ use crate::plot::*;
 const CHR_WIDTH: f64 = 4.0;
 
 pub struct FlatPlotter {
-    result:    RunResult,
-    settings:  Settings,
+    result: RunResult,
+    settings: Settings,
     colorizer: Box<dyn Colorizer>,
 
     max_length: f64,
-    width:      f64,
-    height:     f64,
+    width: f64,
+    height: f64,
 }
 
 impl Plotter for FlatPlotter {

@@ -1,23 +1,21 @@
-use regex::Regex;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{prelude::*, BufReader},
+    path::Path,
+};
 
 use anyhow::{anyhow, Context, Result};
 use clap::*;
-use log::LevelFilter;
+use regex::Regex;
 
-use asgart::logger::Logger;
-use asgart::plot::chord_plot::ChordPlotter;
-use asgart::plot::circos_plot::CircosPlotter;
-use asgart::plot::colorizers::*;
-use asgart::plot::flat_plot::FlatPlotter;
-use asgart::plot::genome_plot::GenomePlotter;
-use asgart::plot::rosary_plot::RosaryPlotter;
-use asgart::plot::*;
-use asgart::structs::*;
+use asgart::{
+    plot::{
+        chord_plot::ChordPlotter, circos_plot::CircosPlotter, colorizers::*,
+        flat_plot::FlatPlotter, genome_plot::GenomePlotter, rosary_plot::RosaryPlotter, *,
+    },
+    structs::*,
+};
 
 fn filter_families_in_features(
     result: &mut RunResult,
@@ -200,7 +198,7 @@ fn read_gff3_feature_file(_r: &RunResult, file: &str) -> Result<Vec<Feature>> {
             };
 
             let feature = Feature {
-                name: name,
+                name,
                 positions: vec![FeaturePosition::Relative {
                     chr: l[0].to_string(),
                     start: start,
@@ -288,148 +286,224 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
     Ok(features)
 }
 
-fn main() -> Result<()> {
-    let yaml = load_yaml!("asgart-plot.yaml");
-    let args = App::from_yaml(yaml)
-        .version(crate_version!())
-        .author(crate_authors!())
-        .setting(AppSettings::ColoredHelp)
-        .setting(AppSettings::ColorAuto)
-        .setting(AppSettings::VersionlessSubcommands)
-        .setting(AppSettings::UnifiedHelpMessage)
-        .setting(AppSettings::SubcommandRequired)
-        .get_matches();
-    Logger::init(match args.occurrences_of("verbose") {
-        0 => LevelFilter::Info,
-        1 => LevelFilter::Debug,
-        2 => LevelFilter::Trace,
-        _ => LevelFilter::Trace,
-    })
-    .with_context(|| "Unable to initialize logger")?;
+#[derive(Parser)]
+#[command(
+    name = "ASGART slice",
+    author,
+    version,
+    about = "Generate plots from ASGART results"
+)]
+struct Args {
+    #[arg()]
+    /// Sets the input file(s) to use. If not specified, JSON data will be expected from STDIN
+    files: Option<Vec<String>>,
 
-    let (mut result, out_file) = if args.is_present("FILE") {
-        let json_files = values_t!(args, "FILE", String).unwrap();
+    #[arg(long)]
+    /// Define a non-default output file name
+    out: Option<String>,
+
+    #[arg(long, default_value = "1000")]
+    /// Filter duplicons shorter than the given value
+    min_length: usize,
+
+    #[arg(long, default_value = "0")]
+    /// Filter duplicons with a lesser identity than the given value
+    min_identity: f32,
+
+    #[arg(long)]
+    /// Filter out direct duplications
+    no_direct: bool,
+
+    #[arg(long)]
+    /// Filter out reversed duplications
+    no_reversed: bool,
+
+    #[arg(long)]
+    /// Filter out complemented duplications
+    no_complemented: bool,
+
+    #[arg(long)]
+    /// Filter out non-complemented duplications
+    no_uncomplemented: bool,
+
+    #[arg(long)]
+    /// Filters out inter-fragmental duplications
+    no_inter: bool,
+
+    #[arg(long)]
+    /// Filters out intra-fragmental duplications
+    no_intra: bool,
+
+    #[arg(long)]
+    /// Ignore all duplicons not having both arms in a fragment in the list
+    restrict_fragments: Option<Vec<String>>,
+
+    #[arg(long)]
+    /// Ignore all fragments is in the given list
+    exclude_fragments: Option<Vec<String>>,
+
+    #[arg(long)]
+    /// Additional feature tracks to plot
+    features: Vec<String>,
+
+    #[arg(long)]
+    /// If present, do not plot duplication families further away than
+    /// <filter-families> bp from features in track
+    filter_families: Option<usize>,
+
+    #[arg(long)]
+    /// If present, do not plot duplicons further away than
+    /// <filter-duplicons> bp from features in tracks
+    filter_duplicons: Option<usize>,
+
+    #[arg(long)]
+    /// If present, do not plot features further away than
+    /// <filter-features> bp from a duplicon
+    filter_features: Option<usize>,
+
+    #[arg(long, default_value = "0.1")]
+    /// Plot all duplicons with at least this line thickness
+    min_thickness: f64,
+
+    #[arg(long, value_parser= ["by-type", "by-position", "by-fragment", "none"], default_value = "by-type")]
+    /// Criterion on which to colorize duplicons
+    colorize: String,
+
+    #[command(subcommand)]
+    /// The kind of plot to produce
+    plot: Plot,
+}
+
+#[derive(Subcommand)]
+enum Plot {
+    /// "Plot duplications on a flat representation of the underlying fragments"
+    Flat,
+    /// "Plot duplications on a circo-like plot"
+    Chord,
+    /// "Plot duplications per chromosome on a classicaly laid out genome"
+    Genome,
+    /// "Generate files that can be used as input by the Circos program"
+    Circos,
+    /// "Plot duplications in a non-linear way for easier large-scale visualization"
+    Rosary {
+        #[arg(long, default_value = "0")]
+        /// Two consecutive duplicons closer than the given value will be shown
+        /// as a single, larger one
+        clustering: usize,
+
+        #[arg(long)]
+        /// Duplications-devoid spans are represented as a string of at most
+        /// 10Mbp-long beads rather than a single, larger one
+        rosary: bool,
+    },
+}
+
+fn main() -> Result<()> {
+    let args = Args::parse();
+    // Logger::init(match args.occurrences_of("verbose") {
+    //     0 => LevelFilter::Info,
+    //     1 => LevelFilter::Debug,
+    //     2 => LevelFilter::Trace,
+    //     _ => LevelFilter::Trace,
+    // })
+    // .with_context(|| "Unable to initialize logger")?;
+
+    let (mut result, out_file) = if let Some(files) = args.files.as_ref() {
         (
-            RunResult::from_files(&json_files)?,
-            asgart::utils::make_out_filename(args.value_of("out"), &json_files.join("-"), ""),
+            RunResult::from_files(files)?,
+            asgart::utils::make_out_filename(args.out.as_deref(), &files.join("-"), ""),
         )
     } else {
         log::warn!("Reading results from STDIN");
         (
             RunResult::from_stdin()?,
-            asgart::utils::make_out_filename(args.value_of("out"), "out", ""),
+            asgart::utils::make_out_filename(args.out.as_deref(), "out", ""),
         )
     };
 
-    let features_tracks: Result<Vec<_>> = match args.values_of("features") {
-        Some(x) => x
-            .map(|feature_track| read_feature_file(&result, feature_track))
-            .collect(),
-        None => Ok(Vec::new()),
-    };
-    if let Err(e) = features_tracks {
-        return Err(e);
-    }
-    let mut features_tracks = features_tracks.unwrap();
+    let mut feature_tracks = args
+        .features
+        .iter()
+        .map(|track| read_feature_file(&result, track))
+        .collect::<Result<Vec<_>>>()?;
 
-    if args.is_present("no-direct") {
+    if args.no_direct {
         result.remove_direct();
     }
-    if args.is_present("no-reversed") {
+    if args.no_reversed {
         result.remove_reversed();
     }
-    if args.is_present("no-uncomplemented") {
+    if args.no_uncomplemented {
         result.remove_uncomplemented();
     }
-    if args.is_present("no-complemented") {
+    if args.no_complemented {
         result.remove_complemented();
     }
-    if args.is_present("no-inter") {
+    if args.no_inter {
         result.remove_inter();
     }
-    if args.is_present("no-intra") {
+    if args.no_intra {
         result.remove_intra();
     }
-    if args.is_present("restrict-fragments") {
-        let to_keep = values_t!(args, "restrict-fragments", String).unwrap();
-        log::info!("Restricting to fragments {:?}", &to_keep);
-        result.restrict_fragments(&to_keep);
+    if let Some(restrict_fragments) = args.restrict_fragments.as_ref() {
+        log::info!("Restricting to fragments {:?}", restrict_fragments);
+        result.restrict_fragments(restrict_fragments);
     }
-    if args.is_present("exclude-fragments") {
-        let to_remove = &values_t!(args, "exclude-fragments", String).unwrap();
-        log::info!("Ignoring fragments {:?}", &to_remove);
-        result.exclude_fragments(&to_remove);
+    if let Some(exclude_fragments) = args.exclude_fragments.as_ref() {
+        log::info!("Ignoring fragments {:?}", exclude_fragments);
+        result.exclude_fragments(exclude_fragments);
     }
 
-    let min_length = value_t!(args, "min_length", usize).unwrap();
     result.families.iter_mut().for_each(|family| {
-        family.retain(|sd| std::cmp::max(sd.left_length, sd.right_length) >= min_length)
+        family.retain(|sd| std::cmp::max(sd.left_length, sd.right_length) >= args.min_length)
     });
-    let min_identity = value_t!(args, "min_identity", f32).unwrap();
+
     result
         .families
         .iter_mut()
-        .for_each(|family| family.retain(|sd| sd.identity >= min_identity));
+        .for_each(|family| family.retain(|sd| sd.identity >= args.min_identity));
 
-    if args.is_present("filter_families") {
-        filter_families_in_features(
-            &mut result,
-            &features_tracks,
-            value_t!(args, "filter_families", usize).unwrap(),
-        );
+    if let Some(filter_families) = args.filter_families {
+        filter_families_in_features(&mut result, &feature_tracks, filter_families);
     }
-    if args.is_present("filter_duplicons") {
-        filter_duplicons_in_features(
-            &mut result,
-            &features_tracks,
-            value_t!(args, "filter_duplicons", usize).unwrap(),
-        );
+    if let Some(filter_duplicons) = args.filter_duplicons {
+        filter_duplicons_in_features(&mut result, &feature_tracks, filter_duplicons);
     }
 
-    if args.is_present("filter_features") {
-        filter_features_in_sds(
-            &mut result,
-            &mut features_tracks,
-            value_t!(args, "filter_features", usize).unwrap(),
-        );
+    if let Some(filter_features) = args.filter_features {
+        filter_features_in_sds(&mut result, &mut feature_tracks, filter_features);
     }
 
     let settings = Settings {
         out_file: out_file.to_str().unwrap().to_owned(),
 
         size: 200.0,
-        min_thickness: value_t!(args, "min_thickness", f64).unwrap(),
+        min_thickness: args.min_thickness,
         color1: "#ff5b00".to_owned(),
         color2: "#00b2ae".to_owned(),
 
-        feature_tracks: features_tracks,
+        feature_tracks,
     };
 
-    let colorizer = match args.value_of("colorize") {
-        Some("by-type") => {
+    let colorizer = match args.colorize.as_str() {
+        "by-type" => {
             Box::new(TypeColorizer::new((1.0, 0.36, 0.0), (0.0, 0.70, 0.68))) as Box<dyn Colorizer>
         }
-        Some("by-position") => Box::new(PositionColorizer::new(&result)) as Box<dyn Colorizer>,
-        Some("by-fragment") => Box::new(FragmentColorizer::new(&result)) as Box<dyn Colorizer>,
-        Some("none") => {
+        "by-position" => Box::new(PositionColorizer::new(&result)) as Box<dyn Colorizer>,
+        "by-fragment" => Box::new(FragmentColorizer::new(&result)) as Box<dyn Colorizer>,
+        "none" => {
             Box::new(TypeColorizer::new((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))) as Box<dyn Colorizer>
         }
         _ => unreachable!(),
     };
 
-    let r = match args.subcommand_name() {
-        Some("chord") => ChordPlotter::new(settings, result, colorizer).plot(),
-        Some("flat") => FlatPlotter::new(settings, result, colorizer).plot(),
-        Some("genome") => GenomePlotter::new(settings, result, colorizer).plot(),
-        Some("circos") => CircosPlotter::new(settings, result, colorizer).plot(),
-        Some("rosary") => {
-            let sub_args = args.subcommand_matches("rosary").unwrap();
-            let clustering_margin = value_t!(sub_args, "clustering", usize)?;
-            let rosary_mode = sub_args.is_present("rosary");
-            RosaryPlotter::new(settings, result, colorizer, clustering_margin, rosary_mode).plot()
+    match args.plot {
+        Plot::Flat => ChordPlotter::new(settings, result, colorizer).plot(),
+        Plot::Chord => FlatPlotter::new(settings, result, colorizer).plot(),
+        Plot::Genome => GenomePlotter::new(settings, result, colorizer).plot(),
+        Plot::Circos => CircosPlotter::new(settings, result, colorizer).plot(),
+        Plot::Rosary { clustering, rosary } => {
+            RosaryPlotter::new(settings, result, colorizer, clustering, rosary).plot()
         }
-        // Some("eye")    => eye(args.subcommand_matches("eye").unwrap()),
-        _ => unreachable!(),
-    };
-    r
+    }
 }

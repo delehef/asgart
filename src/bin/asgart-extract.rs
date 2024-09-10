@@ -25,63 +25,55 @@ fn read_fasta(filename: &str) -> Result<Vec<u8>> {
     Ok(r)
 }
 
+#[derive(Parser)]
+#[command(
+    name = "ASGART extract",
+    version,
+    author,
+    about = "asgart-extract pulls out duplication families from an ASGART JSON file into a serie of FASTA files, one per family."
+)]
+struct Args {
+    #[arg()]
+    /// The JSON file to process
+    input: String,
+
+    #[arg(short = 'l', long)]
+    /// Where to find the original FASTA files; multiple values can be given
+    locations: Option<Vec<String>>,
+
+    #[arg(short = 'I', long)]
+    /// Write the sequences directly into the input JSON files
+    in_place: bool,
+
+    #[arg(short = 'D', long)]
+    /// Dump the sequences into multiFASTA files
+    dump: bool,
+
+    #[arg(short = 'd', long)]
+    /// Where to write the output multiFASTA files
+    destination: Option<String>,
+}
+
 fn main() -> Result<()> {
     Logger::init(LevelFilter::Info).expect("Unable to initialize logger");
-    let args = App::new("ASGART extract")
-        .setting(AppSettings::ColoredHelp)
-        .setting(AppSettings::ColorAuto)
-        .setting(AppSettings::VersionlessSubcommands)
-        .setting(AppSettings::UnifiedHelpMessage)
-        .version(crate_version!())
-        .author(crate_authors!())
-        .about("asgart-extract pulls out duplication families from an ASGART JSON file into a serie of FASTA files, one per family.")
-        .arg(Arg::with_name("INPUT")
-             .help("Set the input JSON file(s) to use")
-             .required(true)
-             .takes_value(true)
-             .min_values(1))
-        .arg(Arg::with_name("locations")
-             .short("l")
-             .long("locations")
-             .help("Where to find the original FASTA files; might take multiple values")
-             .takes_value(true))
+    let args = Args::parse();
 
-        .arg(Arg::with_name("in-place")
-             .short("I")
-             .long("in-json")
-             .help("write the sequences directly in the input JSON file"))
-        .arg(Arg::with_name("dump")
-             .short("D")
-             .long("dump")
-             .help("dump the sequences into a set of multiFASTA files"))
-        .arg(Arg::with_name("destination")
-             .short("d")
-             .long("destination")
-             .help("where to write the multiFASTA files")
-             .takes_value(true)
-             .number_of_values(1))
-        .get_matches();
-
-    if !args.is_present("in-place") && !args.is_present("dump") {
+    if !args.in_place && !args.dump {
         return Err(anyhow::Error::msg(format!(
-            "Please specify at least one of `--in-json` or `--dump`; see --help for more details"
+            "Please specify at least one of `--in-place` or `--dump`; see --help for more details"
         )));
     }
-    let input = value_t!(args, "INPUT", String).unwrap();
-    let destination = format!(
-        "{}/",
-        value_t!(args, "destination", String).unwrap_or("./".to_string())
-    );
+    let destination = format!("{}/", args.destination.unwrap_or("./".to_string()));
     if !Path::new(&destination).is_dir() {
         return Err(anyhow::Error::msg(format!(
             "`{}` is not a valid directory",
             destination
         )));
     }
-    let locations = values_t!(args, "locations", String).unwrap_or(vec![".".to_owned()]);
+    let locations = args.locations.unwrap_or(vec![".".to_owned()]);
 
-    info!("Reading {}...", &input);
-    let mut result = asgart::structs::RunResult::from_files(&[input.clone()])?;
+    info!("Reading {}...", &args.input);
+    let mut result = asgart::structs::RunResult::from_files(&[args.input.clone()])?;
     info!("Done.");
 
     let strands_files = result
@@ -117,9 +109,9 @@ fn main() -> Result<()> {
         info!("Done.");
     }
 
-    if args.is_present("in-place") {
+    if args.in_place {
         result.families.iter_mut().for_each(|family| {
-            family.iter_mut().for_each(|mut sd| {
+            family.iter_mut().for_each(|sd| {
                 let left_seq = strand
                     [sd.global_left_position..sd.global_left_position + sd.left_length]
                     .to_vec();
@@ -137,9 +129,9 @@ fn main() -> Result<()> {
                 sd.right_seq = Some(String::from_utf8(right_seq).unwrap());
             })
         });
-        JSONExporter.save(&result, &mut File::create(&input).unwrap())?
+        JSONExporter.save(&result, &mut File::create(&args.input).unwrap())?
     }
-    if args.is_present("dump") {
+    if args.dump {
         for (i, family) in result.families.iter().enumerate() {
             let family_id = format!("family-{}", i);
             let out_file_name = format!("{}{}.fa", destination, family_id);

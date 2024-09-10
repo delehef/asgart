@@ -172,7 +172,8 @@ impl<'a> Step for SearchDuplications<'a> {
                 let pb = ProgressBar::new(100);
                 pb.set_style(
                     ProgressStyle::default_bar()
-                        .template("{spinner:.blue} [{elapsed}] {bar:50} {pos}% (~{eta} remaining)"),
+                        .template("{spinner:.blue} [{elapsed}] {bar:50} {pos}% (~{eta} remaining)")
+                        .unwrap(),
                 );
 
                 loop {
@@ -565,68 +566,91 @@ fn reduce_overlap(result: &[ProtoSD]) -> Vec<ProtoSD> {
     news
 }
 
+#[derive(Parser)]
+#[command(
+    name = "ASGART",
+    version,
+    author,
+    about = "A Segmental duplications Gathering and Refinement Tool"
+)]
+struct Args {
+    #[arg()]
+    strands: Vec<String>,
+
+    #[arg(
+        long,
+        help = "minimal length (in bp) of the duplications",
+        default_value = "1000"
+    )]
+    min_length: usize,
+
+    #[arg(
+        short = 'k',
+        long,
+        help = "length of the probing k-mers",
+        default_value = "20"
+    )]
+    probe_size: usize,
+
+    #[arg(short = 'g', long, default_value = "100")]
+    /// Maximum length of a gap
+    gap_size: usize,
+
+    #[arg(short = 'R', long)]
+    /// Search for reversed duplications
+    reverse: bool,
+
+    #[arg(short = 'C', long)]
+    /// Search for complemented duplications
+    complement: bool,
+
+    #[arg(short = 'S', long)]
+    /// Ignore soft-masked repeated zones (lowercased regions)
+    skip_masked: bool,
+
+    #[arg(long, num_args = 2)]
+    /// Trim the first strand
+    trim: Option<Vec<usize>>,
+
+    #[arg(long, default_value = "500")]
+    /// maximal cardinality of duplication families
+    max_cardinality: usize,
+
+    #[arg(long, default_value = "")]
+    /// prefix to prepend to the default output file name
+    prefix: String,
+
+    #[arg(long)]
+    /// set the output file name
+    out: Option<String>,
+
+    #[arg(long)]
+    /// Compute the Levenshtein distance between duplicons
+    /// /!\ WARNING THIS IS A TIME- AND MEMORY-HEAVY OPERATION
+    compute_score: bool,
+
+    #[arg(long)]
+    /// number of threads to use; default to the number of cores
+    threads: Option<usize>,
+
+    #[arg(long, default_value = "1000000")]
+    /// Size used to slice input data for parallel processing
+    chunk_size: usize,
+}
+
 fn main() -> Result<()> {
-    // Those settings are only used to handily parse arguments
-    struct Settings {
-        strands_files: Vec<String>,
-        kmer_size: usize,
-        gap_size: u32,
-        min_duplication_length: usize,
-        max_cardinality: usize,
-        skip_masked: bool,
+    let args = Args::parse();
 
-        reverse: bool,
-        complement: bool,
-        trim: Vec<usize>,
+    // Logger::init(match args.occurrences_of("verbose") {
+    //     0 => LevelFilter::Info,
+    //     1 => LevelFilter::Debug,
+    //     2 => LevelFilter::Trace,
+    //     _ => LevelFilter::Trace,
+    // })
+    // .with_context(|| "Unable to initialize logger")?;
 
-        prefix: String,
-        out: String,
-        compute_score: bool,
-        threads_count: usize,
-    }
-
-    let yaml = load_yaml!("asgart.yaml");
-    let args = App::from_yaml(yaml)
-        .version(crate_version!())
-        .author(crate_authors!())
-        .setting(AppSettings::ColoredHelp)
-        .setting(AppSettings::ColorAuto)
-        .setting(AppSettings::VersionlessSubcommands)
-        .setting(AppSettings::UnifiedHelpMessage)
-        .get_matches();
-
-    let settings = Settings {
-        strands_files: args
-            .values_of("strand")
-            .unwrap()
-            .map(|s| s.to_owned())
-            .collect(),
-        kmer_size: value_t_or_exit!(args, "probe_size", usize),
-        gap_size: value_t_or_exit!(args, "max_gap", u32),
-        min_duplication_length: value_t!(args, "min_length", usize)?,
-        max_cardinality: value_t!(args, "max_cardinality", usize)?,
-        skip_masked: args.is_present("skip_masked"),
-
-        reverse: args.is_present("reverse"),
-        complement: args.is_present("complement"),
-        trim: values_t!(args, "trim", usize).unwrap_or_else(|_| Vec::new()),
-
-        prefix: args.value_of("prefix").unwrap().to_owned(),
-        out: args.value_of("out").unwrap_or("").to_owned(),
-        compute_score: args.is_present("compute_score"),
-        threads_count: value_t!(args, "threads", usize).unwrap_or_else(|_| num_cpus::get()),
-    };
-
-    Logger::init(match args.occurrences_of("verbose") {
-        0 => LevelFilter::Info,
-        1 => LevelFilter::Debug,
-        2 => LevelFilter::Trace,
-        _ => LevelFilter::Trace,
-    })
-    .with_context(|| "Unable to initialize logger")?;
-
-    let radix = (settings
-        .strands_files
+    let radix = (args
+        .strands
         .iter()
         .map(|n| {
             path::Path::new(&n)
@@ -639,72 +663,64 @@ fn main() -> Result<()> {
         .collect::<Vec<String>>())
     .join("-");
 
-    info!("Processing {}", &settings.strands_files.join(", "));
-    debug!("K-mers size                {}", settings.kmer_size);
-    debug!("Max gap size               {}", settings.gap_size);
-    debug!("Reversed duplications      {}", settings.reverse);
-    debug!("Complemented duplications  {}", settings.complement);
-    debug!("Skipping soft-masked       {}", settings.skip_masked);
+    info!("Processing {}", &args.strands.join(", "));
+    debug!("K-mers size                {}", args.probe_size);
+    debug!("Max gap size               {}", args.gap_size);
+    debug!("Reversed duplications      {}", args.reverse);
+    debug!("Complemented duplications  {}", args.complement);
+    debug!("Skipping soft-masked       {}", args.skip_masked);
+    debug!("Min. length                {}", args.min_length);
+    debug!("Max. cardinality           {}", args.max_cardinality);
     debug!(
-        "Min. length                {}",
-        settings.min_duplication_length
+        "Threads count              {}",
+        args.threads.unwrap_or(num_cpus::get_physical())
     );
-    debug!("Max. cardinality           {}", settings.max_cardinality);
-    debug!("Threads count              {}", settings.threads_count);
-    if !settings.trim.is_empty() {
-        debug!(
-            "Trimming                   {} → {}",
-            settings.trim[0], settings.trim[1]
-        );
+    if let Some(trim) = args.trim.as_ref() {
+        debug!("Trimming                   {} → {}", trim[0], trim[1]);
     }
 
     rayon::ThreadPoolBuilder::new()
-        .num_threads(settings.threads_count)
+        .num_threads(args.threads.unwrap_or(num_cpus::get_physical()))
         .build_global()
         .expect("Unable to create thread pool");
 
     let result = search_duplications(
-        &settings.strands_files,
+        &args.strands,
         RunSettings {
-            probe_size: settings.kmer_size,
-            max_gap_size: settings.gap_size + settings.kmer_size as u32,
-            min_duplication_length: settings.min_duplication_length,
-            max_cardinality: settings.max_cardinality,
+            probe_size: args.probe_size,
+            max_gap_size: args.gap_size as u32 + args.probe_size as u32,
+            min_duplication_length: args.min_length,
+            max_cardinality: args.max_cardinality,
 
-            reverse: settings.reverse,
-            complement: settings.complement,
-            skip_masked: settings.skip_masked,
+            reverse: args.reverse,
+            complement: args.complement,
+            skip_masked: args.skip_masked,
 
-            compute_score: settings.compute_score,
-            threads_count: settings.threads_count,
-            trim: if !settings.trim.is_empty() {
-                Some((settings.trim[0], settings.trim[1]))
-            } else {
-                None
-            },
+            compute_score: args.compute_score,
+            threads_count: args.threads.unwrap_or(num_cpus::get_physical()),
+            trim: args.trim.clone().map(|trim| (trim[0], trim[1])),
         },
     )?;
 
-    let out_radix = if settings.out.is_empty() {
+    let out_radix = if args.out.is_none() {
         format!(
             "{}{}{}{}{}{}.json",
-            &settings.prefix,
+            &args.prefix,
             radix,
-            if settings.reverse || settings.complement {
+            if args.reverse || args.complement {
                 "_"
             } else {
                 ""
             },
-            if settings.reverse { "R" } else { "" },
-            if settings.complement { "C" } else { "" },
-            &(if !settings.trim.is_empty() {
-                format!("_{}-{}", settings.trim[0], settings.trim[1])
-            } else {
-                "".into()
-            }),
+            if args.reverse { "R" } else { "" },
+            if args.complement { "C" } else { "" },
+            &args
+                .trim
+                .map(|trim| format!("_{}-{}", trim[0], trim[1]))
+                .unwrap_or_default()
         )
     } else {
-        settings.out
+        args.out.unwrap()
     };
 
     let out_filename = asgart::utils::make_out_filename(Some(&out_radix), "", "json")

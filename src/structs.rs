@@ -132,7 +132,7 @@ impl RunResult {
             strand: results[0].strand.clone(),
             families: results
                 .iter()
-                .flat_map(|ref r| r.families.iter())
+                .flat_map(|r| r.families.iter())
                 .cloned()
                 .collect::<Vec<_>>(),
         };
@@ -365,18 +365,14 @@ impl RunResult {
         let mut to_flatten = self
             .strand
             .map
-            .iter()
-            .cloned()
-            .filter(|c| c.length as f64 <= avg + std && c.name.len() > 2) // Try not to remove normal but small scaffolds/chromosomes
+            .iter().filter(|&c| c.length as f64 <= avg + std && c.name.len() > 2).cloned() // Try not to remove normal but small scaffolds/chromosomes
             .clone()
             .collect::<Vec<_>>();
         let to_flatten_len = to_flatten.iter().map(|c| c.length).sum::<usize>();
         let mut to_keep = self
             .strand
             .map
-            .iter()
-            .cloned()
-            .filter(|c| !to_flatten.iter().any(|r| c.name == r.name))
+            .iter().filter(|&c| !to_flatten.iter().any(|r| c.name == r.name)).cloned()
             .collect::<Vec<_>>();
         let to_keep_len = to_keep.iter().map(|c| c.length).sum::<usize>();
 
@@ -403,7 +399,7 @@ impl RunResult {
         });
 
         self.families.par_iter_mut().for_each(|family| {
-            family.iter_mut().for_each(|mut sd| {
+            family.iter_mut().for_each(|sd| {
                 let left_match = to_flatten.iter().any(|n| *n.name == sd.chr_left);
                 let right_match = to_flatten.iter().any(|n| *n.name == sd.chr_right);
                 if left_match {

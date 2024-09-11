@@ -41,9 +41,9 @@ impl Plotter for RosaryPlotter {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_squish().as_bytes()))
-            .and_then(|_| {
+            .map(|_| {
                 log::info!("Rosary plot written to `{}`", &out_filename);
-                Ok(())
+                
             })
             .with_context(|| format!("Failed to save plot to `{}`", &out_filename))?;
 
@@ -75,7 +75,7 @@ impl RosaryPlotter {
     }
 
     fn size_for_void(l: f32) -> f32 {
-        (l as f32 / 100_000.).sqrt()
+        (l / 100_000.).sqrt()
     }
 
     fn annotations_for_chr(&self, chr: &Start) -> Vec<Span> {
@@ -92,7 +92,7 @@ impl RosaryPlotter {
                                 length,
                             } => {
                                 let my_chr =
-                                    self.result.strand.find_chr(&my_chr).unwrap_or_else(|| {
+                                    self.result.strand.find_chr(my_chr).unwrap_or_else(|| {
                                         panic!("Unable to find fragment `{}`", my_chr)
                                     });
                                 if my_chr.name == chr.name {
@@ -198,8 +198,8 @@ impl RosaryPlotter {
             .map
             .iter()
             .map(|current_chr| {
-                let duplicons = self.duplicons_for_chr(&current_chr);
-                let annotations = self.annotations_for_chr(&current_chr);
+                let duplicons = self.duplicons_for_chr(current_chr);
+                let annotations = self.annotations_for_chr(current_chr);
 
                 log::trace!(
                     "{} :: Plotting {} duplicons and {} features",
@@ -209,7 +209,7 @@ impl RosaryPlotter {
                 );
                 let mut features = duplicons
                     .into_iter()
-                    .chain(annotations.into_iter())
+                    .chain(annotations)
                     .collect::<Vec<Span>>();
                 features.sort_by_key(|f| f.start);
 
@@ -451,7 +451,7 @@ impl RosaryPlotter {
 
         let main_plot = labels
             .into_iter()
-            .zip(chrs.into_iter())
+            .zip(chrs)
             .fold((0., SvgGroup::new()), |(y, ax), (mut label, chr)| {
                 let height = label.dims().1.max(chr.dims().1);
                 let shift = y + height / 2.0;

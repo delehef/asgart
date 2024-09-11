@@ -104,7 +104,7 @@ impl FragmentColorizer {
             .collect::<Vec<String>>();
 
         FragmentColorizer {
-            colors: names.into_iter().zip(colors.into_iter()).collect(),
+            colors: names.into_iter().zip(colors).collect(),
         }
     }
 }
@@ -113,7 +113,7 @@ impl Colorizer for FragmentColorizer {
         let color = self
             .colors
             .get(name)
-            .expect(&format!("Unable to get {}", name))
+            .unwrap_or_else(|| panic!("Unable to get {}", name))
             .into_components();
         format!(
             "#{:02x}{:02x}{:02x}",
@@ -127,7 +127,7 @@ impl Colorizer for FragmentColorizer {
         let color = self
             .colors
             .get(&sd.chr_left)
-            .expect(&format!("Unable to get {}", &sd.chr_left))
+            .unwrap_or_else(|| panic!("Unable to get {}", &sd.chr_left))
             .into_components();
 
         format!(

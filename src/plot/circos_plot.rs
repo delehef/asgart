@@ -20,17 +20,17 @@ impl Plotter for CircosPlotter {
 
         File::create(karyotype_filename)
             .and_then(|mut f| f.write_all(self.plot_karyotype().as_bytes()))
-            .and_then(|_| {
+            .map(|_| {
                 log::info!("Karyotype written to `{}`", &karyotype_filename);
-                Ok(())
+                
             })
             .with_context(|| format!("Failed to save karyotype to `{}`", &karyotype_filename))?;
 
         File::create(links_filename)
             .and_then(|mut f| f.write_all(self.plot_links().as_bytes()))
-            .and_then(|_| {
+            .map(|_| {
                 log::info!("Links written to `{}`", &links_filename);
-                Ok(())
+                
             })
             .with_context(|| format!("Failed to save links to `{}`", &links_filename))?;
 
@@ -41,9 +41,9 @@ impl Plotter for CircosPlotter {
                         .as_bytes(),
                 )
             })
-            .and_then(|_| {
+            .map(|_| {
                 log::info!("Config written to `{}`", &config_filename);
-                Ok(())
+                
             })
             .with_context(|| {
                 format!(
@@ -90,7 +90,7 @@ impl CircosPlotter {
     fn plot_links(&self) -> String {
         let links : String = self.result.families
             .iter()
-            .map(|family|
+            .flat_map(|family|
                  family
                  .iter()
                  .map(
@@ -104,9 +104,7 @@ impl CircosPlotter {
                              chr_right_end   = sd.chr_right_position + sd.right_length,
                              color           = if sd.reversed { "color=teal" } else { "color=orange" }
                      )
-                 )
-            )
-            .flatten()
+                 ))
             .collect::<Vec<String>>()
             .join("\n");
 

@@ -24,9 +24,7 @@ pub fn complemented(text: &[u8]) -> Vec<u8> {
 
 pub fn slugify(x: &str) -> String {
     x.trim()
-        .replace(" ", "_")
-        .replace(":", "_")
-        .replace("|", "_")
+        .replace([' ', ':', '|'], "_")
 }
 
 pub fn make_out_filename(

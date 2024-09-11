@@ -38,7 +38,7 @@ impl Exporter for GFF2Exporter {
                 writeln!(
                     out,
                     "{chr_left}\tASGART\tSD\t{left}\t{end}\t#{identity}\t+\t.\tSD#{i}/{j}-{chr_left}",
-                    chr_left = str::replace(&sd.chr_left.trim(), " ", "_"),
+                    chr_left = str::replace(sd.chr_left.trim(), " ", "_"),
                     left = sd.chr_left_position,
                     end = sd.chr_left_position + sd.left_length,
                     identity = sd.identity * 100.0,
@@ -49,7 +49,7 @@ impl Exporter for GFF2Exporter {
                 writeln!(
                     out,
                     "{chr_right}\tASGART\tSD\t{right}\t{end}\t#{identity}\t#{reverse}\t.\tSD#{i}/{j}-{chr_right}",
-                    chr_right = str::replace(&sd.chr_right.trim(), " ", "_"),
+                    chr_right = str::replace(sd.chr_right.trim(), " ", "_"),
                     right = sd.chr_right_position,
                     end = sd.chr_right_position + sd.right_length,
                     identity = sd.identity * 100.0,
@@ -86,7 +86,7 @@ impl Exporter for GFF3Exporter {
                 writeln!(
                     out,
                     "{chr_left}\tASGART\tSD\t{left}\t{end}\t{identity}\t+\t.\tID=SD#{i}-{j};Name=SD#{i}-{j}",
-                    chr_left = str::replace(&sd.chr_left.trim(), " ", "_"),
+                    chr_left = str::replace(sd.chr_left.trim(), " ", "_"),
                     left = sd.chr_left_position + 1,
                     end = sd.chr_left_position + sd.left_length + 1,
                     identity = sd.identity,
@@ -97,7 +97,7 @@ impl Exporter for GFF3Exporter {
                 writeln!(
                     out,
                     "{chr_right}\tASGART\tSD\t{right}\t{end}\t{identity}\t{reverse}\t.\tID=SD#{i}-{j}-right;Parent=SD#{i}-{j};Name=SD#{i}-{j}",
-                    chr_right = str::replace(&sd.chr_right.trim(), " ", "_"),
+                    chr_right = str::replace(sd.chr_right.trim(), " ", "_"),
                     right     = sd.chr_right_position + 1,
                     end       = sd.chr_right_position + sd.right_length + 1,
                     identity  = sd.identity,

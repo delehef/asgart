@@ -165,7 +165,7 @@ impl Searcher {
             if *x as usize + pattern.len() > dna.len() {
                 std::cmp::Ordering::Less
             } else {
-                stringcmp(&dna[*x as usize..*x as usize + pattern.len()], &pattern)
+                stringcmp(&dna[*x as usize..*x as usize + pattern.len()], pattern)
             }
         });
 

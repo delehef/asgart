@@ -120,7 +120,7 @@ fn filter_duplicons_in_features(
 
 fn filter_features_in_sds(
     result: &mut RunResult,
-    features_families: &mut Vec<Vec<Feature>>,
+    features_families: &mut [Vec<Feature>],
     threshold: usize,
 ) {
     fn _overlap((xstart, xlen): (usize, usize), (ystart, ylen): (usize, usize)) -> bool {
@@ -141,15 +141,15 @@ fn filter_features_in_sds(
                     } => {
                         let chr = result
                             .strand
-                            .find_chr(&chr)
-                            .expect(&format!("Unable to find fragment `{}`", chr));
+                            .find_chr(chr)
+                            .unwrap_or_else(|| panic!("Unable to find fragment `{}`", chr));
                         (chr.position + start, length)
                     }
                     FeaturePosition::Absolute { start, length } => (start, length),
                 };
 
                 result.families.iter().any(|family| {
-                    family.iter().any(|ref sd| {
+                    family.iter().any(|sd| {
                         _overlap(sd.left_part(), (start - threshold, length + 2 * threshold))
                             || _overlap(
                                 sd.right_part(),
@@ -252,7 +252,7 @@ fn read_custom_feature_file(r: &RunResult, file: &str) -> Result<Vec<Feature>> {
             let chr = r
                 .strand
                 .find_chr(chr_name)
-                .expect(&format!("Unable to find fragment `{}`", chr_name));
+                .unwrap_or_else(|| panic!("Unable to find fragment `{}`", chr_name));
             if chr.length < position {
                 return Err(anyhow!(
                     "{} greater than {} length ({})",
@@ -459,7 +459,7 @@ fn main() -> Result<()> {
     }
 
     result.families.iter_mut().for_each(|family| {
-        family.retain(|sd| std::cmp::max(sd.left_length, sd.right_length) >= args.min_length)
+        family.retain(|sd| sd.left_length.max(sd.right_length) >= args.min_length)
     });
 
     result.families.iter_mut().for_each(|family| {

@@ -20,9 +20,7 @@ use thousands::Separable;
 use asgart::{
     automaton,
     divsufsort::{divsufsort64, SuffixArray},
-    exporters,
-    logger::Logger,
-    searcher,
+    exporters, searcher,
     structs::*,
     utils,
 };
@@ -75,7 +73,7 @@ impl Step for ReduceOverlap {
     fn run(&self, mut input: Vec<ProtoSDsFamily>, _strand: &Strand) -> Vec<ProtoSDsFamily> {
         input
             .iter_mut()
-            .map(|family| reduce_overlap(&family))
+            .map(|family| reduce_overlap(family))
             .collect()
     }
 }
@@ -125,9 +123,9 @@ impl SearchDuplications<'_> {
         settings: RunSettings,
     ) -> SearchDuplications {
         SearchDuplications {
-            chunks_to_process: chunks_to_process,
-            trim: trim,
-            settings: settings.clone(),
+            chunks_to_process,
+            trim,
+            settings,
         }
     }
 }
@@ -184,8 +182,7 @@ impl<'a> Step for SearchDuplications<'a> {
                                 (progresses
                                     .iter()
                                     .map(|x| x.load(Ordering::Relaxed))
-                                    .fold(0, |ax, x| ax + x)
-                                    as f64
+                                    .sum::<usize>() as f64
                                     / total as f64
                                     * 100.0) as u64,
                             );
@@ -221,14 +218,13 @@ impl<'a> Step for SearchDuplications<'a> {
                 };
 
                 let mut proto_sds_families = automaton::search_duplications(
-                    id,
                     needle,
                     chunk.0,
                     &strand.data,
                     &shared_suffix_array.clone(),
                     &shared_searcher.clone(),
                     &progresses[id],
-                    self.settings.clone(),
+                    self.settings,
                 );
                 proto_sds_families.iter_mut().for_each(|proto_family| {
                     proto_family.iter_mut().for_each(|proto_sd| {
@@ -245,7 +241,7 @@ impl<'a> Step for SearchDuplications<'a> {
         let result = results.iter().fold(Vec::new(), |mut a, b| {
             a.extend(b.iter().map(|family| {
                 family
-                    .into_iter()
+                    .iter()
                     .map(|sd| ProtoSD {
                         reversed: self.settings.reverse,
                         complemented: self.settings.complement,
@@ -305,7 +301,7 @@ fn prepare_data(
             }
 
             map.push(Start {
-                name: name,
+                name,
                 position: counter,
                 length: seq.len(),
             });
@@ -336,7 +332,7 @@ fn prepare_data(
             let n = strand[i];
             match n {
                 b'n' | b'N' => {
-                    let n_count = count_n(&strand, i);
+                    let n_count = count_n(strand, i);
                     if n_count > threshold {
                         if count > 0 {
                             chunks.push((start, count));
@@ -394,7 +390,7 @@ fn prepare_data(
             ..start
         }));
 
-        offset = offset + new_strand.len();
+        offset += new_strand.len();
         strand.extend(new_strand);
     }
     info!(
@@ -475,8 +471,7 @@ fn prepare_data(
 }
 
 pub fn r_divsufsort(dna: &[u8]) -> SuffixArray {
-    let mut sa = Vec::with_capacity(dna.len());
-    sa.resize(dna.len(), 0);
+    let mut sa = vec![0; dna.len()];
     unsafe {
         divsufsort64(dna.as_ptr(), sa.as_mut_ptr(), dna.len() as i64);
     }
@@ -655,7 +650,7 @@ fn main() -> Result<()> {
         .map(|n| {
             path::Path::new(&n)
                 .file_stem()
-                .expect(&format!("Unable to parse {}", n))
+                .unwrap_or_else(|| panic!("unable to parse {}", n))
                 .to_str()
                 .unwrap()
                 .to_string()
@@ -742,18 +737,15 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
     let total = Instant::now();
 
     info!("Preprocessing data");
-    let (trim, to_process, mut strand) =
+    let (trim, to_process, strand) =
         prepare_data(strands_files, settings.skip_masked, settings.trim)?;
 
-    let mut steps: Vec<Box<dyn Step>> = Vec::new();
-    steps.push(Box::new(SearchDuplications::new(
-        &to_process,
-        trim,
-        settings,
-    )));
-    steps.push(Box::new(FilterNs {}));
-    steps.push(Box::new(ReOrder {}));
-    steps.push(Box::new(ReduceOverlap {}));
+    let mut steps: Vec<Box<dyn Step>> = vec![
+        Box::new(SearchDuplications::new(&to_process, trim, settings)),
+        Box::new(FilterNs {}),
+        Box::new(ReOrder {}),
+        Box::new(ReduceOverlap {}),
+    ];
     if settings.compute_score {
         steps.push(Box::new(ComputeScore {}));
     }
@@ -766,7 +758,7 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
             style(format!("[{}/{}]", i + 1, steps.len())).blue().bold(),
             step.name()
         );
-        result = step.run(result, &mut strand);
+        result = step.run(result, &strand);
     }
 
     info!(
@@ -788,7 +780,7 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
 
     Ok(RunResult {
         strand: strand.clone(),
-        settings: settings,
+        settings,
         families: result
             .iter()
             .map(|family| {
@@ -797,11 +789,11 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
                     .map(|sd| SD {
                         chr_left: strand
                             .find_chr_by_pos(sd.left)
-                            .and_then(|c| Some(c.name.clone()))
+                            .map(|c| c.name.clone())
                             .unwrap_or("unknown".to_string()),
                         chr_right: strand
                             .find_chr_by_pos(sd.right)
-                            .and_then(|c| Some(c.name.clone()))
+                            .map(|c| c.name.clone())
                             .unwrap_or("unknown".to_string()),
 
                         global_left_position: sd.left,
@@ -810,12 +802,12 @@ fn search_duplications(strands_files: &[String], settings: RunSettings) -> Resul
                         chr_left_position: sd.left
                             - strand
                                 .find_chr_by_pos(sd.left)
-                                .and_then(|c| Some(c.position))
+                                .map(|c| c.position)
                                 .unwrap_or(0),
                         chr_right_position: sd.right
                             - strand
                                 .find_chr_by_pos(sd.right)
-                                .and_then(|c| Some(c.position))
+                                .map(|c| c.position)
                                 .unwrap_or(0),
 
                         left_length: sd.left_length,

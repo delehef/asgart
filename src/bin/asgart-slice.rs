@@ -168,7 +168,7 @@ fn main() -> Result<()> {
         if args.regexp {
             for restrict_fragment in restrict_fragments {
                 results
-                    .restrict_fragments_regexp::<&str>(&restrict_fragment)
+                    .restrict_fragments_regexp::<&str>(restrict_fragment)
                     .with_context(|| format!("Error while compiling `{}`", restrict_fragment))?;
             }
         } else {
@@ -179,7 +179,7 @@ fn main() -> Result<()> {
         if args.regexp {
             for restrict_fragment in exclude_fragments {
                 results
-                    .exclude_fragments_regexp::<&str>(&restrict_fragment)
+                    .exclude_fragments_regexp::<&str>(restrict_fragment)
                     .with_context(|| format!("Error while compiling `{}`", restrict_fragment))?;
             }
         } else {

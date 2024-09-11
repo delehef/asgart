@@ -79,7 +79,7 @@ fn main() -> Result<()> {
     let strands_files = result
         .strand
         .name
-        .split(",")
+        .split(',')
         .map(str::trim)
         .map(|name| {
             for location in &locations {

@@ -285,6 +285,12 @@ impl SvgObject {
 pub struct SvgGroup {
     content: Vec<SvgObject>,
 }
+impl Default for SvgGroup {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SvgGroup {
     pub fn new() -> Self {
         SvgGroup {

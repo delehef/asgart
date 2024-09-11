@@ -31,18 +31,10 @@ impl Segment {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ProtoProtoSD {
-    bottom: usize,
-    top: usize,
-    matches: Vec<Segment>,
-}
-
 #[derive(Debug)]
 struct Arm {
     left: Segment,
     right: Segment,
-    family_id: String,
     active: bool,
     dirty: bool,
     gap: usize,
@@ -63,7 +55,6 @@ enum Operation {
 
 #[allow(clippy::too_many_arguments)]
 pub fn search_duplications(
-    id: usize,
     needle: &[u8],
     needle_offset: usize,
     strand: &[u8],
@@ -75,7 +66,7 @@ pub fn search_duplications(
     fn try_extend_arms(arms: &[Arm], m: &Segment, e: i64, i: usize, ps: usize) -> Operation {
         for (j, a) in arms.iter().enumerate() {
             if a.active
-                && d_ss(&a.right, m) < cmp::max(e, (0.1 * a.left.len() as f64) as i64) as i64
+                && d_ss(&a.right, m) < cmp::max(e, (0.1 * a.left.len() as f64) as i64)
                 && m.end > a.right.end
             {
                 return Operation::ExtendArm {
@@ -96,7 +87,6 @@ pub fn search_duplications(
     let mut arms: Vec<Arm> = Vec::new();
     let mut i = 0;
     let mut r = Vec::new();
-    let mut current_family_id = 1;
     let step_size = settings.probe_size / 2;
 
     if needle.len() < settings.min_duplication_length {
@@ -165,7 +155,6 @@ pub fn search_duplications(
                         end: *m_end,
                         tag: 0,
                     },
-                    family_id: format!("{}-{}", id, current_family_id),
                     active: true,
                     dirty: false,
                     gap: 0,
@@ -208,8 +197,6 @@ pub fn search_duplications(
                 r.push(family);
             }
             arms.clear();
-
-            current_family_id += 1;
         }
     }
 

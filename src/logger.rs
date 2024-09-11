@@ -30,11 +30,11 @@ impl log::Log for Logger {
             println!(
                 "{}",
                 match record.level() {
-                    Level::Error => format!("{} {}", " X ", record.args().to_string()),
-                    Level::Warn => format!("{} {}", "/!\\", record.args().to_string()),
+                    Level::Error => format!("{} {}", " X ", record.args()),
+                    Level::Warn => format!("{} {}", "/!\\", record.args()),
                     Level::Info => format!("{} {}", "-> ", record.args()),
                     Level::Debug => format!("    {}", record.args()),
-                    Level::Trace => format!("{} {}", " . ", record.args().to_string()),
+                    Level::Trace => format!("{} {}", " . ", record.args()),
                 }
             );
         }

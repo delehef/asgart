@@ -23,9 +23,9 @@ impl Plotter for FlatPlotter {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_flat().as_bytes()))
-            .and_then(|_| {
+            .map(|_| {
                 println!("Flat plot written to `{}`", &out_filename);
-                Ok(())
+                
             })
             .with_context(|| format!("Failed to save plot to `{}`", &out_filename))?;
 
@@ -132,7 +132,7 @@ impl FlatPlotter {
                             let chr = self
                                 .result
                                 .strand
-                                .find_chr(&chr)
+                                .find_chr(chr)
                                 .unwrap_or_else(|| panic!("Unable to find fragment `{}`", chr));
                             (chr.position + start, chr.position + start + length)
                         }

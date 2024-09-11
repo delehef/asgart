@@ -32,9 +32,9 @@ impl Plotter for ChordPlotter {
         let out_filename = format!("{}.svg", &self.settings.out_file);
         File::create(&out_filename)
             .and_then(|mut f| f.write_all(self.plot_chord().as_bytes()))
-            .and_then(|_| {
+            .map(|_| {
                 log::info!("Chord plot written to `{}`", &out_filename);
-                Ok(())
+                
             })
             .with_context(|| format!("Failed to save plot to `{}`", &out_filename))?;
 
@@ -137,7 +137,7 @@ impl ChordPlotter {
                 if width <= self.settings.min_thickness {
                     width = self.settings.min_thickness
                 };
-                let color = self.colorizer.color(&sd);
+                let color = self.colorizer.color(sd);
 
                 let ((x1, y1), (x2, y2), (cx, cy)) =
                     if sd.chr_left != sd.chr_right || self.result.strand.map.len() == 1 {
@@ -199,7 +199,7 @@ impl ChordPlotter {
                             let chr = self
                                 .result
                                 .strand
-                                .find_chr(&chr)
+                                .find_chr(chr)
                                 .unwrap_or_else(|| panic!("Unable to find fragment `{}`", chr));
                             (chr.position + start, chr.position + start + length)
                         }
@@ -233,11 +233,9 @@ impl ChordPlotter {
                  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'> <svg version='1.0' \
                  width='{}' height='{}' xmlns='http://www.w3.org/2000/svg' \
                  xmlns:xlink='http://www.w3.org/1999/xlink'> \
-
                  <style type='text/css'> \
                  .sd:hover {{ stroke-opacity: 1.0; stroke: crimson; stroke-width: {}; }} \
                  </style> \
-
                  {} \
                  </svg>",
             TOTAL_WIDTH,

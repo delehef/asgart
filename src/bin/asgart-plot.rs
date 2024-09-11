@@ -313,7 +313,7 @@ struct Args {
     /// Filter out duplicons with a lesser identity than the given value
     min_identity: f32,
 
-    #[arg(long, default_value = "100")]
+    #[arg(long, default_value = "1.0")]
     /// Filter out duplicons with a higher identity than the given value
     max_identity: f32,
 

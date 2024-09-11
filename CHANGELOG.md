@@ -2,7 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.4.5] - 2024-09-06
+## [2.5.0] - 2024-09-11
+
+### 🚀 Features
+
+- Add `--max-identity` to asgart-plot
+
+### 🚜 Refactor
+
+- Switch to simple_logger + clap_verbosity_flag
+
+### ⚙️ Miscellaneous Tasks
+
+- Release asgart version 2.4.5
+- Formatting
+- Update dependencies
+- Clippy
 
 ### Build
 

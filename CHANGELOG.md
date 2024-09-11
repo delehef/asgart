@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.1] - 2024-09-11
+
+### 📚 Documentation
+
+- Explicitly states that max idenity is 1.0
+
 ## [2.5.0] - 2024-09-11
 
 ### 🚀 Features
@@ -18,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Formatting
 - Update dependencies
 - Clippy
+- Release asgart version 2.5.0
 
 ### Build
 

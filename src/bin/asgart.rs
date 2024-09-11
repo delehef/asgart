@@ -570,21 +570,18 @@ fn reduce_overlap(result: &[ProtoSD]) -> Vec<ProtoSD> {
 )]
 struct Args {
     #[arg()]
+    /// The files to process
     strands: Vec<String>,
 
-    #[arg(
-        long,
-        help = "minimal length (in bp) of the duplications",
-        default_value = "1000"
-    )]
+    #[command(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
+
+    #[arg(long, default_value = "1000")]
+    /// Minimal lenngth (in bp) of the dpulications to be reported
     min_length: usize,
 
-    #[arg(
-        short = 'k',
-        long,
-        help = "length of the probing k-mers",
-        default_value = "20"
-    )]
+    #[arg(short = 'k', long, default_value = "20")]
+    /// Probing k-mers size
     probe_size: usize,
 
     #[arg(short = 'g', long, default_value = "100")]
@@ -636,13 +633,11 @@ struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Logger::init(match args.occurrences_of("verbose") {
-    //     0 => LevelFilter::Info,
-    //     1 => LevelFilter::Debug,
-    //     2 => LevelFilter::Trace,
-    //     _ => LevelFilter::Trace,
-    // })
-    // .with_context(|| "Unable to initialize logger")?;
+    simple_logger::SimpleLogger::new()
+        .with_level(args.verbose.log_level_filter())
+        .with_colors(true)
+        .init()
+        .context("failed to initialize simple_logger")?;
 
     let radix = (args
         .strands

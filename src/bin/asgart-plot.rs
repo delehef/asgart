@@ -298,6 +298,9 @@ struct Args {
     /// Sets the input file(s) to use. If not specified, JSON data will be expected from STDIN
     files: Option<Vec<String>>,
 
+    #[command(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
+
     #[arg(long)]
     /// Define a non-default output file name
     out: Option<String>,
@@ -404,13 +407,12 @@ enum Plot {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    // Logger::init(match args.occurrences_of("verbose") {
-    //     0 => LevelFilter::Info,
-    //     1 => LevelFilter::Debug,
-    //     2 => LevelFilter::Trace,
-    //     _ => LevelFilter::Trace,
-    // })
-    // .with_context(|| "Unable to initialize logger")?;
+
+    simple_logger::SimpleLogger::new()
+        .with_level(args.verbose.log_level_filter())
+        .with_colors(true)
+        .init()
+        .context("failed to initialize simple_logger")?;
 
     let (mut result, out_file) = if let Some(files) = args.files.as_ref() {
         (

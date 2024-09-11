@@ -6,7 +6,6 @@ use log::LevelFilter;
 
 use asgart::{
     exporters::{self, Exporter},
-    logger::Logger,
     structs::*,
 };
 
@@ -92,7 +91,11 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    Logger::init(LevelFilter::Info).expect("Unable to initialize logger");
+    simple_logger::SimpleLogger::new()
+        .with_level(LevelFilter::Info)
+        .with_colors(true)
+        .init()
+        .context("failed to initialize simple_logger")?;
 
     let args = Args::parse();
 

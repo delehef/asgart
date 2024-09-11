@@ -1,15 +1,18 @@
-use std::fs::{File, OpenOptions};
-use std::io::Write;
-use std::path::Path;
-use std::process;
+use std::{
+    fs::{File, OpenOptions},
+    io::Write,
+    path::Path,
+    process,
+};
 
 use anyhow::{Context, Result};
 use clap::*;
 use log::*;
 
-use asgart::exporters::{Exporter, JSONExporter};
-use asgart::logger::*;
-use asgart::utils;
+use asgart::{
+    exporters::{Exporter, JSONExporter},
+    utils,
+};
 
 fn read_fasta(filename: &str) -> Result<Vec<u8>> {
     let mut r = Vec::new();
@@ -55,7 +58,12 @@ struct Args {
 }
 
 fn main() -> Result<()> {
-    Logger::init(LevelFilter::Info).expect("Unable to initialize logger");
+    simple_logger::SimpleLogger::new()
+        .with_level(LevelFilter::Info)
+        .with_colors(true)
+        .init()
+        .context("failed to initialize simple_logger")?;
+
     let args = Args::parse();
 
     if !args.in_place && !args.dump {

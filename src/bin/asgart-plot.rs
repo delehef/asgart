@@ -307,8 +307,12 @@ struct Args {
     min_length: usize,
 
     #[arg(long, default_value = "0")]
-    /// Filter duplicons with a lesser identity than the given value
+    /// Filter out duplicons with a lesser identity than the given value
     min_identity: f32,
+
+    #[arg(long, default_value = "100")]
+    /// Filter out duplicons with a higher identity than the given value
+    max_identity: f32,
 
     #[arg(long)]
     /// Filter out direct duplications
@@ -458,14 +462,14 @@ fn main() -> Result<()> {
         family.retain(|sd| std::cmp::max(sd.left_length, sd.right_length) >= args.min_length)
     });
 
-    result
-        .families
-        .iter_mut()
-        .for_each(|family| family.retain(|sd| sd.identity >= args.min_identity));
+    result.families.iter_mut().for_each(|family| {
+        family.retain(|sd| args.min_identity <= sd.identity && sd.identity <= args.max_identity)
+    });
 
     if let Some(filter_families) = args.filter_families {
         filter_families_in_features(&mut result, &feature_tracks, filter_families);
     }
+
     if let Some(filter_duplicons) = args.filter_duplicons {
         filter_duplicons_in_features(&mut result, &feature_tracks, filter_duplicons);
     }
